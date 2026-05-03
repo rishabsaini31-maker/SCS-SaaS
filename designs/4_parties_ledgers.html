@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #cbd5e1;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#f0f0fb",
+                      "surface-container": "#ededf9",
+                      "outline-variant": "#c3c6d7",
+                      "surface-variant": "#e1e2ed",
+                      "on-tertiary-fixed-variant": "#7d2d00",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "tertiary-fixed": "#ffdbcd",
+                      "surface-dim": "#d9d9e5",
+                      "outline": "#737686",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "surface-container-highest": "#e1e2ed",
+                      "surface-container-high": "#e7e7f3",
+                      "secondary-fixed": "#dae2fd",
+                      "on-error-container": "#93000a",
+                      "primary": "#004ac6",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#434655",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#191b23",
+                      "primary-container": "#2563eb",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#b4c5ff",
+                      "surface-container-low": "#f3f3fe",
+                      "on-secondary-container": "#5c647a",
+                      "secondary": "#565e74",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#ffb596",
+                      "background": "#faf8ff",
+                      "on-background": "#191b23",
+                      "on-tertiary-fixed": "#360f00",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "inverse-surface": "#2e3039",
+                      "on-primary-fixed": "#00174b",
+                      "on-primary-container": "#eeefff",
+                      "secondary-container": "#dae2fd",
+                      "tertiary-container": "#bc4800",
+                      "error": "#ba1a1a",
+                      "surface-tint": "#0053db",
+                      "surface-bright": "#faf8ff",
+                      "primary-fixed": "#dbe1ff",
+                      "surface": "#faf8ff",
+                      "on-tertiary-container": "#ffede6",
+                      "on-secondary-fixed": "#131b2e",
+                      "tertiary": "#943700"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sidebar-width": "240px",
+                      "header-height": "64px",
+                      "container-padding": "32px",
+                      "stack-gap": "16px",
+                      "table-row-height": "48px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "body-md": ["Inter"],
+                      "mono-data": ["JetBrains Mono"],
+                      "h1": ["Inter"],
+                      "display-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["13px", {"lineHeight": "18px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "mono-data": ["13px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "h1": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "display-sm": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-hidden">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-[240px] border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col py-4 z-50">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm">dashboard</span>
+</div>
+<div>
+<h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">WholesalePro</h1>
+<p class="text-[10px] font-medium uppercase tracking-widest text-slate-500">Management Suite</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-3">
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">receipt_long</span>
+<span>Billing</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span>Purchase</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">inventory_2</span>
+<span>Inventory</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 bg-slate-200/50 dark:bg-slate-800/50 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400 transition-all active:scale-95 cursor-pointer rounded-r-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">group</span>
+<span>Parties</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">payments</span>
+<span>Payments</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">assessment</span>
+<span>Reports</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95 cursor-pointer rounded-lg font-inter text-sm font-medium">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</div>
+</nav>
+<div class="px-6 mt-auto border-t border-slate-200 dark:border-slate-800 pt-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a business manager in a bright, modern office setting. The lighting is soft and natural, emphasizing a high-end corporate aesthetic with neutral tones. The individual looks focused and approachable, reflecting the utilitarian and sophisticated personality of the WholesalePro brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxcV14z6xRUQjKwN5-di1Ct9rZND0oU8mxtFNv5Fr6c65YgM9UlnBqyq0j04LGKEmYzS1Naqlb9Wpgi-NEV7Ocub2scNLc5_ebTyF0t1KY-cNJlwrtwM_yc7cI78T-Zq5yLk5eZlOzyV9B_lO_vrUOdX0UZhmBA6yo_FHMJZb9IQFncB_jrbI_c7W0oW-sE6hc9znjrPD5R6yHbfPyBIvtdC103MlsSmTW4iMrZ6J2MUF9O0vx2MHB8Vcq8ZmwxTAztD7h-AvM0Q0"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-semibold text-slate-900 dark:text-white truncate">Alex Thompson</p>
+<p class="text-[10px] text-slate-500 truncate">Admin Account</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 h-16 w-[calc(100%-240px)] ml-[240px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex justify-between items-center px-8 z-40 shadow-sm dark:shadow-none">
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center group">
+<span class="material-symbols-outlined absolute left-3 text-slate-400 group-focus-within:text-blue-500 transition-colors">search</span>
+<input class="w-full bg-slate-100/50 dark:bg-slate-800/50 border-none rounded-lg pl-10 pr-4 py-2 text-sm font-inter focus:ring-2 focus:ring-primary-container outline-none transition-all" placeholder="Search parties or transactions... (Cmd+K)" type="text"/>
+<div class="absolute right-3 flex items-center gap-1 px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-[10px] text-slate-500 font-mono-data">
+<span>⌘</span><span>K</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-inter text-sm font-semibold flex items-center gap-2 hover:bg-primary-container transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">person_add</span>
+                Add New Party
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-16 pl-[240px] h-screen flex overflow-hidden">
+<!-- Party List Column -->
+<section class="w-1/3 min-w-[380px] border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-h1 text-h1 text-on-surface">Active Parties</h2>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-[10px] font-bold text-secondary uppercase tracking-wider">128 Total</span>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 text-xs font-semibold rounded-lg bg-primary-container text-on-primary-container">All</button>
+<button class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">Customers</button>
+<button class="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">Suppliers</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Selected Item -->
+<div class="p-4 bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Metro Logistics Group</span>
+<span class="text-error font-mono-data text-body-sm font-semibold">-$12,450.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 012-4455</span>
+<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-tight">Debit</span>
+</div>
+</div>
+<!-- List Items -->
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Sunrise Foods Co.</span>
+<span class="text-tertiary font-mono-data text-body-sm font-semibold">+$3,210.50</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 088-1293</span>
+<span class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-tight">Credit</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Global Distribution Inc.</span>
+<span class="text-error font-mono-data text-body-sm font-semibold">-$8,900.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 044-8822</span>
+<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-tight">Debit</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Alpha Retailers</span>
+<span class="text-tertiary font-mono-data text-body-sm font-semibold">+$1,120.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 099-3311</span>
+<span class="px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-tight">Credit</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Pacific Imports</span>
+<span class="text-slate-400 font-mono-data text-body-sm font-semibold">$0.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 077-4400</span>
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-tight">Settled</span>
+</div>
+</div>
+<div class="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-1">
+<span class="font-semibold text-slate-900 dark:text-white">Emerald Peak Partners</span>
+<span class="text-error font-mono-data text-body-sm font-semibold">-$24,150.00</span>
+</div>
+<div class="flex justify-between items-center text-slate-500 text-[12px]">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-xs">call</span> +1 (555) 022-7788</span>
+<span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-tight">Debit</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Party Detail / Ledger View -->
+<section class="flex-1 bg-slate-50 dark:bg-slate-950 overflow-y-auto p-8">
+<div class="max-w-5xl mx-auto space-y-8">
+<!-- Party Profile Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-4">
+<nav class="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
+<span>Parties</span>
+<span class="material-symbols-outlined text-xs">chevron_right</span>
+<span class="text-primary">Suppliers</span>
+</nav>
+<div>
+<h2 class="text-display-sm font-display-sm text-on-surface mb-1">Metro Logistics Group</h2>
+<div class="flex items-center gap-4 text-slate-500 text-body-sm">
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">pin_drop</span> 4512 Industrial Way, Chicago, IL 60609</span>
+<span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">mail</span> billing@metrologistics.com</span>
+</div>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm">
+                            Edit Details
+                        </button>
+<button class="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900 text-sm font-semibold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm">
+<span class="material-symbols-outlined text-sm">print</span>
+                            Statement
+                        </button>
+</div>
+</div>
+<!-- Ledger Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<p class="text-label-caps font-label-caps text-slate-500 mb-2">Total Outstanding</p>
+<p class="text-display-sm font-bold text-error">$12,450.00</p>
+<p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">warning</span>
+                            Next payment due in 4 days
+                        </p>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<p class="text-label-caps font-label-caps text-slate-500 mb-2">Credit Limit</p>
+<p class="text-display-sm font-bold text-on-surface">$50,000.00</p>
+<div class="w-full bg-slate-100 rounded-full h-1.5 mt-4">
+<div class="bg-primary h-1.5 rounded-full" style="width: 25%"></div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<p class="text-label-caps font-label-caps text-slate-500 mb-2">Last Payment</p>
+<p class="text-display-sm font-bold text-tertiary">$4,500.00</p>
+<p class="text-[11px] text-slate-400 mt-2">Received on Oct 12, 2023</p>
+</div>
+</div>
+<!-- Ledger Table Container -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<h3 class="font-h1 text-h1">Transaction Ledger</h3>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+</button>
+<button class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-sm">file_download</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+<th class="px-6 py-4 text-label-caps font-label-caps text-slate-500">Date</th>
+<th class="px-6 py-4 text-label-caps font-label-caps text-slate-500">Type / Reference</th>
+<th class="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">Debit</th>
+<th class="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">Credit</th>
+<th class="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">Balance</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50 dark:divide-slate-800">
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
+<td class="px-6 font-mono-data text-body-sm text-slate-600">2023-10-24</td>
+<td class="px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-red-400">description</span>
+<span class="text-body-md font-medium">Invoice #INV-9921</span>
+</div>
+</td>
+<td class="px-6 text-right font-mono-data text-error font-medium">$8,450.00</td>
+<td class="px-6 text-right font-mono-data text-slate-400">—</td>
+<td class="px-6 text-right font-mono-data text-on-surface font-semibold">$12,450.00</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
+<td class="px-6 font-mono-data text-body-sm text-slate-600">2023-10-12</td>
+<td class="px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-green-400" data-weight="fill" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-body-md font-medium">Payment - Bank Transfer</span>
+</div>
+</td>
+<td class="px-6 text-right font-mono-data text-slate-400">—</td>
+<td class="px-6 text-right font-mono-data text-tertiary font-medium">$4,500.00</td>
+<td class="px-6 text-right font-mono-data text-on-surface font-semibold">$4,000.00</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
+<td class="px-6 font-mono-data text-body-sm text-slate-600">2023-10-05</td>
+<td class="px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-red-400">description</span>
+<span class="text-body-md font-medium">Invoice #INV-9856</span>
+</div>
+</td>
+<td class="px-6 text-right font-mono-data text-error font-medium">$6,500.00</td>
+<td class="px-6 text-right font-mono-data text-slate-400">—</td>
+<td class="px-6 text-right font-mono-data text-on-surface font-semibold">$8,500.00</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
+<td class="px-6 font-mono-data text-body-sm text-slate-600">2023-09-28</td>
+<td class="px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-green-400" data-weight="fill" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-body-md font-medium">Payment - Cash Deposit</span>
+</div>
+</td>
+<td class="px-6 text-right font-mono-data text-slate-400">—</td>
+<td class="px-6 text-right font-mono-data text-tertiary font-medium">$2,000.00</td>
+<td class="px-6 text-right font-mono-data text-on-surface font-semibold">$2,000.00</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
+<td class="px-6 font-mono-data text-body-sm text-slate-600">2023-09-15</td>
+<td class="px-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-red-400">description</span>
+<span class="text-body-md font-medium">Invoice #INV-9742</span>
+</div>
+</td>
+<td class="px-6 text-right font-mono-data text-error font-medium">$4,000.00</td>
+<td class="px-6 text-right font-mono-data text-slate-400">—</td>
+<td class="px-6 text-right font-mono-data text-on-surface font-semibold">$4,000.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination / Footer -->
+<div class="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+<span class="text-xs text-slate-500 font-inter">Showing 1-5 of 42 transactions</span>
+<div class="flex gap-1">
+<button class="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50">Prev</button>
+<button class="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">1</button>
+<button class="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">2</button>
+<button class="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">3</button>
+<button class="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">Next</button>
+</div>
+</div>
+</div>
+<!-- Recent Activity Bento -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<h4 class="font-h1 text-h1 mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-blue-500">trending_up</span>
+                            Buying Pattern
+                        </h4>
+<div class="h-32 flex items-end gap-2 px-2">
+<div class="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[40%]"></div>
+<div class="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[65%]"></div>
+<div class="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[35%]"></div>
+<div class="flex-1 bg-blue-500 rounded-t-sm h-[90%]"></div>
+<div class="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[55%]"></div>
+<div class="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[45%]"></div>
+</div>
+<p class="text-[11px] text-slate-500 mt-4 text-center font-inter">Inventory purchase frequency increased by 15% this month</p>
+</div>
+<div class="bg-primary text-on-primary p-6 rounded-xl border border-primary shadow-sm relative overflow-hidden">
+<div class="relative z-10">
+<h4 class="font-h1 text-h1 mb-2">Automated Reminders</h4>
+<p class="text-sm opacity-80 mb-6">Smart alerts are active for this party. We'll notify you when they exceed their credit limit or have overdue invoices.</p>
+<button class="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider">Configure Alerts</button>
+</div>
+<!-- Abstract Background Decoration -->
+<div class="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+<div class="absolute right-12 top-4 w-16 h-16 bg-white/5 rounded-full blur-xl"></div>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>
