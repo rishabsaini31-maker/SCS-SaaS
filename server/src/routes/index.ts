@@ -1,8 +1,10 @@
 import { Router } from "express";
-import invoicesRouter from "./invoices";
+// import sub-routes here
 
 const router = Router();
 
-router.use("/invoices", invoicesRouter);
+// router.use('/invoices', invoicesRouter);
+// router.use('/products', productsRouter);
+// ...other modules
 
 export default router;

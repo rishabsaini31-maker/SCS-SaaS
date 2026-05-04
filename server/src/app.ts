@@ -1,18 +1,22 @@
 import express from "express";
 import morgan from "morgan";
-import { json } from "express";
+import routes from "./routes";
 import { errorHandler } from "./common/middlewares/errorHandler";
 import { logger } from "./common/middlewares/logger";
-import routes from "./routes";
+import { rateLimiter } from "./common/middlewares/rateLimiter";
 
 const app = express();
 
-app.use(json());
+// Middleware
+app.use(express.json());
 app.use(morgan("dev"));
 app.use(logger);
+app.use(rateLimiter);
 
+// API Routes
 app.use("/api/v1", routes);
 
+// Error Handler
 app.use(errorHandler);
 
 export default app;
