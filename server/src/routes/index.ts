@@ -4,7 +4,8 @@ import { Router } from "express";
 const router = Router();
 
 // router.use('/invoices', invoicesRouter);
-// router.use('/products', productsRouter);
+import productsRouter from "../modules/products/products.routes";
+router.use("/products", productsRouter);
 // ...other modules
 
 export default router;

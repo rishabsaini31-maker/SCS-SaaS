@@ -7,11 +7,35 @@ export default function InventoryPage() {
       <div className="flex justify-between items-end mb-8">
         <div>
           <h2 className="font-h1 text-h1 text-on-surface mb-1">
+          "use client";
+          import { useQuery } from "@tanstack/react-query";
+          import api from "@/lib/api";
             Inventory Management
+          type Product = {
+            id: string;
+            name: string;
+            category: string;
+            stock: number;
+            price: number;
+            barcode: string;
+            image: string;
+            status: string;
+            stockRatio: number;
+          };
           </h2>
+          function useProducts() {
+            return useQuery<Product[]>({
+              queryKey: ["products"],
+              queryFn: async () => {
+                const res = await api.get("/products");
+                return res.data;
+              },
+            });
+          }
           <p className="font-body-sm text-body-sm text-on-surface-variant">
             Manage your product stock levels and catalog in real-time.
-          </p>
+            const { data: products = [], isLoading, isError } = useProducts();
+            return (
         </div>
         <button className="bg-primary hover:bg-primary-container text-white px-4 py-2.5 rounded-lg font-body-md text-body-md flex items-center space-x-2 transition-all active:scale-95 shadow-sm">
           <span className="material-symbols-outlined text-[18px]">add</span>

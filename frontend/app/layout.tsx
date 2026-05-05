@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import ReactQueryProvider from "@/lib/ReactQueryProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,11 +37,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body-md text-on-surface bg-[#F8FAFC]">
-        <Sidebar />
-        <Topbar />
-        <main className="ml-[240px] mt-[64px] p-8 min-h-screen">
-          {children}
-        </main>
+        <ReactQueryProvider>
+          <Sidebar />
+          <Topbar />
+          <main className="ml-[240px] mt-[64px] p-8 min-h-screen">
+            {children}
+          </main>
+        </ReactQueryProvider>
       </body>
     </html>
   );
