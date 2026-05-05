@@ -1,4 +1,15 @@
+ "use client";
+
+import { FormEvent, useState } from "react";
+
 export default function PaymentsPage() {
+  const [lastAction, setLastAction] = useState("Ready");
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    setLastAction("Payment recorded");
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 relative">
       {/* Page Title & Quick Stats */}
@@ -37,7 +48,7 @@ export default function PaymentsPage() {
             </span>
           </div>
           <div className="p-8">
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-label-caps font-label-caps text-on-surface-variant block">
@@ -99,12 +110,14 @@ export default function PaymentsPage() {
               <div className="pt-4 flex justify-end gap-3">
                 <button
                   className="px-6 py-2.5 rounded-lg border border-outline-variant text-secondary font-medium hover:bg-surface-container transition-colors active:scale-95"
+                  onClick={() => setLastAction("Form cleared")}
                   type="reset"
                 >
                   Clear Form
                 </button>
                 <button
                   className="px-8 py-2.5 rounded-lg bg-primary text-on-primary font-medium shadow-sm hover:opacity-90 transition-all active:scale-95 flex items-center gap-2"
+                  onClick={() => setLastAction("Record payment clicked")}
                   type="submit"
                 >
                   <span className="material-symbols-outlined text-[18px]">
@@ -186,12 +199,20 @@ export default function PaymentsPage() {
         <div className="px-6 py-5 border-b border-outline-variant flex justify-between items-center">
           <h3 className="text-h1 font-h1">Recent Transactions</h3>
           <div className="flex gap-2">
-            <button className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors">
+            <button
+              className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors"
+              onClick={() => setLastAction("Transaction filter clicked")}
+              type="button"
+            >
               <span className="material-symbols-outlined text-[20px]">
                 filter_list
               </span>
             </button>
-            <button className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors">
+            <button
+              className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors"
+              onClick={() => setLastAction("Transaction download clicked")}
+              type="button"
+            >
               <span className="material-symbols-outlined text-[20px]">
                 download
               </span>
@@ -252,7 +273,11 @@ export default function PaymentsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary">
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
+                    onClick={() => setLastAction("Viewed transaction")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-[20px]">
                       visibility
                     </span>
@@ -295,7 +320,11 @@ export default function PaymentsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary">
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
+                    onClick={() => setLastAction("Viewed transaction")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-[20px]">
                       visibility
                     </span>
@@ -338,7 +367,11 @@ export default function PaymentsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary">
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
+                    onClick={() => setLastAction("Viewed transaction")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-[20px]">
                       visibility
                     </span>
@@ -381,7 +414,11 @@ export default function PaymentsPage() {
                   </span>
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary">
+                  <button
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
+                    onClick={() => setLastAction("Viewed transaction")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-[20px]">
                       visibility
                     </span>
@@ -397,10 +434,16 @@ export default function PaymentsPage() {
             <button
               className="px-3 py-1.5 rounded border border-outline-variant text-body-sm hover:bg-surface-container disabled:opacity-50"
               disabled
+              onClick={() => setLastAction("Previous page clicked")}
+              type="button"
             >
               Previous
             </button>
-            <button className="px-3 py-1.5 rounded border border-outline-variant text-body-sm hover:bg-surface-container">
+            <button
+              className="px-3 py-1.5 rounded border border-outline-variant text-body-sm hover:bg-surface-container"
+              onClick={() => setLastAction("Next page clicked")}
+              type="button"
+            >
               Next
             </button>
           </div>
@@ -408,9 +451,14 @@ export default function PaymentsPage() {
       </section>
 
       {/* Floating Action Button */}
-      <button className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+      <button
+        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50"
+        onClick={() => setLastAction("Quick print clicked")}
+        type="button"
+      >
         <span className="material-symbols-outlined text-2xl">print</span>
       </button>
+      <p className="text-xs text-slate-500">Last action: {lastAction}</p>
     </div>
   );
 }

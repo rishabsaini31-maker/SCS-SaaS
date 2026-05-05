@@ -1,4 +1,11 @@
+ "use client";
+
+import { useState } from "react";
+
 export default function ReportsPage() {
+  const [activeReport, setActiveReport] = useState("Sales Report");
+  const [activeRange, setActiveRange] = useState("This Month");
+  const [actionText, setActionText] = useState("Ready");
   return (
     <div className="max-w-[1400px] mx-auto space-y-8">
       {/* Page Header & Tab Selection */}
@@ -12,13 +19,37 @@ export default function ReportsPage() {
           </p>
         </div>
         <div className="flex items-center bg-surface-container-low p-1 rounded-xl">
-          <button className="px-6 py-2 text-sm font-semibold text-blue-600 bg-white rounded-lg shadow-sm">
+          <button
+            className={`px-6 py-2 text-sm rounded-lg ${
+              activeReport === "Sales Report"
+                ? "font-semibold text-blue-600 bg-white shadow-sm"
+                : "font-medium text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setActiveReport("Sales Report")}
+            type="button"
+          >
             Sales Report
           </button>
-          <button className="px-6 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">
+          <button
+            className={`px-6 py-2 text-sm rounded-lg ${
+              activeReport === "Purchase Report"
+                ? "font-semibold text-blue-600 bg-white shadow-sm"
+                : "font-medium text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setActiveReport("Purchase Report")}
+            type="button"
+          >
             Purchase Report
           </button>
-          <button className="px-6 py-2 text-sm font-medium text-slate-500 hover:text-slate-700">
+          <button
+            className={`px-6 py-2 text-sm rounded-lg ${
+              activeReport === "Stock Report"
+                ? "font-semibold text-blue-600 bg-white shadow-sm"
+                : "font-medium text-slate-500 hover:text-slate-700"
+            }`}
+            onClick={() => setActiveReport("Stock Report")}
+            type="button"
+          >
             Stock Report
           </button>
         </div>
@@ -27,27 +58,37 @@ export default function ReportsPage() {
       {/* Filters Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-xl">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 thin-scrollbar">
-          <button className="whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200">
-            Today
-          </button>
-          <button className="whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200">
-            This Week
-          </button>
-          <button className="whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-full bg-blue-600 text-white shadow-md">
-            This Month
-          </button>
-          <button className="whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200">
-            Custom Range
-          </button>
+          {["Today", "This Week", "This Month", "Custom Range"].map((range) => (
+            <button
+              className={`whitespace-nowrap px-4 py-1.5 text-xs font-semibold rounded-full ${
+                activeRange === range
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+              key={range}
+              onClick={() => setActiveRange(range)}
+              type="button"
+            >
+              {range}
+            </button>
+          ))}
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+          <button
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+            onClick={() => setActionText("Filters clicked")}
+            type="button"
+          >
             <span className="material-symbols-outlined text-sm">
               filter_list
             </span>
             Filters
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+            onClick={() => setActionText("Export PDF clicked")}
+            type="button"
+          >
             <span className="material-symbols-outlined text-sm">download</span>
             Export PDF
           </button>
@@ -224,7 +265,11 @@ export default function ReportsPage() {
                 </div>
               </div>
             </div>
-            <button className="w-full mt-6 py-2 text-xs font-bold text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors">
+            <button
+              className="w-full mt-6 py-2 text-xs font-bold text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors"
+              onClick={() => setActionText("View all categories clicked")}
+              type="button"
+            >
               VIEW ALL CATEGORIES
             </button>
           </div>
@@ -264,7 +309,11 @@ export default function ReportsPage() {
               <span className="text-xs text-slate-500 font-medium">
                 Showing last 10 entries
               </span>
-              <button className="text-blue-600 hover:underline text-xs font-bold">
+              <button
+                className="text-blue-600 hover:underline text-xs font-bold"
+                onClick={() => setActionText("View all transactions clicked")}
+                type="button"
+              >
                 VIEW ALL
               </button>
             </div>
@@ -324,7 +373,11 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400">
+                    <button
+                      className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400"
+                      onClick={() => setActionText("Action menu opened")}
+                      type="button"
+                    >
                       <span className="material-symbols-outlined text-lg">
                         more_vert
                       </span>
@@ -360,7 +413,11 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400">
+                    <button
+                      className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400"
+                      onClick={() => setActionText("Action menu opened")}
+                      type="button"
+                    >
                       <span className="material-symbols-outlined text-lg">
                         more_vert
                       </span>
@@ -394,7 +451,11 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400">
+                    <button
+                      className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400"
+                      onClick={() => setActionText("Action menu opened")}
+                      type="button"
+                    >
                       <span className="material-symbols-outlined text-lg">
                         more_vert
                       </span>
@@ -428,7 +489,11 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400">
+                    <button
+                      className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-400"
+                      onClick={() => setActionText("Action menu opened")}
+                      type="button"
+                    >
                       <span className="material-symbols-outlined text-lg">
                         more_vert
                       </span>
@@ -443,13 +508,21 @@ export default function ReportsPage() {
               End of current selection
             </p>
             <div className="flex items-center gap-2">
-              <button className="p-1.5 border border-slate-200 rounded bg-white text-slate-400 hover:text-slate-600">
+              <button
+                className="p-1.5 border border-slate-200 rounded bg-white text-slate-400 hover:text-slate-600"
+                onClick={() => setActionText("Previous page clicked")}
+                type="button"
+              >
                 <span className="material-symbols-outlined text-sm">
                   chevron_left
                 </span>
               </button>
               <span className="text-xs font-bold px-2">1</span>
-              <button className="p-1.5 border border-slate-200 rounded bg-white text-slate-400 hover:text-slate-600">
+              <button
+                className="p-1.5 border border-slate-200 rounded bg-white text-slate-400 hover:text-slate-600"
+                onClick={() => setActionText("Next page clicked")}
+                type="button"
+              >
                 <span className="material-symbols-outlined text-sm">
                   chevron_right
                 </span>
@@ -458,6 +531,7 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
+      <p className="text-xs text-slate-500">Last action: {actionText}</p>
     </div>
   );
 }

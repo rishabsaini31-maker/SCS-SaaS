@@ -1,6 +1,23 @@
+ "use client";
+
 import { mockParties } from "@/lib/data";
+import { useMemo, useState } from "react";
 
 export default function PartiesPage() {
+  const [tab, setTab] = useState("All");
+  const [selectedPartyId, setSelectedPartyId] = useState(mockParties[0]?.id ?? "");
+  const [lastAction, setLastAction] = useState("Ready");
+
+  const visibleParties = useMemo(() => {
+    if (tab === "Customers") {
+      return mockParties.filter((party) => party.status !== "Debit");
+    }
+    if (tab === "Suppliers") {
+      return mockParties.filter((party) => party.status === "Debit");
+    }
+    return mockParties;
+  }, [tab]);
+
   return (
     <div className="-m-8 flex h-[calc(100vh-64px)] overflow-hidden">
       {/* Party List Column */}
@@ -13,26 +30,54 @@ export default function PartiesPage() {
             </span>
           </div>
           <div className="flex gap-2">
-            <button className="flex-1 py-2 text-xs font-semibold rounded-lg bg-primary-container text-on-primary-container">
+            <button
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
+                tab === "All"
+                  ? "bg-primary-container text-on-primary-container"
+                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+              onClick={() => setTab("All")}
+              type="button"
+            >
               All
             </button>
-            <button className="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">
+            <button
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
+                tab === "Customers"
+                  ? "bg-primary-container text-on-primary-container"
+                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+              onClick={() => setTab("Customers")}
+              type="button"
+            >
               Customers
             </button>
-            <button className="flex-1 py-2 text-xs font-semibold rounded-lg text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">
+            <button
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
+                tab === "Suppliers"
+                  ? "bg-primary-container text-on-primary-container"
+                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+              }`}
+              onClick={() => setTab("Suppliers")}
+              type="button"
+            >
               Suppliers
             </button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 thin-scrollbar">
-          {mockParties.map((party, idx) => (
+          {visibleParties.map((party) => (
             <div
               key={party.id}
               className={`p-4 transition-colors cursor-pointer group ${
-                idx === 0
+                selectedPartyId === party.id
                   ? "bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-primary"
                   : "hover:bg-slate-50 dark:hover:bg-slate-800"
               }`}
+              onClick={() => {
+                setSelectedPartyId(party.id);
+                setLastAction(`Selected ${party.name}`);
+              }}
             >
               <div className="flex justify-between items-start mb-1">
                 <span className="font-semibold text-slate-900 dark:text-white">
@@ -113,10 +158,18 @@ export default function PartiesPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button className="px-4 py-2 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm">
+              <button
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm"
+                onClick={() => setLastAction("Edit details clicked")}
+                type="button"
+              >
                 Edit Details
               </button>
-              <button className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900 text-sm font-semibold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm">
+              <button
+                className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900 text-sm font-semibold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm"
+                onClick={() => setLastAction("Statement export clicked")}
+                type="button"
+              >
                 <span className="material-symbols-outlined text-sm">print</span>
                 Statement
               </button>
@@ -167,12 +220,20 @@ export default function PartiesPage() {
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
               <h3 className="font-h1 text-h1">Transaction Ledger</h3>
               <div className="flex gap-2">
-                <button className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <button
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                  onClick={() => setLastAction("Ledger filter clicked")}
+                  type="button"
+                >
                   <span className="material-symbols-outlined text-sm">
                     filter_list
                   </span>
                 </button>
-                <button className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors">
+                <button
+                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                  onClick={() => setLastAction("Ledger download clicked")}
+                  type="button"
+                >
                   <span className="material-symbols-outlined text-sm">
                     file_download
                   </span>
@@ -336,19 +397,19 @@ export default function PartiesPage() {
                 Showing 1-5 of 42 transactions
               </span>
               <div className="flex gap-1">
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50">
+                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50" type="button">
                   Prev
                 </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" type="button">
                   1
                 </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">
+                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
                   2
                 </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">
+                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
                   3
                 </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700">
+                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
                   Next
                 </button>
               </div>
@@ -383,7 +444,11 @@ export default function PartiesPage() {
                   Smart alerts are active for this party. We'll notify you when
                   they exceed their credit limit or have overdue invoices.
                 </p>
-                <button className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider">
+                <button
+                  className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider"
+                  onClick={() => setLastAction("Configure alerts clicked")}
+                  type="button"
+                >
                   Configure Alerts
                 </button>
               </div>
@@ -394,6 +459,9 @@ export default function PartiesPage() {
           </div>
         </div>
       </section>
+      <p className="fixed bottom-3 left-1/2 -translate-x-1/2 text-xs text-slate-500 bg-white/90 px-3 py-1 rounded border border-slate-200">
+        Last action: {lastAction}
+      </p>
     </div>
   );
 }

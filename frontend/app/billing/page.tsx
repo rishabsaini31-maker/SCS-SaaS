@@ -1,4 +1,52 @@
+ "use client";
+
+import { FormEvent, useState } from "react";
+
+type Customer = {
+  id: string;
+  display: string;
+  address: string;
+  gst: boolean;
+};
+
 export default function BillingPage() {
+  const [lastAction, setLastAction] = useState("Ready");
+  const [customers, setCustomers] = useState<Customer[]>([
+    {
+      id: "aman",
+      display: "Aman Traders - 9876543210",
+      address: "Aman Traders, 22 Market Road, Jaipur, Rajasthan 302001",
+      gst: true,
+    },
+    {
+      id: "global",
+      display: "Global Wholesale Corp - 8877665544",
+      address: "Global Wholesale Corp, 45 Ring Rd, Surat, Gujarat 395002",
+      gst: true,
+    },
+    {
+      id: "retail",
+      display: "Retail Hub Ltd - 9900112233",
+      address: "Retail Hub Ltd, 8 Residency Lane, Pune, Maharashtra 411001",
+      gst: false,
+    },
+  ]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [isPartyModalOpen, setIsPartyModalOpen] = useState(false);
+  const [newPartyName, setNewPartyName] = useState("");
+  const [newPartyPhone, setNewPartyPhone] = useState("");
+  const [newPartyAddress, setNewPartyAddress] = useState("");
+  const [newPartyGst, setNewPartyGst] = useState(false);
+
+  const selectedCustomer = customers.find(
+    (customer) => customer.id === selectedCustomerId,
+  );
+
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    setLastAction("Invoice draft saved");
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Section */}
@@ -12,13 +60,21 @@ export default function BillingPage() {
           </p>
         </div>
         <div className="flex space-x-3">
-          <button className="flex items-center px-4 py-2 bg-white border border-outline-variant text-slate-700 rounded-lg hover:bg-slate-50 transition-all active:scale-95 shadow-sm font-medium text-sm">
+          <button
+            className="flex items-center px-4 py-2 bg-white border border-outline-variant text-slate-700 rounded-lg hover:bg-slate-50 transition-all active:scale-95 shadow-sm font-medium text-sm"
+            onClick={() => setLastAction("Opened recent invoices")}
+            type="button"
+          >
             <span className="material-symbols-outlined mr-2 text-lg">
               history
             </span>
             Recent
           </button>
-          <button className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-sm font-medium text-sm">
+          <button
+            className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-all active:scale-95 shadow-sm font-medium text-sm"
+            onClick={() => setIsPartyModalOpen(true)}
+            type="button"
+          >
             <span className="material-symbols-outlined mr-2 text-lg">add</span>
             New Party
           </button>
@@ -33,8 +89,16 @@ export default function BillingPage() {
             <label className="font-label-caps text-label-caps text-on-surface-variant uppercase">
               Customer Details
             </label>
-            <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-              GST REGISTERED
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                selectedCustomer?.gst
+                  ? "bg-blue-50 text-blue-700"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {selectedCustomer?.gst
+                ? "GST REGISTERED"
+                : "GST NOT AVAILABLE"}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-6">
@@ -43,11 +107,24 @@ export default function BillingPage() {
                 Select Customer / Party
               </label>
               <div className="relative group">
-                <select className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none">
-                  <option>Search customer name or mobile...</option>
-                  <option>Aman Traders - 9876543210</option>
-                  <option>Global Wholesale Corp - 8877665544</option>
-                  <option>Retail Hub Ltd - 9900112233</option>
+                <select
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-4 text-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedCustomerId(value);
+                    const customer = customers.find((item) => item.id === value);
+                    if (customer) {
+                      setLastAction(`Selected customer: ${customer.display}`);
+                    }
+                  }}
+                  value={selectedCustomerId}
+                >
+                  <option value="">Search customer name or mobile...</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.display}
+                    </option>
+                  ))}
                 </select>
                 <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                   expand_more
@@ -58,8 +135,8 @@ export default function BillingPage() {
               <label className="text-xs font-semibold text-slate-500">
                 Billing Address
               </label>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-4 text-xs text-slate-600 italic">
-                Select a customer to auto-fill address...
+              <div className="bg-slate-50 border border-slate-200 rounded-lg py-2 px-4 text-xs text-slate-600 italic min-h-10 flex items-center">
+                {selectedCustomer?.address ?? "Select a customer to auto-fill address..."}
               </div>
             </div>
           </div>
@@ -182,7 +259,11 @@ export default function BillingPage() {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-center">
-                  <button className="text-slate-300 hover:text-error transition-colors">
+                  <button
+                    className="text-slate-300 hover:text-error transition-colors"
+                    onClick={() => setLastAction("Removed draft line")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-lg">
                       delete
                     </span>
@@ -221,7 +302,11 @@ export default function BillingPage() {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-center">
-                  <button className="text-slate-400 hover:text-error transition-colors">
+                  <button
+                    className="text-slate-400 hover:text-error transition-colors"
+                    onClick={() => setLastAction("Removed line item")}
+                    type="button"
+                  >
                     <span className="material-symbols-outlined text-lg">
                       delete
                     </span>
@@ -232,7 +317,11 @@ export default function BillingPage() {
           </table>
         </div>
         <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-          <button className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center transition-colors">
+          <button
+            className="text-blue-600 hover:text-blue-800 text-xs font-bold flex items-center transition-colors"
+            onClick={() => setLastAction("Added product line")}
+            type="button"
+          >
             <span className="material-symbols-outlined mr-1 text-base">
               add_circle
             </span>
@@ -319,23 +408,39 @@ export default function BillingPage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 pt-4">
-            <button className="col-span-2 bg-primary text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all shadow-md flex items-center justify-center space-x-2 active:scale-[0.98]">
+            <button
+              className="col-span-2 bg-primary text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all shadow-md flex items-center justify-center space-x-2 active:scale-[0.98]"
+              onClick={handleSubmit}
+              type="button"
+            >
               <span className="material-symbols-outlined">save</span>
               <span>SAVE INVOICE (F2)</span>
             </button>
-            <button className="bg-white border border-slate-200 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center transition-all">
+            <button
+              className="bg-white border border-slate-200 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center transition-all"
+              onClick={() => setLastAction("Print preview opened")}
+              type="button"
+            >
               <span className="material-symbols-outlined mr-2 text-lg">
                 print
               </span>
               Print
             </button>
-            <button className="bg-white border border-slate-200 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center transition-all">
+            <button
+              className="bg-white border border-slate-200 py-2.5 rounded-lg hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center transition-all"
+              onClick={() => setLastAction("PDF export clicked")}
+              type="button"
+            >
               <span className="material-symbols-outlined mr-2 text-lg">
                 picture_as_pdf
               </span>
               PDF
             </button>
-            <button className="col-span-2 bg-[#25D366]/10 text-[#075E54] border border-[#25D366]/30 py-2.5 rounded-lg hover:bg-[#25D366]/20 text-sm font-bold flex items-center justify-center transition-all">
+            <button
+              className="col-span-2 bg-[#25D366]/10 text-[#075E54] border border-[#25D366]/30 py-2.5 rounded-lg hover:bg-[#25D366]/20 text-sm font-bold flex items-center justify-center transition-all"
+              onClick={() => setLastAction("WhatsApp share clicked")}
+              type="button"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 alt="WhatsApp Icon"
@@ -347,6 +452,79 @@ export default function BillingPage() {
           </div>
         </div>
       </div>
+      <p className="text-xs text-slate-500">Last action: {lastAction}</p>
+      {isPartyModalOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <form
+            className="w-full max-w-md bg-white rounded-xl border border-slate-200 shadow-xl p-6 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const id = `party-${Date.now()}`;
+              const customer: Customer = {
+                id,
+                display: `${newPartyName.trim()} - ${newPartyPhone.trim()}`,
+                address: newPartyAddress.trim(),
+                gst: newPartyGst,
+              };
+              setCustomers((previous) => [...previous, customer]);
+              setSelectedCustomerId(id);
+              setLastAction(`New party added: ${customer.display}`);
+              setIsPartyModalOpen(false);
+              setNewPartyName("");
+              setNewPartyPhone("");
+              setNewPartyAddress("");
+              setNewPartyGst(false);
+            }}
+          >
+            <h3 className="text-base font-bold text-slate-900">New Party Form</h3>
+            <input
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              onChange={(event) => setNewPartyName(event.target.value)}
+              placeholder="Party name"
+              required
+              value={newPartyName}
+            />
+            <input
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              onChange={(event) => setNewPartyPhone(event.target.value)}
+              placeholder="Phone number"
+              required
+              value={newPartyPhone}
+            />
+            <textarea
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none"
+              onChange={(event) => setNewPartyAddress(event.target.value)}
+              placeholder="Billing address"
+              required
+              rows={3}
+              value={newPartyAddress}
+            />
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                checked={newPartyGst}
+                onChange={(event) => setNewPartyGst(event.target.checked)}
+                type="checkbox"
+              />
+              GST registered
+            </label>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-3 py-2 text-sm border border-slate-200 rounded-lg"
+                onClick={() => setIsPartyModalOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-2 text-sm bg-primary text-white rounded-lg"
+                type="submit"
+              >
+                Save Party
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
