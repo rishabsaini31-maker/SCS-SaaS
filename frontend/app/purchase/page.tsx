@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 
 export default function PurchasePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
 
   return (
     <div className="min-h-screen">
@@ -35,7 +36,15 @@ export default function PurchasePage() {
                 <span className="material-symbols-outlined text-primary text-xl">local_shipping</span>
                 Supplier Information
               </h3>
-              <a className="text-xs font-semibold text-primary hover:underline" href="#">Add New Supplier</a>
+              <a 
+                className="text-xs font-semibold text-primary hover:underline cursor-pointer" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsSupplierModalOpen(true);
+                }}
+              >
+                Add New Supplier
+              </a>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -92,7 +101,15 @@ export default function PurchasePage() {
                   <tr className="hover:bg-slate-50/50 group">
                     <td className="px-4 py-3">
                       <div className="relative">
-                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-1.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium">
+                        <select 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-1.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium"
+                          onChange={(e) => {
+                            if (e.target.value === 'new') {
+                              setIsModalOpen(true);
+                              e.target.value = 'Premium Wireless Keyboard X2'; // Reset to default or keep it managed
+                            }
+                          }}
+                        >
                           <option>Premium Wireless Keyboard X2</option>
                           <option>Ergonomic Optical Mouse Gen 4</option>
                           <option>USB-C Hub Multiport</option>
@@ -127,7 +144,15 @@ export default function PurchasePage() {
                   <tr className="hover:bg-slate-50/50 group">
                     <td className="px-4 py-3">
                       <div className="relative">
-                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-1.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium">
+                        <select 
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-1.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none font-medium"
+                          onChange={(e) => {
+                            if (e.target.value === 'new') {
+                              setIsModalOpen(true);
+                              e.target.value = 'Ergonomic Optical Mouse Gen 4'; // Reset to default or keep it managed
+                            }
+                          }}
+                        >
                           <option>Ergonomic Optical Mouse Gen 4</option>
                           <option>Premium Wireless Keyboard X2</option>
                           <option>USB-C Hub Multiport</option>
@@ -357,6 +382,56 @@ export default function PurchasePage() {
               </button>
               <button className="flex-1 py-2.5 px-4 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-sm hover:brightness-110 transition-all">
                 Create Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Supplier Modal */}
+      {isSupplierModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                  <span className="material-symbols-outlined">local_shipping</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Quick Add Supplier</h3>
+                  <p className="text-xs text-slate-500">Create new supplier profile</p>
+                </div>
+              </div>
+              <button 
+                className="text-slate-400 hover:text-slate-600" 
+                onClick={() => setIsSupplierModalOpen(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Supplier Name</label>
+                <input className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-2.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="e.g. Global Logistics Corp" type="text" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Contact Email</label>
+                <input className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-2.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="contact@supplier.com" type="email" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Phone Number</label>
+                <input className="w-full bg-slate-50 border border-slate-200 rounded-lg text-sm py-2.5 px-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="+1 (555) 000-0000" type="tel" />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50/50 flex items-center gap-3">
+              <button 
+                className="flex-1 py-2.5 px-4 border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-white transition-colors"
+                onClick={() => setIsSupplierModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button className="flex-1 py-2.5 px-4 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-sm hover:brightness-110 transition-all">
+                Create Supplier
               </button>
             </div>
           </div>
