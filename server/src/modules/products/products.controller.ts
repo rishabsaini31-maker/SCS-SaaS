@@ -1,13 +1,79 @@
-import { Request, Response, NextFunction } from "express";
-import * as productsService from "./products.service";
+import type { Request, Response, NextFunction } from "express";
+import * as service from "./products.service";
+import {
+  createProductSchema,
+  updateProductSchema,
+  productIdSchema,
+} from "./products.schema";
 
-export const getProducts = async (
+export const create = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = createProductSchema.parse(req.body);
+    const product = await service.createProduct(data);
+    res.status(201).json(product);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = productIdSchema.parse(req.params);
+    const product = await service.getProduct(id);
+    res.json(product);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const products = await service.getAllProducts({
+      category: req.query.category as string | undefined,
+      status: req.query.status as string | undefined,
+      search: req.query.search as string | undefined,
+    });
+    res.json(products);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const update = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = productIdSchema.parse(req.params);
+    const data = updateProductSchema.parse(req.body);
+    const product = await service.updateProduct(id, data);
+    res.json(product);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteProduct = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    const products = await productsService.getAllProducts();
+    const { id } = productIdSchema.parse(req.params);
+    await service.deleteProduct(id);
+    res.json({ message: "Product deleted" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getLowStock = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const threshold = req.query.threshold
+      ? parseInt(req.query.threshold as string)
+      : 10;
+    const products = await service.getLowStockProducts(threshold);
     res.json(products);
   } catch (err) {
     next(err);

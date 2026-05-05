@@ -14,6 +14,7 @@ export function Sidebar() {
     { name: "Parties", href: "/parties", icon: "group" },
     { name: "Payments", href: "/payments", icon: "payments" },
     { name: "Reports", href: "/reports", icon: "assessment" },
+    { name: "Barcode", href: "/barcode", icon: "barcode_scanner" },
     { name: "Settings", href: "/settings", icon: "settings" },
   ];
 

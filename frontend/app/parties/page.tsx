@@ -1,467 +1,346 @@
- "use client";
+"use client";
 
-import { mockParties } from "@/lib/data";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import { formatINR } from "@/lib/currency";
+
+type Customer = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  gstin: string;
+  outstandingBalance: number;
+  status: string;
+};
+
+type Supplier = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  gstin: string;
+  payableBalance: number;
+  status: string;
+};
 
 export default function PartiesPage() {
-  const [tab, setTab] = useState("All");
-  const [selectedPartyId, setSelectedPartyId] = useState(mockParties[0]?.id ?? "");
-  const [lastAction, setLastAction] = useState("Ready");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"customers" | "suppliers">(
+    "customers",
+  );
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    gstin: "",
+  });
 
-  const visibleParties = useMemo(() => {
-    if (tab === "Customers") {
-      return mockParties.filter((party) => party.status !== "Debit");
+  const fetchData = async () => {
+    try {
+      const [customersRes, suppliersRes] = await Promise.all([
+        api.get("/customers"),
+        api.get("/suppliers"),
+      ]);
+      setCustomers(customersRes.data);
+      setSuppliers(suppliersRes.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
     }
-    if (tab === "Suppliers") {
-      return mockParties.filter((party) => party.status === "Debit");
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleAddParty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email) {
+      alert("Please fill name and email");
+      return;
     }
-    return mockParties;
-  }, [tab]);
+
+    setSubmitting(true);
+    try {
+      const endpoint = activeTab === "customers" ? "/customers" : "/suppliers";
+      await api.post(endpoint, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || "",
+        address: formData.address || "",
+        gstin: formData.gstin || "",
+        status: "active",
+      });
+      setShowForm(false);
+      setFormData({ name: "", email: "", phone: "", address: "", gstin: "" });
+      fetchData();
+    } catch (error) {
+      console.error("Error adding party:", error);
+      alert("Failed to add. Email might already exist.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-slate-500">Loading parties...</div>;
+  }
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-64px)] overflow-hidden">
-      {/* Party List Column */}
-      <section className="w-1/3 min-w-[380px] border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-h1 text-h1 text-on-surface">Active Parties</h2>
-            <span className="px-2 py-0.5 rounded-full bg-surface-container text-[10px] font-bold text-secondary uppercase tracking-wider">
-              128 Total
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
-                tab === "All"
-                  ? "bg-primary-container text-on-primary-container"
-                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-              onClick={() => setTab("All")}
-              type="button"
-            >
-              All
-            </button>
-            <button
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
-                tab === "Customers"
-                  ? "bg-primary-container text-on-primary-container"
-                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-              onClick={() => setTab("Customers")}
-              type="button"
-            >
-              Customers
-            </button>
-            <button
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg ${
-                tab === "Suppliers"
-                  ? "bg-primary-container text-on-primary-container"
-                  : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-              onClick={() => setTab("Suppliers")}
-              type="button"
-            >
-              Suppliers
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 thin-scrollbar">
-          {visibleParties.map((party) => (
-            <div
-              key={party.id}
-              className={`p-4 transition-colors cursor-pointer group ${
-                selectedPartyId === party.id
-                  ? "bg-blue-50/50 dark:bg-blue-900/10 border-l-4 border-primary"
-                  : "hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-              onClick={() => {
-                setSelectedPartyId(party.id);
-                setLastAction(`Selected ${party.name}`);
-              }}
-            >
-              <div className="flex justify-between items-start mb-1">
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {party.name}
-                </span>
-                <span
-                  className={`font-mono-data text-body-sm font-semibold ${
-                    party.balance < 0
-                      ? "text-error"
-                      : party.balance > 0
-                      ? "text-tertiary"
-                      : "text-slate-400"
-                  }`}
-                >
-                  {party.balance < 0
-                    ? `-$${Math.abs(party.balance).toFixed(2)}`
-                    : party.balance > 0
-                    ? `+$${party.balance.toFixed(2)}`
-                    : `$${party.balance.toFixed(2)}`}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-slate-500 text-[12px]">
-                <span className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">
-                    call
-                  </span>{" "}
-                  {party.phone}
-                </span>
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${
-                    party.status === "Debit"
-                      ? "bg-red-100 text-red-700"
-                      : party.status === "Credit"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {party.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Parties</h1>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          + Add {activeTab === "customers" ? "Customer" : "Supplier"}
+        </button>
+      </div>
 
-      {/* Party Detail / Ledger View */}
-      <section className="flex-1 bg-slate-50 dark:bg-slate-950 overflow-y-auto p-8 thin-scrollbar">
-        <div className="max-w-5xl mx-auto space-y-8">
-          {/* Party Profile Header */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-4">
-              <nav className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest">
-                <span>Parties</span>
-                <span className="material-symbols-outlined text-xs">
-                  chevron_right
-                </span>
-                <span className="text-primary">Suppliers</span>
-              </nav>
+      {showForm && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+          <h2 className="text-xl font-bold">
+            Add New {activeTab === "customers" ? "Customer" : "Supplier"}
+          </h2>
+          <form onSubmit={handleAddParty} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <h2 className="text-display-sm font-display-sm text-on-surface mb-1">
-                  Metro Logistics Group
-                </h2>
-                <div className="flex items-center gap-4 text-slate-500 text-body-sm">
-                  <span className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm">
-                      pin_drop
-                    </span>{" "}
-                    4512 Industrial Way, Chicago, IL 60609
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-sm">
-                      mail
-                    </span>{" "}
-                    billing@metrologistics.com
-                  </span>
-                </div>
+                <label className="block text-sm font-medium mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="Enter name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone</label>
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="+91-XXXXXXXXXX"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">GSTIN</label>
+                <input
+                  type="text"
+                  value={formData.gstin}
+                  onChange={(e) =>
+                    setFormData({ ...formData, gstin: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="27AABCU9603R1Z0"
+                />
               </div>
             </div>
-            <div className="flex gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                placeholder="Enter address"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-2">
               <button
-                className="px-4 py-2 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-semibold hover:bg-slate-50 transition-colors shadow-sm"
-                onClick={() => setLastAction("Edit details clicked")}
-                type="button"
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
               >
-                Edit Details
+                {submitting
+                  ? "Adding..."
+                  : "Add " +
+                    (activeTab === "customers" ? "Customer" : "Supplier")}
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900 text-sm font-semibold flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm"
-                onClick={() => setLastAction("Statement export clicked")}
                 type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 bg-slate-400 text-white rounded-lg hover:bg-slate-500"
               >
-                <span className="material-symbols-outlined text-sm">print</span>
-                Statement
+                Cancel
               </button>
             </div>
-          </div>
-
-          {/* Ledger Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <p className="text-label-caps font-label-caps text-slate-500 mb-2">
-                Total Outstanding
-              </p>
-              <p className="text-display-sm font-bold text-error">$12,450.00</p>
-              <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">warning</span>
-                Next payment due in 4 days
-              </p>
-            </div>
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <p className="text-label-caps font-label-caps text-slate-500 mb-2">
-                Credit Limit
-              </p>
-              <p className="text-display-sm font-bold text-on-surface">
-                $50,000.00
-              </p>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mt-4">
-                <div
-                  className="bg-primary h-1.5 rounded-full"
-                  style={{ width: "25%" }}
-                ></div>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <p className="text-label-caps font-label-caps text-slate-500 mb-2">
-                Last Payment
-              </p>
-              <p className="text-display-sm font-bold text-tertiary">
-                $4,500.00
-              </p>
-              <p className="text-[11px] text-slate-400 mt-2">
-                Received on Oct 12, 2023
-              </p>
-            </div>
-          </div>
-
-          {/* Ledger Table Container */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="font-h1 text-h1">Transaction Ledger</h3>
-              <div className="flex gap-2">
-                <button
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                  onClick={() => setLastAction("Ledger filter clicked")}
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    filter_list
-                  </span>
-                </button>
-                <button
-                  className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                  onClick={() => setLastAction("Ledger download clicked")}
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    file_download
-                  </span>
-                </button>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[600px]">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                    <th className="px-6 py-4 text-label-caps font-label-caps text-slate-500">
-                      Date
-                    </th>
-                    <th className="px-6 py-4 text-label-caps font-label-caps text-slate-500">
-                      Type / Reference
-                    </th>
-                    <th className="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">
-                      Debit
-                    </th>
-                    <th className="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">
-                      Credit
-                    </th>
-                    <th className="px-6 py-4 text-label-caps font-label-caps text-slate-500 text-right">
-                      Balance
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                  <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
-                    <td className="px-6 font-mono-data text-body-sm text-slate-600">
-                      2023-10-24
-                    </td>
-                    <td className="px-6">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-red-400">
-                          description
-                        </span>
-                        <span className="text-body-md font-medium">
-                          Invoice #INV-9921
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-error font-medium">
-                      $8,450.00
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-slate-400">
-                      —
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-on-surface font-semibold">
-                      $12,450.00
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
-                    <td className="px-6 font-mono-data text-body-sm text-slate-600">
-                      2023-10-12
-                    </td>
-                    <td className="px-6">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="material-symbols-outlined text-sm text-green-400"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          payments
-                        </span>
-                        <span className="text-body-md font-medium">
-                          Payment - Bank Transfer
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-slate-400">
-                      —
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-tertiary font-medium">
-                      $4,500.00
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-on-surface font-semibold">
-                      $4,000.00
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
-                    <td className="px-6 font-mono-data text-body-sm text-slate-600">
-                      2023-10-05
-                    </td>
-                    <td className="px-6">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-red-400">
-                          description
-                        </span>
-                        <span className="text-body-md font-medium">
-                          Invoice #INV-9856
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-error font-medium">
-                      $6,500.00
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-slate-400">
-                      —
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-on-surface font-semibold">
-                      $8,500.00
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
-                    <td className="px-6 font-mono-data text-body-sm text-slate-600">
-                      2023-09-28
-                    </td>
-                    <td className="px-6">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="material-symbols-outlined text-sm text-green-400"
-                          style={{ fontVariationSettings: "'FILL' 1" }}
-                        >
-                          payments
-                        </span>
-                        <span className="text-body-md font-medium">
-                          Payment - Cash Deposit
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-slate-400">
-                      —
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-tertiary font-medium">
-                      $2,000.00
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-on-surface font-semibold">
-                      $2,000.00
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors h-[48px]">
-                    <td className="px-6 font-mono-data text-body-sm text-slate-600">
-                      2023-09-15
-                    </td>
-                    <td className="px-6">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-red-400">
-                          description
-                        </span>
-                        <span className="text-body-md font-medium">
-                          Invoice #INV-9742
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-error font-medium">
-                      $4,000.00
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-slate-400">
-                      —
-                    </td>
-                    <td className="px-6 text-right font-mono-data text-on-surface font-semibold">
-                      $4,000.00
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {/* Pagination / Footer */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-inter">
-                Showing 1-5 of 42 transactions
-              </span>
-              <div className="flex gap-1">
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700 disabled:opacity-50" type="button">
-                  Prev
-                </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" type="button">
-                  1
-                </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
-                  2
-                </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
-                  3
-                </button>
-                <button className="px-3 py-1 text-xs font-semibold rounded border border-slate-200 bg-white dark:bg-slate-700" type="button">
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity Bento */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="font-h1 text-h1 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-blue-500">
-                  trending_up
-                </span>
-                Buying Pattern
-              </h4>
-              <div className="h-32 flex items-end gap-2 px-2">
-                <div className="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[40%]"></div>
-                <div className="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[65%]"></div>
-                <div className="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[35%]"></div>
-                <div className="flex-1 bg-blue-500 rounded-t-sm h-[90%]"></div>
-                <div className="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[55%]"></div>
-                <div className="flex-1 bg-blue-100 dark:bg-blue-900/30 rounded-t-sm h-[45%]"></div>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-4 text-center font-inter">
-                Inventory purchase frequency increased by 15% this month
-              </p>
-            </div>
-            <div className="bg-primary text-on-primary p-6 rounded-xl border border-primary shadow-sm relative overflow-hidden">
-              <div className="relative z-10">
-                <h4 className="font-h1 text-h1 mb-2">Automated Reminders</h4>
-                <p className="text-sm opacity-80 mb-6">
-                  Smart alerts are active for this party. We'll notify you when
-                  they exceed their credit limit or have overdue invoices.
-                </p>
-                <button
-                  className="bg-white text-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider"
-                  onClick={() => setLastAction("Configure alerts clicked")}
-                  type="button"
-                >
-                  Configure Alerts
-                </button>
-              </div>
-              {/* Abstract Background Decoration */}
-              <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-              <div className="absolute right-12 top-4 w-16 h-16 bg-white/5 rounded-full blur-xl"></div>
-            </div>
-          </div>
+          </form>
         </div>
-      </section>
-      <p className="fixed bottom-3 left-1/2 -translate-x-1/2 text-xs text-slate-500 bg-white/90 px-3 py-1 rounded border border-slate-200">
-        Last action: {lastAction}
-      </p>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-4 border-b">
+        <button
+          className={`px-4 py-2 font-semibold border-b-2 ${
+            activeTab === "customers"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600"
+          }`}
+          onClick={() => setActiveTab("customers")}
+        >
+          Customers ({customers.length})
+        </button>
+        <button
+          className={`px-4 py-2 font-semibold border-b-2 ${
+            activeTab === "suppliers"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-slate-600"
+          }`}
+          onClick={() => setActiveTab("suppliers")}
+        >
+          Suppliers ({suppliers.length})
+        </button>
+      </div>
+
+      {/* Customers Table */}
+      {activeTab === "customers" && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Address
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  GSTIN
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Outstanding Balance
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {customers.map((customer) => (
+                <tr key={customer.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 font-medium text-slate-900">
+                    {customer.name}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {customer.email || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {customer.phone || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {customer.address || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {customer.gstin || "-"}
+                  </td>
+                  <td className="px-6 py-4 font-bold text-emerald-600">
+                    {formatINR(customer.outstandingBalance)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {customers.length === 0 && (
+            <div className="px-6 py-8 text-center text-slate-500">
+              No customers
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Suppliers Table */}
+      {activeTab === "suppliers" && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Phone
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Address
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  GSTIN
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Payable Balance
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {suppliers.map((supplier) => (
+                <tr key={supplier.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 font-medium text-slate-900">
+                    {supplier.name}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {supplier.email || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {supplier.phone || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {supplier.address || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-slate-700">
+                    {supplier.gstin || "-"}
+                  </td>
+                  <td className="px-6 py-4 font-bold text-orange-600">
+                    {formatINR(supplier.payableBalance)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {suppliers.length === 0 && (
+            <div className="px-6 py-8 text-center text-slate-500">
+              No suppliers
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

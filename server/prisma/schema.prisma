@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               String    @id @default(cuid())
+  name             String
+  category         String?
+  purchasePrice    Float     @default(0)
+  sellingPrice     Float     @default(0)
+  gst              Float     @default(0)
+  stock            Int       @default(0)
+  barcode          String?   @unique
+  image            String?
+  status           String    @default("active")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  invoiceItems     InvoiceLineItem[]
+  purchaseItems    PurchaseLineItem[]
+}
+
+model Customer {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?   @unique
+  phone               String?
+  address             String?
+  gstin               String?   @unique
+  outstandingBalance  Float     @default(0)
+  status              String    @default("active")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  invoices            Invoice[]
+  payments            Payment[]
+  ledgers             LedgerEntry[]
+}
+
+model Supplier {
+  id              String    @id @default(cuid())
+  name            String
+  email           String?   @unique
+  phone           String?
+  address         String?
+  gstin           String?   @unique
+  payableBalance  Float     @default(0)
+  status          String    @default("active")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  purchases       Purchase[]
+  payments        Payment[]
+  ledgers         LedgerEntry[]
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  invoiceNumber   String    @unique
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  invoiceDate     DateTime  @default(now())
+  subtotal        Float     @default(0)
+  gstAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  status          String    @default("created")
+  notes           String?
+  lineItems       InvoiceLineItem[]
+  payments        Payment[]
+  ledger          LedgerEntry?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@index([customerId])
+  @@index([invoiceNumber])
+}
+
+model InvoiceLineItem {
+  id          String    @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime  @default(now())
+  @@index([invoiceId])
+  @@index([productId])
+}
+
+model Purchase {
+  id              String    @id @default(cuid())
+  purchaseNumber  String    @unique
+  supplierId      String
+  supplier        Supplier  @relation(fields: [supplierId], references: [id])
+  purchaseDate    DateTime  @default(now())
+  subtotal        Float     @default(0)
+  gstAmount       Float     @default(0)
+  totalAmount     Float     @default(0)
+  status          String    @default("created")
+  notes           String?
+  lineItems       PurchaseLineItem[]
+  payments        Payment[]
+  ledger          LedgerEntry?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@index([supplierId])
+  @@index([purchaseNumber])
+}
+
+model PurchaseLineItem {
+  id          String    @id @default(cuid())
+  purchaseId  String
+  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime  @default(now())
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  paymentNumber   String    @unique
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+  invoiceId       String?
+  invoice         Invoice?  @relation(fields: [invoiceId], references: [id])
+  purchaseId      String?
+  purchase        Purchase? @relation(fields: [purchaseId], references: [id])
+  amount          Float
+  paymentDate     DateTime  @default(now())
+  paymentMethod   String
+  notes           String?
+  ledger          LedgerEntry?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([invoiceId])
+  @@index([purchaseId])
+}
+
+model LedgerEntry {
+  id          String    @id @default(cuid())
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  supplierId  String?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  invoiceId   String?   @unique
+  invoice     Invoice?  @relation(fields: [invoiceId], references: [id])
+  purchaseId  String?   @unique
+  purchase    Purchase? @relation(fields: [purchaseId], references: [id])
+  paymentId   String?   @unique
+  payment     Payment?  @relation(fields: [paymentId], references: [id])
+  type        String
+  amount      Float
+  description String
+  createdAt   DateTime  @default(now())
+  @@index([customerId])
+  @@index([supplierId])
+}

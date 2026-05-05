@@ -1,464 +1,345 @@
- "use client";
+"use client";
 
-import { FormEvent, useState } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import { formatINR } from "@/lib/currency";
+
+type Payment = {
+  id: string;
+  paymentNumber: string;
+  customer?: { name: string };
+  supplier?: { name: string };
+  amount: number;
+  paymentMethod: string;
+  paymentDate: string;
+  notes?: string;
+};
 
 export default function PaymentsPage() {
-  const [lastAction, setLastAction] = useState("Ready");
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [partyType, setPartyType] = useState<"customer" | "supplier">(
+    "customer",
+  );
+  const [parties, setParties] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    partyId: "",
+    invoiceId: "",
+    amount: "",
+    paymentMethod: "bank_transfer",
+    notes: "",
+  });
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    setLastAction("Payment recorded");
+  const fetchPayments = async () => {
+    try {
+      const res = await api.get("/payments");
+      setPayments(res.data);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  const handlePartyTypeChange = async (type: "customer" | "supplier") => {
+    setPartyType(type);
+    setFormData({ ...formData, partyId: "", invoiceId: "", amount: "" });
+    try {
+      const endpoint = type === "customer" ? "/customers" : "/suppliers";
+      const res = await api.get(endpoint);
+      setParties(res.data);
+    } catch (error) {
+      console.error("Error fetching parties:", error);
+    }
+  };
+
+  const handleAddPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.partyId || !formData.amount) {
+      alert("Please select party and enter amount");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload: any = {
+        amount: parseFloat(formData.amount),
+        paymentMethod: formData.paymentMethod,
+        notes: formData.notes || "",
+      };
+
+      if (partyType === "customer") {
+        payload.customerId = formData.partyId;
+        payload.invoiceId = formData.invoiceId || undefined;
+      } else {
+        payload.supplierId = formData.partyId;
+        payload.purchaseId = formData.invoiceId || undefined;
+      }
+
+      await api.post("/payments", payload);
+      setShowForm(false);
+      setFormData({
+        partyId: "",
+        invoiceId: "",
+        amount: "",
+        paymentMethod: "bank_transfer",
+        notes: "",
+      });
+      fetchPayments();
+    } catch (error) {
+      console.error("Error adding payment:", error);
+      alert("Failed to record payment");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-slate-500">Loading payments...</div>;
+  }
+
+  const totalReceived = payments.reduce(
+    (sum, p) => sum + (p.customer ? p.amount : 0),
+    0,
+  );
+  const totalPaid = payments.reduce(
+    (sum, p) => sum + (p.supplier ? p.amount : 0),
+    0,
+  );
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 relative">
-      {/* Page Title & Quick Stats */}
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-display-sm font-display-sm text-on-surface">
-            Payment Entries
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Payments</h1>
+        <button
+          onClick={() => {
+            setShowForm(!showForm);
+            if (!showForm) handlePartyTypeChange("customer");
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          + Record Payment
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+          <h2 className="text-xl font-bold">Record Payment</h2>
+          <form onSubmit={handleAddPayment} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Payment Type *
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="customer"
+                    checked={partyType === "customer"}
+                    onChange={(e) =>
+                      handlePartyTypeChange(e.target.value as any)
+                    }
+                  />
+                  <span>Received from Customer</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="supplier"
+                    checked={partyType === "supplier"}
+                    onChange={(e) =>
+                      handlePartyTypeChange(e.target.value as any)
+                    }
+                  />
+                  <span>Paid to Supplier</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {partyType === "customer" ? "Customer" : "Supplier"} *
+                </label>
+                <select
+                  value={formData.partyId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, partyId: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="">Select party</option>
+                  {parties.map((p: any) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) =>
+                    setFormData({ ...formData, amount: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Payment Method *
+                </label>
+                <select
+                  value={formData.paymentMethod}
+                  onChange={(e) =>
+                    setFormData({ ...formData, paymentMethod: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                  <option value="credit_card">Credit Card</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                placeholder="Payment notes..."
+                rows={2}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+              >
+                {submitting ? "Recording..." : "Record Payment"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 bg-slate-400 text-white rounded-lg hover:bg-slate-500"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl">
+          <p className="text-slate-500 text-sm mb-2">
+            Total Received (from Customers)
+          </p>
+          <h2 className="text-3xl font-bold text-emerald-600">
+            {formatINR(totalReceived)}
           </h2>
-          <p className="text-body-sm text-outline font-body-sm">
-            Manage cash, bank and digital transactions
+          <p className="text-xs text-slate-500 mt-2">
+            {payments.filter((p) => p.customer).length} payments
           </p>
         </div>
-        <div className="flex gap-4">
-          <div className="bg-white border border-outline-variant rounded-lg px-4 py-2 flex flex-col items-end">
-            <span className="text-label-caps text-outline uppercase font-label-caps">
-              Daily Collection
-            </span>
-            <span className="text-h1 font-h1 text-primary">₹42,850.00</span>
-          </div>
+        <div className="bg-white border border-slate-200 p-5 rounded-xl">
+          <p className="text-slate-500 text-sm mb-2">
+            Total Paid (to Suppliers)
+          </p>
+          <h2 className="text-3xl font-bold text-orange-600">
+            {formatINR(totalPaid)}
+          </h2>
+          <p className="text-xs text-slate-500 mt-2">
+            {payments.filter((p) => p.supplier).length} payments
+          </p>
         </div>
       </div>
 
-      {/* Bento Grid - Form Section */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Form Card */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-outline-variant overflow-hidden">
-          <div className="px-6 py-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
-            <h3 className="text-h1 font-h1 text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">
-                add_circle
-              </span>
-              New Payment Entry
-            </h3>
-            <span className="text-xs text-outline font-body-sm">
-              TXID: #14892-AUTO
-            </span>
-          </div>
-          <div className="p-8">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-label-caps font-label-caps text-on-surface-variant block">
-                    PAYMENT TYPE
-                  </label>
-                  <div className="relative">
-                    <select className="w-full appearance-none bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-body-md font-body-md focus:ring-2 focus:ring-primary outline-none transition-all">
-                      <option>Cash</option>
-                      <option>Bank Transfer (IMPS/NEFT)</option>
-                      <option>UPI</option>
-                      <option>Cheque</option>
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
-                      expand_more
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-label-caps font-label-caps text-on-surface-variant block">
-                    AMOUNT (INR)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-outline font-semibold">
-                      ₹
-                    </span>
-                    <input
-                      className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-8 pr-4 py-2.5 text-body-md font-body-md font-mono-data focus:ring-2 focus:ring-primary outline-none transition-all"
-                      placeholder="0.00"
-                      type="number"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-label-caps font-label-caps text-on-surface-variant block">
-                  PARTY NAME / ACCOUNT
-                </label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">
-                    person_search
-                  </span>
-                  <input
-                    className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-10 pr-4 py-2.5 text-body-md font-body-md focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Start typing party name..."
-                    type="text"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-label-caps font-label-caps text-on-surface-variant block">
-                  NOTES / REFERENCE
-                </label>
-                <textarea
-                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 text-body-md font-body-md focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
-                  placeholder="Add transaction details, reference numbers or specific mentions..."
-                  rows={3}
-                ></textarea>
-              </div>
-              <div className="pt-4 flex justify-end gap-3">
-                <button
-                  className="px-6 py-2.5 rounded-lg border border-outline-variant text-secondary font-medium hover:bg-surface-container transition-colors active:scale-95"
-                  onClick={() => setLastAction("Form cleared")}
-                  type="reset"
-                >
-                  Clear Form
-                </button>
-                <button
-                  className="px-8 py-2.5 rounded-lg bg-primary text-on-primary font-medium shadow-sm hover:opacity-90 transition-all active:scale-95 flex items-center gap-2"
-                  onClick={() => setLastAction("Record payment clicked")}
-                  type="submit"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    save
-                  </span>
-                  Record Payment
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Side Helper / Summary Card */}
-        <div className="space-y-6">
-          <div className="bg-primary text-on-primary-container p-6 rounded-xl shadow-lg relative overflow-hidden group">
-            <div className="relative z-10">
-              <h4 className="text-label-caps opacity-80 mb-1">CASH IN HAND</h4>
-              <div className="text-3xl font-bold font-h1">₹1,28,450.00</div>
-              <div className="mt-4 flex items-center gap-2 text-sm">
-                <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">
-                  VERIFIED TODAY
-                </span>
-                <span className="material-symbols-outlined text-sm">
-                  check_circle
-                </span>
-              </div>
-            </div>
-            <div className="absolute -right-4 -bottom-4 opacity-10 scale-150 group-hover:rotate-12 transition-transform duration-500">
-              <span className="material-symbols-outlined text-[120px]">
-                account_balance_wallet
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-outline-variant rounded-xl p-6">
-            <h4 className="text-label-caps text-on-surface-variant mb-4">
-              PAYMENT METHOD MIX
-            </h4>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-outline">Cash</span>
-                  <span className="font-mono-data font-semibold">45%</span>
-                </div>
-                <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: "45%" }}></div>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-outline">Bank/UPI</span>
-                  <span className="font-mono-data font-semibold">55%</span>
-                </div>
-                <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-tertiary"
-                    style={{ width: "55%" }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-surface-container-low border border-dashed border-outline rounded-xl p-4 flex items-center gap-3">
-            <div className="p-2 bg-white rounded-lg">
-              <span className="material-symbols-outlined text-outline">
-                history
-              </span>
-            </div>
-            <p className="text-body-sm text-outline italic">
-              Daily ledger automatically updates upon recording.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Transactions Table Section */}
-      <section className="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-outline-variant flex justify-between items-center">
-          <h3 className="text-h1 font-h1">Recent Transactions</h3>
-          <div className="flex gap-2">
-            <button
-              className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors"
-              onClick={() => setLastAction("Transaction filter clicked")}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                filter_list
-              </span>
-            </button>
-            <button
-              className="p-2 border border-outline-variant rounded-lg text-outline hover:text-on-surface transition-colors"
-              onClick={() => setLastAction("Transaction download clicked")}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[20px]">
-                download
-              </span>
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto thin-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-surface-container-low text-label-caps text-outline border-b border-outline-variant">
-                <th className="px-6 py-4 font-semibold tracking-wider">
-                  TIMESTAMP
-                </th>
-                <th className="px-6 py-4 font-semibold tracking-wider">
-                  PARTY / ENTITY
-                </th>
-                <th className="px-6 py-4 font-semibold tracking-wider">TYPE</th>
-                <th className="px-6 py-4 font-semibold tracking-wider">AMOUNT</th>
-                <th className="px-6 py-4 font-semibold tracking-wider">STATUS</th>
-                <th className="px-6 py-4 font-semibold tracking-wider text-right">
-                  ACTION
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant">
-              {/* Row 1 */}
-              <tr className="hover:bg-surface-container-low transition-colors group h-12">
-                <td className="px-6 py-3 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="text-body-md font-mono-data">
-                      Today, 02:45 PM
-                    </span>
-                    <span className="text-[10px] text-outline">INV-9021</span>
-                  </div>
+      {/* Payments Table */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 border-b border-slate-100">
+            <tr>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Payment #
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Party
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Type
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Amount
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Method
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {payments.map((payment) => (
+              <tr key={payment.id} className="hover:bg-slate-50">
+                <td className="px-6 py-4 font-medium text-slate-900">
+                  {payment.paymentNumber}
                 </td>
-                <td className="px-6 py-3">
-                  <span className="font-medium text-on-surface">
-                    Modern Retailers Pvt Ltd
-                  </span>
+                <td className="px-6 py-4 text-slate-700">
+                  {payment.customer?.name || payment.supplier?.name || "-"}
                 </td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">
-                      account_balance
-                    </span>
-                    <span className="text-body-sm">Bank Transfer</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-mono-data font-bold text-primary">
-                    ₹12,400.00
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-bold px-2 py-0.5 rounded-full border border-green-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    SUCCESS
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
-                    onClick={() => setLastAction("Viewed transaction")}
-                    type="button"
+                <td className="px-6 py-4">
+                  <span
+                    className={`px-2 py-1 text-xs font-bold rounded ${
+                      payment.customer
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-orange-50 text-orange-700"
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[20px]">
-                      visibility
-                    </span>
-                  </button>
+                    {payment.customer ? "Received" : "Paid"}
+                  </span>
+                </td>
+                <td className="px-6 py-4 font-bold">
+                  {formatINR(payment.amount)}
+                </td>
+                <td className="px-6 py-4 text-slate-700">
+                  {payment.paymentMethod}
+                </td>
+                <td className="px-6 py-4 text-slate-700">
+                  {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
                 </td>
               </tr>
-
-              {/* Row 2 */}
-              <tr className="hover:bg-surface-container-low transition-colors group h-12">
-                <td className="px-6 py-3 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="text-body-md font-mono-data">
-                      Today, 11:15 AM
-                    </span>
-                    <span className="text-[10px] text-outline">CSH-4421</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-medium text-on-surface">
-                    Sharma General Stores
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-secondary text-[18px]">
-                      payments
-                    </span>
-                    <span className="text-body-sm">Cash</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-mono-data font-bold text-primary">
-                    ₹3,200.00
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 text-[11px] font-bold px-2 py-0.5 rounded-full border border-green-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    SUCCESS
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
-                    onClick={() => setLastAction("Viewed transaction")}
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      visibility
-                    </span>
-                  </button>
-                </td>
-              </tr>
-
-              {/* Row 3 */}
-              <tr className="hover:bg-surface-container-low transition-colors group h-12">
-                <td className="px-6 py-3 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="text-body-md font-mono-data">
-                      Yesterday, 06:10 PM
-                    </span>
-                    <span className="text-[10px] text-outline">UPI-8812</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-medium text-on-surface">
-                    Global Imports Co.
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-tertiary text-[18px]">
-                      qr_code_2
-                    </span>
-                    <span className="text-body-sm">UPI</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-mono-data font-bold text-primary">
-                    ₹24,500.00
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                    PENDING
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
-                    onClick={() => setLastAction("Viewed transaction")}
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      visibility
-                    </span>
-                  </button>
-                </td>
-              </tr>
-
-              {/* Row 4 */}
-              <tr className="hover:bg-surface-container-low transition-colors group h-12">
-                <td className="px-6 py-3 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <span className="text-body-md font-mono-data">
-                      Yesterday, 10:20 AM
-                    </span>
-                    <span className="text-[10px] text-outline">INV-8955</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-medium text-on-surface">
-                    Krishna Logistics
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">
-                      account_balance
-                    </span>
-                    <span className="text-body-sm">Bank Transfer</span>
-                  </div>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="font-mono-data font-bold text-primary">
-                    ₹18,250.00
-                  </span>
-                </td>
-                <td className="px-6 py-3">
-                  <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 text-[11px] font-bold px-2 py-0.5 rounded-full border border-red-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                    FAILED
-                  </span>
-                </td>
-                <td className="px-6 py-3 text-right">
-                  <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-outline hover:text-primary"
-                    onClick={() => setLastAction("Viewed transaction")}
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">
-                      visibility
-                    </span>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="px-6 py-4 bg-surface-container-lowest border-t border-outline-variant flex justify-between items-center">
-          <p className="text-body-sm text-outline">Showing 1-10 of 248 entries</p>
-          <div className="flex gap-2">
-            <button
-              className="px-3 py-1.5 rounded border border-outline-variant text-body-sm hover:bg-surface-container disabled:opacity-50"
-              disabled
-              onClick={() => setLastAction("Previous page clicked")}
-              type="button"
-            >
-              Previous
-            </button>
-            <button
-              className="px-3 py-1.5 rounded border border-outline-variant text-body-sm hover:bg-surface-container"
-              onClick={() => setLastAction("Next page clicked")}
-              type="button"
-            >
-              Next
-            </button>
+            ))}
+          </tbody>
+        </table>
+        {payments.length === 0 && (
+          <div className="px-6 py-8 text-center text-slate-500">
+            No payments recorded
           </div>
-        </div>
-      </section>
-
-      {/* Floating Action Button */}
-      <button
-        className="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50"
-        onClick={() => setLastAction("Quick print clicked")}
-        type="button"
-      >
-        <span className="material-symbols-outlined text-2xl">print</span>
-      </button>
-      <p className="text-xs text-slate-500">Last action: {lastAction}</p>
+        )}
+      </div>
     </div>
   );
 }

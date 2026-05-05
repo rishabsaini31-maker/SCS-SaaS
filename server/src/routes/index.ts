@@ -1,11 +1,24 @@
 import { Router } from "express";
-// import sub-routes here
+
+import productsRouter from "../modules/products/products.routes";
+import customersRouter from "../modules/customers/customers.routes";
+import suppliersRouter from "../modules/suppliers/suppliers.routes";
+import invoicesRouter from "../modules/invoices/invoices.routes";
+import purchasesRouter from "../modules/purchases/purchases.routes";
+import paymentsRouter from "../modules/payments/payments.routes";
+import ledgerRouter from "../modules/ledger/ledger.routes";
+import barcodeRouter from "../modules/barcode/barcode.routes";
 
 const router = Router();
 
-// router.use('/invoices', invoicesRouter);
-import productsRouter from "../modules/products/products.routes";
+// Register all module routes
 router.use("/products", productsRouter);
-// ...other modules
+router.use("/customers", customersRouter);
+router.use("/suppliers", suppliersRouter);
+router.use("/invoices", invoicesRouter);
+router.use("/purchases", purchasesRouter);
+router.use("/payments", paymentsRouter);
+router.use("/ledger", ledgerRouter);
+router.use("/barcode", barcodeRouter);
 
 export default router;
