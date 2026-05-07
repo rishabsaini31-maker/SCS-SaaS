@@ -114,8 +114,10 @@ model PurchaseLineItem {
   id          String    @id @default(cuid())
   purchaseId  String
   purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id])
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id])
+  productName String?
+  category    String?
   quantity    Int
   unitPrice   Float
   totalPrice  Float

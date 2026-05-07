@@ -8,6 +8,7 @@ import purchasesRouter from "../modules/purchases/purchases.routes";
 import paymentsRouter from "../modules/payments/payments.routes";
 import ledgerRouter from "../modules/ledger/ledger.routes";
 import barcodeRouter from "../modules/barcode/barcode.routes";
+import categoriesRouter from "../modules/categories/categories.routes";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.use("/suppliers", suppliersRouter);
 router.use("/invoices", invoicesRouter);
 router.use("/purchases", purchasesRouter);
 router.use("/payments", paymentsRouter);
+router.use("/categories", categoriesRouter);
 router.use("/ledger", ledgerRouter);
 router.use("/barcode", barcodeRouter);
 

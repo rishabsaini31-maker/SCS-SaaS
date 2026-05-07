@@ -5,7 +5,7 @@ import type { CreatePaymentInput } from "./payments.schema";
 async function generatePaymentNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
-  
+
   const todayStr = today.replace(/-/g, "");
   const count = await prisma.payment.count({
     where: { paymentNumber: { startsWith: `PAY-${todayStr}` } },
@@ -24,6 +24,34 @@ export const createPayment = async (data: CreatePaymentInput) => {
       where: { id: data.customerId },
     });
     if (!customer) throw new CustomError("Customer not found", 404);
+
+    if (data.amount > customer.outstandingBalance) {
+      throw new CustomError(
+        "Payment amount cannot be greater than customer outstanding balance",
+        400,
+      );
+    }
+
+    if (data.invoiceId) {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: data.invoiceId },
+        include: { payments: true },
+      });
+      if (!invoice) throw new CustomError("Invoice not found", 404);
+      if (invoice.customerId !== data.customerId) {
+        throw new CustomError("Invoice does not belong to this customer", 400);
+      }
+      const paidSoFar = invoice.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0,
+      );
+      if (paidSoFar + data.amount > invoice.totalAmount) {
+        throw new CustomError(
+          "Payment amount exceeds invoice pending amount",
+          400,
+        );
+      }
+    }
   }
 
   if (data.supplierId) {
@@ -31,6 +59,34 @@ export const createPayment = async (data: CreatePaymentInput) => {
       where: { id: data.supplierId },
     });
     if (!supplier) throw new CustomError("Supplier not found", 404);
+
+    if (data.amount > supplier.payableBalance) {
+      throw new CustomError(
+        "Payment amount cannot be greater than supplier payable balance",
+        400,
+      );
+    }
+
+    if (data.purchaseId) {
+      const purchase = await prisma.purchase.findUnique({
+        where: { id: data.purchaseId },
+        include: { payments: true },
+      });
+      if (!purchase) throw new CustomError("Purchase not found", 404);
+      if (purchase.supplierId !== data.supplierId) {
+        throw new CustomError("Purchase does not belong to this supplier", 400);
+      }
+      const paidSoFar = purchase.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0,
+      );
+      if (paidSoFar + data.amount > purchase.totalAmount) {
+        throw new CustomError(
+          "Payment amount exceeds purchase pending amount",
+          400,
+        );
+      }
+    }
   }
 
   const payment = await prisma.$transaction(async (tx) => {
@@ -65,6 +121,24 @@ export const createPayment = async (data: CreatePaymentInput) => {
         where: { id: data.customerId },
         data: { outstandingBalance: { decrement: data.amount } },
       });
+
+      if (data.invoiceId) {
+        const invoice = await tx.invoice.findUnique({
+          where: { id: data.invoiceId },
+          include: { payments: true },
+        });
+        if (invoice) {
+          const paidTotal = invoice.payments.reduce(
+            (sum, payment) => sum + payment.amount,
+            0,
+          );
+          const remaining = Math.max(0, invoice.totalAmount - paidTotal);
+          await tx.invoice.update({
+            where: { id: data.invoiceId },
+            data: { status: remaining <= 0 ? "Paid" : "Pending" },
+          });
+        }
+      }
     }
 
     if (data.supplierId) {
@@ -72,6 +146,24 @@ export const createPayment = async (data: CreatePaymentInput) => {
         where: { id: data.supplierId },
         data: { payableBalance: { decrement: data.amount } },
       });
+
+      if (data.purchaseId) {
+        const purchase = await tx.purchase.findUnique({
+          where: { id: data.purchaseId },
+          include: { payments: true },
+        });
+        if (purchase) {
+          const paidTotal = purchase.payments.reduce(
+            (sum, payment) => sum + payment.amount,
+            0,
+          );
+          const remaining = Math.max(0, purchase.totalAmount - paidTotal);
+          await tx.purchase.update({
+            where: { id: data.purchaseId },
+            data: { status: remaining <= 0 ? "Paid" : "Pending" },
+          });
+        }
+      }
     }
 
     return newPayment;

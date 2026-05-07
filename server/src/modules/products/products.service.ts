@@ -36,10 +36,7 @@ export const getAllProducts = async (filters?: {
   });
 };
 
-export const updateProduct = async (
-  id: string,
-  data: UpdateProductInput,
-) => {
+export const updateProduct = async (id: string, data: UpdateProductInput) => {
   await getProduct(id); // Verify exists
   return prisma.product.update({
     where: { id },
@@ -65,4 +62,51 @@ export const getLowStockProducts = async (threshold: number = 10) => {
     },
     orderBy: { stock: "asc" },
   });
+};
+
+export const getProductSuggestions = async (query: string) => {
+  const q = query.trim();
+  if (!q) return [];
+
+  const products = await prisma.product.findMany({
+    where: { name: { contains: q, mode: "insensitive" } },
+    take: 6,
+    orderBy: { updatedAt: "desc" },
+  });
+
+  const manual = await prisma.purchaseLineItem.groupBy({
+    by: ["productName"],
+    where: { productName: { contains: q, mode: "insensitive" } },
+    _max: { unitPrice: true, createdAt: true },
+    _count: { _all: true },
+    orderBy: { _max: { createdAt: "desc" } },
+    take: 10,
+  });
+
+  const suggestions: any[] = [];
+  for (const p of products) {
+    suggestions.push({
+      label: p.name,
+      productId: p.id,
+      unitPrice: p.purchasePrice,
+      category: p.category || null,
+    });
+  }
+  for (const m of manual) {
+    if (!m.productName) continue;
+    if (
+      suggestions.find(
+        (s) => s.label.toLowerCase() === m.productName!.toLowerCase(),
+      )
+    )
+      continue;
+    suggestions.push({
+      label: m.productName,
+      productId: null,
+      unitPrice: m._max.unitPrice || null,
+      category: null,
+    });
+  }
+
+  return suggestions.slice(0, 10);
 };

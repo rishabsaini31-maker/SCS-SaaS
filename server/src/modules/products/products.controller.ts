@@ -6,7 +6,11 @@ import {
   productIdSchema,
 } from "./products.schema";
 
-export const create = async (req: Request, res: Response, next: NextFunction) => {
+export const create = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const data = createProductSchema.parse(req.body);
     const product = await service.createProduct(data);
@@ -16,7 +20,11 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getById = async (req: Request, res: Response, next: NextFunction) => {
+export const getById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = productIdSchema.parse(req.params);
     const product = await service.getProduct(id);
@@ -26,7 +34,11 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
+export const getProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const products = await service.getAllProducts({
       category: req.query.category as string | undefined,
@@ -39,7 +51,11 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const update = async (req: Request, res: Response, next: NextFunction) => {
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = productIdSchema.parse(req.params);
     const data = updateProductSchema.parse(req.body);
@@ -75,6 +91,20 @@ export const getLowStock = async (
       : 10;
     const products = await service.getLowStockProducts(threshold);
     res.json(products);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const suggest = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const q = (req.query.q as string) || (req.query.query as string) || "";
+    const suggestions = await service.getProductSuggestions(q);
+    res.json(suggestions);
   } catch (err) {
     next(err);
   }

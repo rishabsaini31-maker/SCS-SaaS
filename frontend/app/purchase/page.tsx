@@ -22,10 +22,17 @@ type Purchase = {
 };
 
 type Supplier = { id: string; name: string; email: string };
-type Product = { id: string; name: string; purchasePrice: number };
+type Product = {
+  id: string;
+  name: string;
+  purchasePrice: number;
+  barcode?: string;
+  category?: string;
+};
 
 type LineItem = {
   productId: string;
+  category?: string;
   quantity: number;
   unitPrice: number;
 };
@@ -50,33 +57,34 @@ export default function PurchasePage() {
     barcodeInput: "",
   });
 
-  const fetchPurchases = async () => {
-    try {
-      const res = await api.get("/purchases");
-      setPurchases(res.data);
-    } catch (error) {
-      console.error("Error fetching purchases:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPurchases();
-    const fetchData = async () => {
+    const loadData = async () => {
       try {
-        const [supRes, prodRes] = await Promise.all([
+        const [purchaseRes, supRes, prodRes] = await Promise.all([
+          api.get("/purchases"),
           api.get("/suppliers"),
           api.get("/products"),
         ]);
+        setPurchases(purchaseRes.data);
         setSuppliers(supRes.data);
         setProducts(prodRes.data);
       } catch (error) {
         console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchData();
+
+    void loadData();
   }, []);
+
+  const categoryOptions = Array.from(
+    new Set(
+      products
+        .map((product) => product.category)
+        .filter((category): category is string => Boolean(category)),
+    ),
+  );
 
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
@@ -86,7 +94,11 @@ export default function PurchasePage() {
     setLineItems(lineItems.filter((_, i) => i !== idx));
   };
 
-  const updateLineItem = (idx: number, field: string, value: any) => {
+  const updateLineItem = (
+    idx: number,
+    field: keyof LineItem,
+    value: LineItem[keyof LineItem],
+  ) => {
     const updated = [...lineItems];
     updated[idx] = { ...updated[idx], [field]: value };
     setLineItems(updated);
@@ -105,7 +117,7 @@ export default function PurchasePage() {
     try {
       const productRes = await api.get(`/products?search=${barcode}`);
       const foundProduct = productRes.data.find(
-        (p: any) => p.barcode === barcode,
+        (p: Product) => p.barcode === barcode,
       );
 
       if (foundProduct) {
@@ -139,6 +151,7 @@ export default function PurchasePage() {
         supplierId: formData.supplierId,
         lineItems: lineItems.map((item) => ({
           productId: item.productId,
+          category: item.category || undefined,
           quantity: parseInt(String(item.quantity)),
           unitPrice: parseFloat(String(item.unitPrice)),
         })),
@@ -285,6 +298,21 @@ export default function PurchasePage() {
                           {p.name} ({formatINR(p.purchasePrice)})
                         </option>
                       ))}
+                    </select>
+                    <select
+                      value={item.category || ""}
+                      onChange={(e) =>
+                        updateLineItem(idx, "category", e.target.value)
+                      }
+                      className="w-32 px-2 py-1 border border-slate-300 rounded text-sm"
+                    >
+                      <option value="">Category</option>
+                      {categoryOptions.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                      <option value="General">General</option>
                     </select>
                     <input
                       type="number"
@@ -540,3 +568,24 @@ export default function PurchasePage() {
     </div>
   );
 }
+
+<select
+  className="w-32 px-2 py-1 border border-slate-300 rounded text-sm"
+  title="Category"
+>
+  <option value="">Category</option>
+  {categories.map((cat) => (
+    <option key={cat.name} value={cat.name}>
+      {cat.name}
+    </option>
+  ))}
+  <option value="General">General</option>
+</select>;
+const [supRes, prodRes, catRes] = await Promise.all([
+  api.get("/suppliers"),
+  api.get("/products"),
+  api.get("/categories"),
+]);
+setSuppliers(supRes.data);
+setProducts(prodRes.data);
+setCategories(catRes.data);

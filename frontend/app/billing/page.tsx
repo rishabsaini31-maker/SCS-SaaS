@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 
@@ -21,8 +22,20 @@ type Invoice = {
   notes?: string;
 };
 
+type Payment = {
+  id: string;
+  invoiceId?: string;
+  amount: number;
+};
+
 type Customer = { id: string; name: string; email: string };
-type Product = { id: string; name: string; sellingPrice: number };
+type Product = {
+  id: string;
+  name: string;
+  stock: number;
+  sellingPrice: number;
+  barcode?: string;
+};
 
 type LineItem = {
   productId: string;
@@ -30,13 +43,17 @@ type LineItem = {
   unitPrice: number;
 };
 
+const formatShortDate = (value: string) =>
+  new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
 export default function BillingPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
@@ -46,35 +63,68 @@ export default function BillingPage() {
     notes: "",
     gst: 18,
     barcodeInput: "",
+    paymentMethod: "upi",
+    paymentStatus: "Paid",
+    paidAmount: "",
   });
 
-  const fetchInvoices = async () => {
-    try {
-      const res = await api.get("/invoices");
-      setInvoices(res.data);
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: invoices = [],
+    isLoading: invoicesLoading,
+    isError: invoicesError,
+  } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: async () => {
+      const res = await api.get<Invoice[]>("/invoices");
+      return res.data;
+    },
+  });
 
-  useEffect(() => {
-    fetchInvoices();
-    const fetchData = async () => {
-      try {
-        const [cusRes, prodRes] = await Promise.all([
-          api.get("/customers"),
-          api.get("/products"),
-        ]);
-        setCustomers(cusRes.data);
-        setProducts(prodRes.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, []);
+  const {
+    data: customers = [],
+    isLoading: customersLoading,
+    isError: customersError,
+  } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const res = await api.get<Customer[]>("/customers");
+      return res.data;
+    },
+  });
+
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    isError: productsError,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const res = await api.get<Product[]>("/products");
+      return res.data;
+    },
+  });
+
+  const {
+    data: payments = [],
+    isLoading: paymentsLoading,
+    isError: paymentsError,
+  } = useQuery({
+    queryKey: ["payments"],
+    queryFn: async () => {
+      const res = await api.get<Payment[]>("/payments");
+      return res.data;
+    },
+  });
+
+  const loading =
+    invoicesLoading || customersLoading || productsLoading || paymentsLoading;
+  const hasError =
+    invoicesError || customersError || productsError || paymentsError;
+
+  const getInvoicePaidAmount = (invoiceId: string) =>
+    payments
+      .filter((payment) => payment.invoiceId === invoiceId)
+      .reduce((sum, payment) => sum + payment.amount, 0);
 
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
@@ -84,10 +134,16 @@ export default function BillingPage() {
     setLineItems(lineItems.filter((_, i) => i !== idx));
   };
 
-  const updateLineItem = (idx: number, field: string, value: any) => {
-    const updated = [...lineItems];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setLineItems(updated);
+  const updateLineItem = (
+    idx: number,
+    field: keyof LineItem,
+    value: LineItem[keyof LineItem],
+  ) => {
+    setLineItems((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
   };
 
   const calculateTotals = () => {
@@ -100,18 +156,32 @@ export default function BillingPage() {
   };
 
   const handleBarcodeInput = async (barcode: string) => {
+    const code = barcode.trim();
+    if (!code) return;
+
     try {
-      const productRes = await api.get(`/products?search=${barcode}`);
-      const foundProduct = productRes.data.find(
-        (p: any) => p.barcode === barcode,
-      );
+      const foundInCache = products.find((p) => p.barcode === code);
+      const foundProduct = foundInCache
+        ? foundInCache
+        : (
+            await api.get<Product[]>("/products", { params: { search: code } })
+          ).data.find((p) => p.barcode === code);
 
       if (foundProduct) {
-        addLineItem();
-        const idx = lineItems.length;
-        updateLineItem(idx, "productId", foundProduct.id);
-        updateLineItem(idx, "unitPrice", foundProduct.sellingPrice);
-        setFormData({ ...formData, barcodeInput: "" });
+        if (foundProduct.stock <= 0) {
+          alert("This product is out of stock");
+          return;
+        }
+
+        setLineItems((prev) => [
+          ...prev,
+          {
+            productId: foundProduct.id,
+            quantity: 1,
+            unitPrice: foundProduct.sellingPrice,
+          },
+        ]);
+        setFormData((prev) => ({ ...prev, barcodeInput: "" }));
       } else {
         alert("Product not found");
       }
@@ -131,24 +201,91 @@ export default function BillingPage() {
       return;
     }
 
+    for (const item of lineItems) {
+      const selectedProduct = products.find((p) => p.id === item.productId);
+      if (!selectedProduct) {
+        alert("Selected product not found");
+        return;
+      }
+
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty <= 0) {
+        alert(`Please enter a valid quantity for ${selectedProduct.name}`);
+        return;
+      }
+
+      if (qty > selectedProduct.stock) {
+        alert(
+          `${selectedProduct.name}: entered quantity (${qty}) is more than stock (${selectedProduct.stock})`,
+        );
+        return;
+      }
+    }
+
+    const { total } = calculateTotals();
+    const isPending = formData.paymentStatus === "Pending";
+    const paidAmount = isPending
+      ? Math.max(0, Number(formData.paidAmount) || 0)
+      : total;
+
+    if (paidAmount > total) {
+      alert("Paid amount cannot be greater than total amount");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await api.post("/invoices", {
+      const invoiceRes = await api.post("/invoices", {
         customerId: formData.customerId,
         lineItems: lineItems.map((item) => ({
           productId: item.productId,
-          quantity: parseInt(String(item.quantity)),
+          quantity: Number(item.quantity),
           unitPrice: parseFloat(String(item.unitPrice)),
         })),
+        status: formData.paymentStatus,
         notes: formData.notes || "",
       });
+
+      if (paidAmount > 0) {
+        await api.post("/payments", {
+          customerId: formData.customerId,
+          invoiceId: invoiceRes.data.id,
+          amount: paidAmount,
+          paymentMethod: formData.paymentMethod,
+          notes: `Payment for invoice ${invoiceRes.data.invoiceNumber}`,
+        });
+      }
+
       setShowForm(false);
-      setFormData({ customerId: "", notes: "", gst: 18, barcodeInput: "" });
+      setFormData({
+        customerId: "",
+        notes: "",
+        gst: 18,
+        barcodeInput: "",
+        paymentMethod: "upi",
+        paymentStatus: "Paid",
+        paidAmount: "",
+      });
       setLineItems([{ productId: "", quantity: 0, unitPrice: 0 }]);
-      fetchInvoices();
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
     } catch (error) {
       console.error("Error creating invoice:", error);
-      alert("Failed to create invoice");
+      const message =
+        (
+          error as {
+            response?: { data?: { error?: string; message?: string } };
+          }
+        ).response?.data?.error ||
+        (
+          error as {
+            response?: { data?: { error?: string; message?: string } };
+          }
+        ).response?.data?.message ||
+        "Failed to create invoice";
+      alert(message);
     } finally {
       setSubmitting(false);
     }
@@ -156,6 +293,10 @@ export default function BillingPage() {
 
   if (loading) {
     return <div className="text-slate-500">Loading billing...</div>;
+  }
+
+  if (hasError) {
+    return <div className="text-red-600">Failed to load billing data.</div>;
   }
 
   return (
@@ -262,7 +403,7 @@ export default function BillingPage() {
               </div>
               <div className="space-y-2 border border-slate-200 rounded-lg p-3">
                 {lineItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-end">
+                  <div key={idx} className="flex gap-2 items-start">
                     <select
                       value={item.productId}
                       onChange={(e) => {
@@ -278,24 +419,40 @@ export default function BillingPage() {
                       <option value="">Select product</option>
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} ({formatINR(p.sellingPrice)})
+                          {p.name} (Stock: {p.stock},{" "}
+                          {formatINR(p.sellingPrice)})
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateLineItem(
-                          idx,
-                          "quantity",
-                          parseInt(e.target.value),
-                        )
-                      }
-                      className="w-16 px-2 py-1 border border-slate-300 rounded text-sm"
-                      placeholder="Qty"
-                      title="Quantity"
-                    />
+                    <div className="w-24">
+                      <input
+                        type="number"
+                        value={item.quantity === 0 ? "" : item.quantity}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            updateLineItem(idx, "quantity", 0);
+                            return;
+                          }
+
+                          updateLineItem(
+                            idx,
+                            "quantity",
+                            Math.max(0, Number(raw) || 0),
+                          );
+                        }}
+                        className="w-16 px-2 py-1 border border-slate-300 rounded text-sm"
+                        placeholder="Qty"
+                        title="Quantity"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Stock:{" "}
+                        {item.productId
+                          ? (products.find((p) => p.id === item.productId)
+                              ?.stock ?? "-")
+                          : "-"}
+                      </p>
+                    </div>
                     <input
                       type="number"
                       step="0.01"
@@ -328,6 +485,12 @@ export default function BillingPage() {
             <div className="bg-slate-50 p-3 rounded space-y-2">
               {(() => {
                 const { subtotal, gst, total } = calculateTotals();
+                const isPending = formData.paymentStatus === "Pending";
+                const paidAmount = isPending
+                  ? Math.max(0, Number(formData.paidAmount) || 0)
+                  : total;
+                const pendingAmount = Math.max(0, total - paidAmount);
+
                 return (
                   <>
                     <div className="flex justify-between text-sm">
@@ -341,6 +504,78 @@ export default function BillingPage() {
                     <div className="flex justify-between font-bold text-lg border-t pt-2">
                       <span>Total:</span>
                       <span>{formatINR(total)}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-200 mt-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Payment Method
+                        </label>
+                        <select
+                          value={formData.paymentMethod}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              paymentMethod: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        >
+                          <option value="upi">UPI</option>
+                          <option value="cash">Cash</option>
+                          <option value="cheque">Cheque</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Payment Status
+                        </label>
+                        <select
+                          value={formData.paymentStatus}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              paymentStatus: e.target.value,
+                              paidAmount:
+                                e.target.value === "Pending"
+                                  ? formData.paidAmount
+                                  : "",
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+
+                      {isPending && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Paid Amount
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max={total}
+                            value={formData.paidAmount}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                paidAmount: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            placeholder="Enter paid amount"
+                          />
+                          <p className="text-xs text-slate-600 mt-1">
+                            Pending: {formatINR(pendingAmount)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 );
@@ -393,6 +628,9 @@ export default function BillingPage() {
                     Customer
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Subtotal
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
@@ -402,43 +640,70 @@ export default function BillingPage() {
                     Total
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Paid
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Pending
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">
                     Status
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {invoices.map((invoice) => (
-                  <tr
-                    key={invoice.id}
-                    className="hover:bg-slate-50 cursor-pointer"
-                    onClick={() => setSelectedInvoice(invoice)}
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-900">
-                      {invoice.invoiceNumber}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {invoice.customer.name}
-                    </td>
-                    <td className="px-6 py-4">{formatINR(invoice.subtotal)}</td>
-                    <td className="px-6 py-4">
-                      {formatINR(invoice.gstAmount)}
-                    </td>
-                    <td className="px-6 py-4 font-bold">
-                      {formatINR(invoice.totalAmount)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 text-xs font-bold rounded ${
-                          invoice.status === "created"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-emerald-50 text-emerald-700"
-                        }`}
+                {invoices.map((invoice) =>
+                  (() => {
+                    const paidAmount = getInvoicePaidAmount(invoice.id);
+                    const pendingAmount = Math.max(
+                      0,
+                      invoice.totalAmount - paidAmount,
+                    );
+
+                    return (
+                      <tr
+                        key={invoice.id}
+                        className="hover:bg-slate-50 cursor-pointer"
+                        onClick={() => setSelectedInvoice(invoice)}
                       >
-                        {invoice.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                        <td className="px-6 py-4 font-medium text-slate-900">
+                          {invoice.invoiceNumber}
+                        </td>
+                        <td className="px-6 py-4 text-slate-700">
+                          {invoice.customer.name}
+                        </td>
+                        <td className="px-6 py-4 text-slate-700">
+                          {formatShortDate(invoice.invoiceDate)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {formatINR(invoice.subtotal)}
+                        </td>
+                        <td className="px-6 py-4">
+                          {formatINR(invoice.gstAmount)}
+                        </td>
+                        <td className="px-6 py-4 font-bold">
+                          {formatINR(invoice.totalAmount)}
+                        </td>
+                        <td className="px-6 py-4 text-emerald-700 font-semibold">
+                          {formatINR(paidAmount)}
+                        </td>
+                        <td className="px-6 py-4 text-orange-700 font-semibold">
+                          {formatINR(pendingAmount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded whitespace-nowrap min-w-[72px] ${
+                              invoice.status === "created"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
+                          >
+                            {invoice.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })(),
+                )}
               </tbody>
             </table>
             {invoices.length === 0 && (
@@ -483,9 +748,7 @@ export default function BillingPage() {
                 <div>
                   <p className="text-xs text-slate-500 uppercase">Date</p>
                   <p className="font-bold text-slate-900">
-                    {new Date(selectedInvoice.invoiceDate).toLocaleDateString(
-                      "en-IN",
-                    )}
+                    {formatShortDate(selectedInvoice.invoiceDate)}
                   </p>
                 </div>
               </div>
@@ -505,22 +768,46 @@ export default function BillingPage() {
               </div>
 
               <div className="space-y-2 py-4">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Subtotal</span>
-                  <span className="font-medium">
-                    {formatINR(selectedInvoice.subtotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">GST (18%)</span>
-                  <span className="font-medium">
-                    {formatINR(selectedInvoice.gstAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                  <span>Total</span>
-                  <span>{formatINR(selectedInvoice.totalAmount)}</span>
-                </div>
+                {(() => {
+                  const paidAmount = getInvoicePaidAmount(selectedInvoice.id);
+                  const pendingAmount = Math.max(
+                    0,
+                    selectedInvoice.totalAmount - paidAmount,
+                  );
+
+                  return (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Subtotal</span>
+                        <span className="font-medium">
+                          {formatINR(selectedInvoice.subtotal)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">GST (18%)</span>
+                        <span className="font-medium">
+                          {formatINR(selectedInvoice.gstAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                        <span>Total</span>
+                        <span>{formatINR(selectedInvoice.totalAmount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Paid Amount</span>
+                        <span className="font-medium text-emerald-700">
+                          {formatINR(paidAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-600">Pending Amount</span>
+                        <span className="font-medium text-orange-700">
+                          {formatINR(pendingAmount)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {selectedInvoice.notes && (

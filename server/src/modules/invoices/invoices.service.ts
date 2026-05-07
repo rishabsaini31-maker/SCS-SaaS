@@ -5,7 +5,7 @@ import type { CreateInvoiceInput } from "./invoices.schema";
 async function generateInvoiceNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
-  
+
   const todayStr = today.replace(/-/g, "");
   const count = await prisma.invoice.count({
     where: { invoiceNumber: { startsWith: `INV-${todayStr}` } },
@@ -24,7 +24,8 @@ export const createInvoice = async (data: CreateInvoiceInput) => {
     const product = await prisma.product.findUnique({
       where: { id: item.productId },
     });
-    if (!product) throw new CustomError(`Product ${item.productId} not found`, 404);
+    if (!product)
+      throw new CustomError(`Product ${item.productId} not found`, 404);
     if (product.stock < item.quantity) {
       throw new CustomError(`Insufficient stock for ${product.name}`, 400);
     }
@@ -43,7 +44,12 @@ export const createInvoice = async (data: CreateInvoiceInput) => {
 
       const totalPrice = product.sellingPrice * item.quantity;
       subtotal += totalPrice;
-      lineItems.push({ productId: item.productId, quantity: item.quantity, unitPrice: product.sellingPrice, totalPrice });
+      lineItems.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: product.sellingPrice,
+        totalPrice,
+      });
     }
 
     const gstAmount = subtotal * 0.18;
@@ -56,7 +62,7 @@ export const createInvoice = async (data: CreateInvoiceInput) => {
         subtotal,
         gstAmount,
         totalAmount,
-        status: "created",
+        status: data.status || "created",
         notes: data.notes,
       },
     });
@@ -118,11 +124,23 @@ export const getInvoice = async (id: string) => {
 export const getInvoices = async (filters?: {
   customerId?: string;
   status?: string;
+  startDate?: string;
+  endDate?: string;
 }) => {
+  const hasDateRange = Boolean(filters?.startDate || filters?.endDate);
+  const start = filters?.startDate ? new Date(filters.startDate) : undefined;
+  const end = filters?.endDate ? new Date(filters.endDate) : undefined;
+
   return prisma.invoice.findMany({
     where: {
       ...(filters?.customerId && { customerId: filters.customerId }),
       ...(filters?.status && { status: filters.status }),
+      ...(hasDateRange && {
+        invoiceDate: {
+          ...(start && { gte: start }),
+          ...(end && { lte: end }),
+        },
+      }),
     },
     include: {
       customer: true,

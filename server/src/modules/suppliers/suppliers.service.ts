@@ -1,6 +1,9 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import type { CreateSupplierInput, UpdateSupplierInput } from "./suppliers.schema";
+import type {
+  CreateSupplierInput,
+  UpdateSupplierInput,
+} from "./suppliers.schema";
 
 export const createSupplier = async (data: CreateSupplierInput) => {
   if (data.email) {
@@ -48,10 +51,7 @@ export const getSuppliers = async (filters?: {
   });
 };
 
-export const updateSupplier = async (
-  id: string,
-  data: UpdateSupplierInput,
-) => {
+export const updateSupplier = async (id: string, data: UpdateSupplierInput) => {
   await getSupplier(id);
   return prisma.supplier.update({
     where: { id },
@@ -71,4 +71,42 @@ export const getSupplierLedger = async (supplierId: string) => {
     orderBy: { createdAt: "desc" },
   });
   return { supplier, ledgers };
+};
+
+export const getSupplierRecentItems = async (supplierId: string) => {
+  // Group recent purchase line items by productId/productName for a supplier
+  const grouped = await prisma.purchaseLineItem.groupBy({
+    by: ["productId", "productName"],
+    where: { purchase: { supplierId } },
+    _max: { createdAt: true, unitPrice: true },
+    _count: { _all: true },
+    orderBy: { _max: { createdAt: "desc" } },
+    take: 20,
+  });
+
+  // fetch product names for productIds if available
+  const productIds = grouped
+    .map((g) => g.productId)
+    .filter(Boolean) as string[];
+  const products = productIds.length
+    ? await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, name: true, category: true },
+      })
+    : [];
+  const productMap = new Map(
+    products.map((p) => [p.id, { name: p.name, category: p.category || null }]),
+  );
+
+  return grouped.map((g) => ({
+    productId: g.productId || null,
+    productName:
+      g.productName ||
+      (g.productId ? productMap.get(g.productId)?.name || null : null),
+    lastUnitPrice: g._max.unitPrice || null,
+    count: g._count._all || 0,
+    category: g.productId
+      ? productMap.get(g.productId)?.category || null
+      : null,
+  }));
 };

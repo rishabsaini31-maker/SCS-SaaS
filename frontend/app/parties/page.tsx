@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 
@@ -27,13 +28,17 @@ type Supplier = {
 };
 
 export default function PartiesPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"customers" | "suppliers">(
     "customers",
   );
   const [showForm, setShowForm] = useState(false);
+  const [customerFilter, setCustomerFilter] = useState<
+    "all" | "paid" | "pending"
+  >("all");
+  const [supplierFilter, setSupplierFilter] = useState<
+    "all" | "paid" | "pending"
+  >("all");
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -43,24 +48,44 @@ export default function PartiesPage() {
     gstin: "",
   });
 
-  const fetchData = async () => {
-    try {
-      const [customersRes, suppliersRes] = await Promise.all([
-        api.get("/customers"),
-        api.get("/suppliers"),
-      ]);
-      setCustomers(customersRes.data);
-      setSuppliers(suppliersRes.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: customers = [],
+    isLoading: customersLoading,
+    isError: customersError,
+  } = useQuery({
+    queryKey: ["customers"],
+    queryFn: async () => {
+      const res = await api.get<Customer[]>("/customers");
+      return res.data;
+    },
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const {
+    data: suppliers = [],
+    isLoading: suppliersLoading,
+    isError: suppliersError,
+  } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const res = await api.get<Supplier[]>("/suppliers");
+      return res.data;
+    },
+  });
+
+  const loading = customersLoading || suppliersLoading;
+  const hasError = customersError || suppliersError;
+
+  const filteredCustomers = customers.filter((c) => {
+    if (customerFilter === "all") return true;
+    const isPaid = (c.outstandingBalance || 0) <= 0;
+    return customerFilter === "paid" ? isPaid : !isPaid;
+  });
+
+  const filteredSuppliers = suppliers.filter((s) => {
+    if (supplierFilter === "all") return true;
+    const isPaid = (s.payableBalance || 0) <= 0;
+    return supplierFilter === "paid" ? isPaid : !isPaid;
+  });
 
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +107,8 @@ export default function PartiesPage() {
       });
       setShowForm(false);
       setFormData({ name: "", email: "", phone: "", address: "", gstin: "" });
-      fetchData();
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     } catch (error) {
       console.error("Error adding party:", error);
       alert("Failed to add. Email might already exist.");
@@ -93,6 +119,10 @@ export default function PartiesPage() {
 
   if (loading) {
     return <div className="text-slate-500">Loading parties...</div>;
+  }
+
+  if (hasError) {
+    return <div className="text-red-600">Failed to load parties data.</div>;
   }
 
   return (
@@ -227,6 +257,34 @@ export default function PartiesPage() {
       {/* Customers Table */}
       {activeTab === "customers" && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-3 border-b">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">
+                Filter:
+              </span>
+              <button
+                onClick={() => setCustomerFilter("all")}
+                className={`px-3 py-1 rounded-md text-sm ${customerFilter === "all" ? "bg-slate-100 font-semibold" : "bg-transparent"}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setCustomerFilter("paid")}
+                className={`px-3 py-1 rounded-md text-sm ${customerFilter === "paid" ? "bg-emerald-100 text-emerald-700 font-semibold" : "bg-transparent"}`}
+              >
+                Paid
+              </button>
+              <button
+                onClick={() => setCustomerFilter("pending")}
+                className={`px-3 py-1 rounded-md text-sm ${customerFilter === "pending" ? "bg-amber-100 text-amber-700 font-semibold" : "bg-transparent"}`}
+              >
+                Pending
+              </button>
+            </div>
+            <div className="text-sm text-slate-500">
+              Showing {filteredCustomers.length} of {customers.length}
+            </div>
+          </div>
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
@@ -251,7 +309,7 @@ export default function PartiesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {customers.map((customer) => (
+              {filteredCustomers.map((customer) => (
                 <tr key={customer.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-900">
                     {customer.name}
@@ -286,6 +344,34 @@ export default function PartiesPage() {
       {/* Suppliers Table */}
       {activeTab === "suppliers" && (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-3 border-b">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">
+                Filter:
+              </span>
+              <button
+                onClick={() => setSupplierFilter("all")}
+                className={`px-3 py-1 rounded-md text-sm ${supplierFilter === "all" ? "bg-slate-100 font-semibold" : "bg-transparent"}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setSupplierFilter("paid")}
+                className={`px-3 py-1 rounded-md text-sm ${supplierFilter === "paid" ? "bg-emerald-100 text-emerald-700 font-semibold" : "bg-transparent"}`}
+              >
+                Paid
+              </button>
+              <button
+                onClick={() => setSupplierFilter("pending")}
+                className={`px-3 py-1 rounded-md text-sm ${supplierFilter === "pending" ? "bg-amber-100 text-amber-700 font-semibold" : "bg-transparent"}`}
+              >
+                Pending
+              </button>
+            </div>
+            <div className="text-sm text-slate-500">
+              Showing {filteredSuppliers.length} of {suppliers.length}
+            </div>
+          </div>
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
@@ -310,7 +396,7 @@ export default function PartiesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {suppliers.map((supplier) => (
+              {filteredSuppliers.map((supplier) => (
                 <tr key={supplier.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 font-medium text-slate-900">
                     {supplier.name}

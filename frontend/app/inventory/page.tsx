@@ -30,19 +30,23 @@ export default function InventoryPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchProducts();
+    const loadProducts = async () => {
+      try {
+        const res = await api.get("/products");
+        setProducts(res.data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProducts();
   }, []);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await api.get("/products");
-      setProducts(res.data);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categoryOptions = Array.from(
+    new Set(products.map((product) => product.category).filter(Boolean)),
+  );
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,15 +123,21 @@ export default function InventoryPage() {
                 <label className="block text-sm font-medium mb-1">
                   Category
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.category}
                   onChange={(e) =>
                     setFormData({ ...formData, category: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="e.g., Electronics"
-                />
+                >
+                  <option value="">Select a category</option>
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                  <option value="General">General (default)</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -275,3 +285,20 @@ export default function InventoryPage() {
     </div>
   );
 }
+queryClient.invalidateQueries({ queryKey: ["categories"] });
+<div>
+  <label className="block text-sm font-medium mb-1">Category</label>
+  <select
+    value={formData.category}
+    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+  >
+    <option value="">Select a category</option>
+    {categories.map((cat) => (
+      <option key={cat.name} value={cat.name}>
+        {cat.name}
+      </option>
+    ))}
+    <option value="General">General (default)</option>
+  </select>
+</div>;

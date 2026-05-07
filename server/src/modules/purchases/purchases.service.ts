@@ -5,7 +5,7 @@ import type { CreatePurchaseInput } from "./purchases.schema";
 async function generatePurchaseNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
-  
+
   const todayStr = today.replace(/-/g, "");
   const count = await prisma.purchase.count({
     where: { purchaseNumber: { startsWith: `PUR-${todayStr}` } },
@@ -20,26 +20,104 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
   });
   if (!supplier) throw new CustomError("Supplier not found", 404);
 
+  // validate provided productIds (if any)
   for (const item of data.lineItems) {
-    const product = await prisma.product.findUnique({
-      where: { id: item.productId },
-    });
-    if (!product) throw new CustomError(`Product ${item.productId} not found`, 404);
+    if (item.productId) {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+      });
+      if (!product)
+        throw new CustomError(`Product ${item.productId} not found`, 404);
+    }
   }
 
   const purchase = await prisma.$transaction(async (tx) => {
     const purchaseNumber = await generatePurchaseNumber();
 
     let subtotal = 0;
-    const lineItems: any[] = [];
+    const lineItems: Array<{
+      productId: string;
+      productName: string;
+      category: string | null;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+      createdNewProduct: boolean;
+    }> = [];
     for (const item of data.lineItems) {
       const totalPrice = item.unitPrice * item.quantity;
       subtotal += totalPrice;
+      let product: {
+        id: string;
+        name: string;
+        category: string | null;
+      } | null = null;
+      let createdNewProduct = false;
+
+      if (item.productId) {
+        product = await tx.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, name: true, category: true },
+        });
+        if (!product) {
+          throw new CustomError(`Product ${item.productId} not found`, 404);
+        }
+      } else {
+        const manualName = item.productName?.trim();
+        if (!manualName) {
+          throw new CustomError("Product name is required", 400);
+        }
+
+        product = await tx.product.findFirst({
+          where: { name: { equals: manualName, mode: "insensitive" } },
+          select: { id: true, name: true, category: true },
+        });
+
+        if (!product) {
+          product = await tx.product.create({
+            data: {
+              name: manualName,
+              category: item.category || "General",
+              purchasePrice: item.unitPrice,
+              sellingPrice: item.unitPrice,
+              gst: 0,
+              stock: item.quantity,
+              status: "active",
+            },
+            select: { id: true, name: true, category: true },
+          });
+          createdNewProduct = true;
+        }
+      }
+
+      if (!createdNewProduct) {
+        const productUpdates: {
+          stock?: { increment: number };
+          purchasePrice?: number;
+          category?: string;
+        } = {
+          stock: { increment: item.quantity },
+          purchasePrice: item.unitPrice,
+        };
+
+        if (item.category && !product.category) {
+          productUpdates.category = item.category;
+        }
+
+        await tx.product.update({
+          where: { id: product.id },
+          data: productUpdates,
+        });
+      }
+
       lineItems.push({
-        productId: item.productId,
+        productId: product.id,
+        productName: product.name,
+        category: item.category || product.category || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice,
+        createdNewProduct,
       });
     }
 
@@ -53,7 +131,7 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
         subtotal,
         gstAmount,
         totalAmount,
-        status: "created",
+        status: data.status || "created",
         notes: data.notes,
       },
     });
@@ -63,17 +141,12 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
         data: {
           purchaseId: newPurchase.id,
           productId: item.productId,
+          productName: item.productName,
+          category: item.category,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
         },
-      });
-    }
-
-    for (const item of data.lineItems) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
       });
     }
 
