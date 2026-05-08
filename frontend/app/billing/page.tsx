@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -43,6 +43,17 @@ type LineItem = {
   unitPrice: number;
 };
 
+const useLocalCategories = () => {
+  const [saved, setSaved] = useState<string[]>([]);
+  useEffect(() => {
+    const stored = window.localStorage.getItem("inventoryCategories");
+    if (stored) {
+      setSaved(JSON.parse(stored) as string[]);
+    }
+  }, []);
+  return saved;
+};
+
 const formatShortDate = (value: string) =>
   new Date(value).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -53,6 +64,11 @@ const formatShortDate = (value: string) =>
 export default function BillingPage() {
   const queryClient = useQueryClient();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [invoiceEditForm, setInvoiceEditForm] = useState({
+    status: "Pending",
+    notes: "",
+  });
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -116,6 +132,7 @@ export default function BillingPage() {
     },
   });
 
+  const savedCategories = useLocalCategories();
   const loading =
     invoicesLoading || customersLoading || productsLoading || paymentsLoading;
   const hasError =
@@ -267,10 +284,10 @@ export default function BillingPage() {
         paidAmount: "",
       });
       setLineItems([{ productId: "", quantity: 0, unitPrice: 0 }]);
-      queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      await queryClient.invalidateQueries({ queryKey: ["payments"] });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
     } catch (error) {
       console.error("Error creating invoice:", error);
       const message =
@@ -691,7 +708,7 @@ export default function BillingPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded whitespace-nowrap min-w-[72px] ${
+                            className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded whitespace-nowrap min-w-18 ${
                               invoice.status === "created"
                                 ? "bg-blue-50 text-blue-700"
                                 : "bg-emerald-50 text-emerald-700"
@@ -716,8 +733,8 @@ export default function BillingPage() {
 
         {selectedInvoice && (
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
+              <div className="flex justify-between items-start">
                 <h3 className="text-lg font-bold">Invoice Details</h3>
                 <button
                   className="text-slate-400 hover:text-slate-600"
@@ -727,94 +744,173 @@ export default function BillingPage() {
                 </button>
               </div>
 
-              <div className="space-y-4 pb-4 border-b">
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">
-                    Invoice Number
-                  </p>
-                  <p className="font-bold text-slate-900">
-                    {selectedInvoice.invoiceNumber}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">Customer</p>
-                  <p className="font-bold text-slate-900">
-                    {selectedInvoice.customer.name}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {selectedInvoice.customer.email}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">Date</p>
-                  <p className="font-bold text-slate-900">
-                    {formatShortDate(selectedInvoice.invoiceDate)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 py-4 border-b">
-                <h4 className="font-bold text-slate-900 mb-3">Line Items</h4>
-                {selectedInvoice.lineItems.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-slate-700">
-                      {item.product.name} x{item.quantity}
-                    </span>
-                    <span className="font-medium">
-                      {formatINR(item.quantity * item.unitPrice)}
-                    </span>
+              {!editingInvoice ? (
+                <>
+                  <div className="space-y-4 pb-4 border-b">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">
+                        Invoice Number
+                      </p>
+                      <p className="font-bold text-slate-900">
+                        {selectedInvoice.invoiceNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">
+                        Customer
+                      </p>
+                      <p className="font-bold text-slate-900">
+                        {selectedInvoice.customer.name}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {selectedInvoice.customer.email}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Date</p>
+                      <p className="font-bold text-slate-900">
+                        {formatShortDate(selectedInvoice.invoiceDate)}
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="space-y-2 py-4">
-                {(() => {
-                  const paidAmount = getInvoicePaidAmount(selectedInvoice.id);
-                  const pendingAmount = Math.max(
-                    0,
-                    selectedInvoice.totalAmount - paidAmount,
-                  );
-
-                  return (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Subtotal</span>
+                  <div className="space-y-2 py-4 border-b">
+                    <h4 className="font-bold text-slate-900 mb-3">
+                      Line Items
+                    </h4>
+                    {selectedInvoice.lineItems.map((item, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-slate-700">
+                          {item.product.name} x{item.quantity}
+                        </span>
                         <span className="font-medium">
-                          {formatINR(selectedInvoice.subtotal)}
+                          {formatINR(item.quantity * item.unitPrice)}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">GST (18%)</span>
-                        <span className="font-medium">
-                          {formatINR(selectedInvoice.gstAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                        <span>Total</span>
-                        <span>{formatINR(selectedInvoice.totalAmount)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Paid Amount</span>
-                        <span className="font-medium text-emerald-700">
-                          {formatINR(paidAmount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Pending Amount</span>
-                        <span className="font-medium text-orange-700">
-                          {formatINR(pendingAmount)}
-                        </span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
+                    ))}
+                  </div>
 
-              {selectedInvoice.notes && (
-                <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
-                  <p className="text-xs text-slate-500 uppercase mb-1">Notes</p>
-                  <p>{selectedInvoice.notes}</p>
-                </div>
+                  <div className="space-y-2 py-4">
+                    {(() => {
+                      const paidAmount = getInvoicePaidAmount(
+                        selectedInvoice.id,
+                      );
+                      const pendingAmount = Math.max(
+                        0,
+                        selectedInvoice.totalAmount - paidAmount,
+                      );
+
+                      return (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Subtotal</span>
+                            <span className="font-medium">
+                              {formatINR(selectedInvoice.subtotal)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">GST (18%)</span>
+                            <span className="font-medium">
+                              {formatINR(selectedInvoice.gstAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                            <span>Total</span>
+                            <span>
+                              {formatINR(selectedInvoice.totalAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">Paid Amount</span>
+                            <span className="font-medium text-emerald-700">
+                              {formatINR(paidAmount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">
+                              Pending Amount
+                            </span>
+                            <span className="font-medium text-orange-700">
+                              {formatINR(pendingAmount)}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {selectedInvoice.notes && (
+                    <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
+                      <p className="text-xs text-slate-500 uppercase mb-1">
+                        Notes
+                      </p>
+                      <p>{selectedInvoice.notes}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => openInvoiceEditor(selectedInvoice)}
+                    className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                  >
+                    Edit Invoice
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={handleUpdateInvoice} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={invoiceEditForm.status}
+                      onChange={(e) =>
+                        setInvoiceEditForm({
+                          ...invoiceEditForm,
+                          status: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Paid">Paid</option>
+                      <option value="Partial">Partial</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Notes
+                    </label>
+                    <textarea
+                      value={invoiceEditForm.notes}
+                      onChange={(e) =>
+                        setInvoiceEditForm({
+                          ...invoiceEditForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      rows={4}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {submitting ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingInvoice(null)}
+                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               )}
             </div>
           </div>

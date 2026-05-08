@@ -19,6 +19,10 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [savedCategories, setSavedCategories] = useState<string[]>([]);
+  const [categoryForm, setCategoryForm] = useState({ name: "" });
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -29,24 +33,64 @@ export default function InventoryPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  const fetchProducts = async () => {
+    try {
+      const res = await api.get("/products");
+      setProducts(res.data);
+      const storedCategories = window.localStorage.getItem(
+        "inventoryCategories",
+      );
+      if (storedCategories) {
+        setSavedCategories(JSON.parse(storedCategories) as string[]);
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadProducts = async () => {
-      try {
-        const res = await api.get("/products");
-        setProducts(res.data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
+      await fetchProducts();
     };
 
     void loadProducts();
   }, []);
 
   const categoryOptions = Array.from(
-    new Set(products.map((product) => product.category).filter(Boolean)),
+    new Set([
+      ...products.map((product) => product.category).filter(Boolean),
+      ...savedCategories,
+    ]),
   );
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = categoryForm.name.trim();
+    if (!value) return;
+    const nextCategories = Array.from(new Set([...savedCategories, value]));
+    setSavedCategories(nextCategories);
+    window.localStorage.setItem(
+      "inventoryCategories",
+      JSON.stringify(nextCategories),
+    );
+    setCategoryForm({ name: "" });
+    setShowCategoryForm(false);
+  };
+
+  const startEditProduct = (product: Product) => {
+    setEditingProductId(product.id);
+    setFormData({
+      name: product.name,
+      category: product.category || "",
+      stock: String(product.stock),
+      purchasePrice: String(product.purchasePrice),
+      sellingPrice: String(product.sellingPrice),
+      gst: String(product.gst),
+    });
+    setShowForm(true);
+  };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,7 +101,7 @@ export default function InventoryPage() {
 
     setSubmitting(true);
     try {
-      await api.post("/products", {
+      const payload = {
         name: formData.name,
         category: formData.category || "General",
         stock: parseInt(formData.stock) || 0,
@@ -65,8 +109,15 @@ export default function InventoryPage() {
         sellingPrice: parseFloat(formData.sellingPrice),
         gst: parseFloat(formData.gst),
         status: "active",
-      });
+      };
+
+      if (editingProductId) {
+        await api.patch(`/products/${editingProductId}`, payload);
+      } else {
+        await api.post("/products", payload);
+      }
       setShowForm(false);
+      setEditingProductId(null);
       setFormData({
         name: "",
         category: "",
@@ -75,7 +126,7 @@ export default function InventoryPage() {
         sellingPrice: "",
         gst: "18",
       });
-      fetchProducts();
+      void fetchProducts();
     } catch (error) {
       console.error("Error adding product:", error);
       alert("Failed to add product");
@@ -92,17 +143,59 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Inventory</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          + Add Product
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCategoryForm(!showCategoryForm)}
+            className="px-4 py-2 bg-slate-100 text-slate-800 rounded-lg hover:bg-slate-200 transition"
+          >
+            + Add Category
+          </button>
+          <button
+            onClick={() => {
+              setEditingProductId(null);
+              setFormData({
+                name: "",
+                category: "",
+                stock: "",
+                purchasePrice: "",
+                sellingPrice: "",
+                gst: "18",
+              });
+              setShowForm(!showForm);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            + Add Product
+          </button>
+        </div>
       </div>
+
+      {showCategoryForm && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+          <h2 className="text-xl font-bold">Add Category</h2>
+          <form onSubmit={handleAddCategory} className="flex gap-2">
+            <input
+              type="text"
+              value={categoryForm.name}
+              onChange={(e) => setCategoryForm({ name: e.target.value })}
+              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
+              placeholder="e.g., Electronics"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Save Category
+            </button>
+          </form>
+        </div>
+      )}
 
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-xl font-bold">Add New Product</h2>
+          <h2 className="text-xl font-bold">
+            {editingProductId ? "Edit Product" : "Add New Product"}
+          </h2>
           <form onSubmit={handleAddProduct} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -203,7 +296,11 @@ export default function InventoryPage() {
                 disabled={submitting}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
               >
-                {submitting ? "Adding..." : "Add Product"}
+                {submitting
+                  ? "Saving..."
+                  : editingProductId
+                    ? "Save Changes"
+                    : "Add Product"}
               </button>
               <button
                 type="button"
@@ -239,6 +336,9 @@ export default function InventoryPage() {
               <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                 Status
               </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -272,6 +372,15 @@ export default function InventoryPage() {
                     {product.status}
                   </span>
                 </td>
+                <td className="px-6 py-4">
+                  <button
+                    type="button"
+                    onClick={() => startEditProduct(product)}
+                    className="text-sm font-semibold text-blue-600 hover:underline"
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -285,20 +394,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-queryClient.invalidateQueries({ queryKey: ["categories"] });
-<div>
-  <label className="block text-sm font-medium mb-1">Category</label>
-  <select
-    value={formData.category}
-    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-  >
-    <option value="">Select a category</option>
-    {categories.map((cat) => (
-      <option key={cat.name} value={cat.name}>
-        {cat.name}
-      </option>
-    ))}
-    <option value="General">General (default)</option>
-  </select>
-</div>;

@@ -24,8 +24,14 @@ export const createPurchaseSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const updatePurchaseSchema = z.object({
+  status: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 export const purchaseIdSchema = z.object({
   id: z.string().min(1, "Purchase ID is required"),
 });
 
 export type CreatePurchaseInput = z.infer<typeof createPurchaseSchema>;
+export type UpdatePurchaseInput = z.infer<typeof updatePurchaseSchema>;

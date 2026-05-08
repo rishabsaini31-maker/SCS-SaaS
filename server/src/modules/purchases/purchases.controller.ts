@@ -1,21 +1,52 @@
 import type { Request, Response, NextFunction } from "express";
 import * as service from "./purchases.service";
-import { createPurchaseSchema, purchaseIdSchema } from "./purchases.schema";
+import {
+  createPurchaseSchema,
+  purchaseIdSchema,
+  updatePurchaseSchema,
+} from "./purchases.schema";
 
-export const create = async (req: Request, res: Response, next: NextFunction) => {
+export const create = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const data = createPurchaseSchema.parse(req.body);
     const purchase = await service.createPurchase(data);
     res.status(201).json(purchase);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const getById = async (req: Request, res: Response, next: NextFunction) => {
+export const getById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const { id } = purchaseIdSchema.parse(req.params);
     const purchase = await service.getPurchase(id);
     res.json(purchase);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = purchaseIdSchema.parse(req.params);
+    const data = updatePurchaseSchema.parse(req.body);
+    const purchase = await service.updatePurchase(id, data);
+    res.json(purchase);
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const list = async (req: Request, res: Response, next: NextFunction) => {
@@ -25,5 +56,7 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
       status: req.query.status as string | undefined,
     });
     res.json(purchases);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 };

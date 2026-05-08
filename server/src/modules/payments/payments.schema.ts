@@ -10,8 +10,14 @@ export const createPaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const updatePaymentSchema = z.object({
+  paymentMethod: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 export const paymentIdSchema = z.object({
   id: z.string().min(1, "Payment ID is required"),
 });
 
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
+export type UpdatePaymentInput = z.infer<typeof updatePaymentSchema>;

@@ -54,6 +54,11 @@ type PaymentPayload = {
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [paymentEditForm, setPaymentEditForm] = useState({
+    paymentMethod: "bank_transfer",
+    notes: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [partyType, setPartyType] = useState<"customer" | "supplier">(
     "customer",
@@ -258,6 +263,31 @@ export default function PaymentsPage() {
     } catch (error) {
       console.error("Error adding payment:", error);
       alert("Failed to record payment");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openPaymentEditor = (payment: Payment) => {
+    setEditingPayment(payment);
+    setPaymentEditForm({
+      paymentMethod: payment.paymentMethod,
+      notes: payment.notes || "",
+    });
+  };
+
+  const handleUpdatePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPayment) return;
+
+    setSubmitting(true);
+    try {
+      await api.patch(`/payments/${editingPayment.id}`, paymentEditForm);
+      setEditingPayment(null);
+      await queryClient.invalidateQueries({ queryKey: ["payments"] });
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      alert("Failed to update payment");
     } finally {
       setSubmitting(false);
     }
@@ -775,6 +805,60 @@ export default function PaymentsPage() {
         />
       </div>
 
+      {editingPayment && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
+          <form
+            onSubmit={handleUpdatePayment}
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
+          >
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Payment Method
+              </label>
+              <input
+                value={paymentEditForm.paymentMethod}
+                onChange={(e) =>
+                  setPaymentEditForm({
+                    ...paymentEditForm,
+                    paymentMethod: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Notes</label>
+              <input
+                value={paymentEditForm.notes}
+                onChange={(e) =>
+                  setPaymentEditForm({
+                    ...paymentEditForm,
+                    notes: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div className="flex gap-2 md:col-span-3">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {submitting ? "Saving..." : "Save Payment Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingPayment(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Payments Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-left">
@@ -800,6 +884,9 @@ export default function PaymentsPage() {
               </th>
               <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                 Date
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Action
               </th>
             </tr>
           </thead>
@@ -836,6 +923,15 @@ export default function PaymentsPage() {
                 </td>
                 <td className="px-6 py-4 text-slate-700">
                   {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
+                </td>
+                <td className="px-6 py-4">
+                  <button
+                    type="button"
+                    onClick={() => openPaymentEditor(payment)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
                 </td>
               </tr>
             ))}

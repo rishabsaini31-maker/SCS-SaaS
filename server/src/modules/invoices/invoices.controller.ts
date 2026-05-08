@@ -1,6 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import * as service from "./invoices.service";
-import { createInvoiceSchema } from "./invoices.schema";
+import {
+  createInvoiceSchema,
+  invoiceIdSchema,
+  updateInvoiceSchema,
+} from "./invoices.schema";
 
 export const create = async (
   req: Request,
@@ -22,8 +26,7 @@ export const getById = async (
   next: NextFunction,
 ) => {
   try {
-    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    if (!id) throw new Error("ID is required");
+    const { id } = invoiceIdSchema.parse(req.params);
     const invoice = await service.getInvoice(id);
     res.json(invoice);
   } catch (err) {
@@ -44,6 +47,21 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
       endDate,
     });
     res.json(invoices);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = invoiceIdSchema.parse(req.params);
+    const data = updateInvoiceSchema.parse(req.body);
+    const invoice = await service.updateInvoice(id, data);
+    res.json(invoice);
   } catch (err) {
     next(err);
   }

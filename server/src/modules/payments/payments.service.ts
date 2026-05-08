@@ -1,6 +1,6 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import type { CreatePaymentInput } from "./payments.schema";
+import type { CreatePaymentInput, UpdatePaymentInput } from "./payments.schema";
 
 async function generatePaymentNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
@@ -185,6 +185,14 @@ export const getPayment = async (id: string) => {
   });
   if (!payment) throw new CustomError("Payment not found", 404);
   return payment;
+};
+
+export const updatePayment = async (id: string, data: UpdatePaymentInput) => {
+  await getPayment(id);
+  return prisma.payment.update({
+    where: { id },
+    data,
+  });
 };
 
 export const getPayments = async (filters?: {

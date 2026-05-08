@@ -14,8 +14,14 @@ export const createInvoiceSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const updateInvoiceSchema = z.object({
+  status: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 export const invoiceIdSchema = z.object({
   id: z.string().min(1, "Invoice ID is required"),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;

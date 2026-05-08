@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 
@@ -32,20 +33,55 @@ type Product = {
 
 type LineItem = {
   productId: string;
+  productName?: string;
   category?: string;
   quantity: number;
   unitPrice: number;
 };
 
 export default function PurchasePage() {
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(
     null,
   );
+  const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [purchaseEditForm, setPurchaseEditForm] = useState({
+    status: "Pending",
+    notes: "",
+  });
   const [showForm, setShowForm] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const {
+    data: purchases = [],
+    isLoading: purchasesLoading,
+    refetch: refetchPurchases,
+  } = useQuery({
+    queryKey: ["purchases"],
+    queryFn: async () => {
+      const res = await api.get<Purchase[]>("/purchases");
+      return res.data;
+    },
+  });
+  const {
+    data: suppliers = [],
+    isLoading: suppliersLoading,
+    refetch: refetchSuppliers,
+  } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const res = await api.get<Supplier[]>("/suppliers");
+      return res.data;
+    },
+  });
+  const {
+    data: products = [],
+    isLoading: productsLoading,
+    refetch: refetchProducts,
+  } = useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const res = await api.get<Product[]>("/products");
+      return res.data;
+    },
+  });
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
@@ -56,34 +92,27 @@ export default function PurchasePage() {
     gst: 18,
     barcodeInput: "",
   });
+  const [savedCategories, setSavedCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [purchaseRes, supRes, prodRes] = await Promise.all([
-          api.get("/purchases"),
-          api.get("/suppliers"),
-          api.get("/products"),
-        ]);
-        setPurchases(purchaseRes.data);
-        setSuppliers(supRes.data);
-        setProducts(prodRes.data);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
+    const loadCategories = () => {
+      const storedCategories = window.localStorage.getItem(
+        "inventoryCategories",
+      );
+      if (storedCategories) {
+        setSavedCategories(JSON.parse(storedCategories) as string[]);
       }
     };
-
-    void loadData();
+    loadCategories();
   }, []);
 
   const categoryOptions = Array.from(
-    new Set(
-      products
+    new Set([
+      ...products
         .map((product) => product.category)
         .filter((category): category is string => Boolean(category)),
-    ),
+      ...savedCategories,
+    ]),
   );
 
   const addLineItem = () => {
@@ -150,7 +179,8 @@ export default function PurchasePage() {
       await api.post("/purchases", {
         supplierId: formData.supplierId,
         lineItems: lineItems.map((item) => ({
-          productId: item.productId,
+          productId: item.productId || undefined,
+          productName: item.productName || undefined,
           category: item.category || undefined,
           quantity: parseInt(String(item.quantity)),
           unitPrice: parseFloat(String(item.unitPrice)),
@@ -159,8 +189,14 @@ export default function PurchasePage() {
       });
       setShowForm(false);
       setFormData({ supplierId: "", notes: "", gst: 18, barcodeInput: "" });
-      setLineItems([{ productId: "", quantity: 0, unitPrice: 0 }]);
-      fetchPurchases();
+      setLineItems([
+        { productId: "", productName: "", quantity: 0, unitPrice: 0 },
+      ]);
+      await Promise.all([
+        refetchPurchases(),
+        refetchSuppliers(),
+        refetchProducts(),
+      ]);
     } catch (error) {
       console.error("Error creating purchase:", error);
       alert("Failed to create purchase order");
@@ -168,6 +204,34 @@ export default function PurchasePage() {
       setSubmitting(false);
     }
   };
+
+  const openPurchaseEditor = (purchase: Purchase) => {
+    setEditingPurchase(purchase);
+    setPurchaseEditForm({
+      status: purchase.status,
+      notes: purchase.notes || "",
+    });
+  };
+
+  const handleUpdatePurchase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPurchase) return;
+
+    setSubmitting(true);
+    try {
+      await api.patch(`/purchases/${editingPurchase.id}`, purchaseEditForm);
+      setEditingPurchase(null);
+      setSelectedPurchase(null);
+      await refetchPurchases();
+    } catch (error) {
+      console.error("Error updating purchase:", error);
+      alert("Failed to update purchase");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const loading = purchasesLoading || suppliersLoading || productsLoading;
 
   if (loading) {
     return <div className="text-slate-500">Loading purchases...</div>;
@@ -287,8 +351,10 @@ export default function PurchasePage() {
                           (p) => p.id === e.target.value,
                         );
                         updateLineItem(idx, "productId", e.target.value);
-                        if (prod)
+                        if (prod) {
                           updateLineItem(idx, "unitPrice", prod.purchasePrice);
+                          updateLineItem(idx, "productName", prod.name);
+                        }
                       }}
                       className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
                     >
@@ -299,6 +365,16 @@ export default function PurchasePage() {
                         </option>
                       ))}
                     </select>
+                    <input
+                      type="text"
+                      value={item.productName || ""}
+                      onChange={(e) =>
+                        updateLineItem(idx, "productName", e.target.value)
+                      }
+                      className="w-32 px-2 py-1 border border-slate-300 rounded text-sm"
+                      placeholder="Manual name"
+                      title="Manual Product Name"
+                    />
                     <select
                       value={item.category || ""}
                       onChange={(e) =>
@@ -488,8 +564,8 @@ export default function PurchasePage() {
 
         {selectedPurchase && (
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
+              <div className="flex justify-between items-start">
                 <h3 className="text-lg font-bold">Purchase Details</h3>
                 <button
                   className="text-slate-400 hover:text-slate-600"
@@ -499,67 +575,141 @@ export default function PurchasePage() {
                 </button>
               </div>
 
-              <div className="space-y-4 pb-4 border-b">
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">PO Number</p>
-                  <p className="font-bold text-slate-900">
-                    {selectedPurchase.purchaseNumber}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">Supplier</p>
-                  <p className="font-bold text-slate-900">
-                    {selectedPurchase.supplier.name}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 uppercase">Date</p>
-                  <p className="font-bold text-slate-900">
-                    {new Date(selectedPurchase.purchaseDate).toLocaleDateString(
-                      "en-IN",
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2 py-4 border-b">
-                <h4 className="font-bold text-slate-900 mb-3">Line Items</h4>
-                {selectedPurchase.lineItems.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-slate-700">
-                      {item.product.name} x{item.quantity}
-                    </span>
-                    <span className="font-medium">
-                      {formatINR(item.quantity * item.unitPrice)}
-                    </span>
+              {!editingPurchase ? (
+                <>
+                  <div className="space-y-4 pb-4 border-b">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">
+                        PO Number
+                      </p>
+                      <p className="font-bold text-slate-900">
+                        {selectedPurchase.purchaseNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">
+                        Supplier
+                      </p>
+                      <p className="font-bold text-slate-900">
+                        {selectedPurchase.supplier.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase">Date</p>
+                      <p className="font-bold text-slate-900">
+                        {new Date(
+                          selectedPurchase.purchaseDate,
+                        ).toLocaleDateString("en-IN")}
+                      </p>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="space-y-2 py-4">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Subtotal</span>
-                  <span className="font-medium">
-                    {formatINR(selectedPurchase.subtotal)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">GST (18%)</span>
-                  <span className="font-medium">
-                    {formatINR(selectedPurchase.gstAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                  <span>Total</span>
-                  <span>{formatINR(selectedPurchase.totalAmount)}</span>
-                </div>
-              </div>
+                  <div className="space-y-2 py-4 border-b">
+                    <h4 className="font-bold text-slate-900 mb-3">
+                      Line Items
+                    </h4>
+                    {selectedPurchase.lineItems.map((item, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-slate-700">
+                          {item.product.name} x{item.quantity}
+                        </span>
+                        <span className="font-medium">
+                          {formatINR(item.quantity * item.unitPrice)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
 
-              {selectedPurchase.notes && (
-                <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
-                  <p className="text-xs text-slate-500 uppercase mb-1">Notes</p>
-                  <p>{selectedPurchase.notes}</p>
-                </div>
+                  <div className="space-y-2 py-4">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Subtotal</span>
+                      <span className="font-medium">
+                        {formatINR(selectedPurchase.subtotal)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">GST (18%)</span>
+                      <span className="font-medium">
+                        {formatINR(selectedPurchase.gstAmount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                      <span>Total</span>
+                      <span>{formatINR(selectedPurchase.totalAmount)}</span>
+                    </div>
+                  </div>
+
+                  {selectedPurchase.notes && (
+                    <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
+                      <p className="text-xs text-slate-500 uppercase mb-1">
+                        Notes
+                      </p>
+                      <p>{selectedPurchase.notes}</p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => openPurchaseEditor(selectedPurchase)}
+                    className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                  >
+                    Edit Purchase
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={handleUpdatePurchase} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={purchaseEditForm.status}
+                      onChange={(e) =>
+                        setPurchaseEditForm({
+                          ...purchaseEditForm,
+                          status: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Received">Received</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Notes
+                    </label>
+                    <textarea
+                      value={purchaseEditForm.notes}
+                      onChange={(e) =>
+                        setPurchaseEditForm({
+                          ...purchaseEditForm,
+                          notes: e.target.value,
+                        })
+                      }
+                      rows={4}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {submitting ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingPurchase(null)}
+                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               )}
             </div>
           </div>
@@ -568,24 +718,3 @@ export default function PurchasePage() {
     </div>
   );
 }
-
-<select
-  className="w-32 px-2 py-1 border border-slate-300 rounded text-sm"
-  title="Category"
->
-  <option value="">Category</option>
-  {categories.map((cat) => (
-    <option key={cat.name} value={cat.name}>
-      {cat.name}
-    </option>
-  ))}
-  <option value="General">General</option>
-</select>;
-const [supRes, prodRes, catRes] = await Promise.all([
-  api.get("/suppliers"),
-  api.get("/products"),
-  api.get("/categories"),
-]);
-setSuppliers(supRes.data);
-setProducts(prodRes.data);
-setCategories(catRes.data);

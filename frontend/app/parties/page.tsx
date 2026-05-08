@@ -33,6 +33,10 @@ export default function PartiesPage() {
     "customers",
   );
   const [showForm, setShowForm] = useState(false);
+  const [editingParty, setEditingParty] = useState<{
+    id: string;
+    type: "customers" | "suppliers";
+  } | null>(null);
   const [customerFilter, setCustomerFilter] = useState<
     "all" | "paid" | "pending"
   >("all");
@@ -97,15 +101,22 @@ export default function PartiesPage() {
     setSubmitting(true);
     try {
       const endpoint = activeTab === "customers" ? "/customers" : "/suppliers";
-      await api.post(endpoint, {
+      const payload = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || "",
         address: formData.address || "",
         gstin: formData.gstin || "",
         status: "active",
-      });
+      };
+
+      if (editingParty && editingParty.type === activeTab) {
+        await api.patch(`${endpoint}/${editingParty.id}`, payload);
+      } else {
+        await api.post(endpoint, payload);
+      }
       setShowForm(false);
+      setEditingParty(null);
       setFormData({ name: "", email: "", phone: "", address: "", gstin: "" });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
@@ -130,7 +141,17 @@ export default function PartiesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Parties</h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            setEditingParty(null);
+            setFormData({
+              name: "",
+              email: "",
+              phone: "",
+              address: "",
+              gstin: "",
+            });
+            setShowForm(!showForm);
+          }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
           + Add {activeTab === "customers" ? "Customer" : "Supplier"}
@@ -140,7 +161,8 @@ export default function PartiesPage() {
       {showForm && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
           <h2 className="text-xl font-bold">
-            Add New {activeTab === "customers" ? "Customer" : "Supplier"}
+            {editingParty ? "Edit" : "Add New"}{" "}
+            {activeTab === "customers" ? "Customer" : "Supplier"}
           </h2>
           <form onSubmit={handleAddParty} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -214,8 +236,8 @@ export default function PartiesPage() {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
               >
                 {submitting
-                  ? "Adding..."
-                  : "Add " +
+                  ? "Saving..."
+                  : (editingParty ? "Save Changes" : "Add ") +
                     (activeTab === "customers" ? "Customer" : "Supplier")}
               </button>
               <button
@@ -306,6 +328,9 @@ export default function PartiesPage() {
                 <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                   Outstanding Balance
                 </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -328,6 +353,26 @@ export default function PartiesPage() {
                   </td>
                   <td className="px-6 py-4 font-bold text-emerald-600">
                     {formatINR(customer.outstandingBalance)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingParty({ id: customer.id, type: "customers" });
+                        setActiveTab("customers");
+                        setFormData({
+                          name: customer.name,
+                          email: customer.email,
+                          phone: customer.phone,
+                          address: customer.address,
+                          gstin: customer.gstin,
+                        });
+                        setShowForm(true);
+                      }}
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -393,6 +438,9 @@ export default function PartiesPage() {
                 <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                   Payable Balance
                 </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -415,6 +463,26 @@ export default function PartiesPage() {
                   </td>
                   <td className="px-6 py-4 font-bold text-orange-600">
                     {formatINR(supplier.payableBalance)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingParty({ id: supplier.id, type: "suppliers" });
+                        setActiveTab("suppliers");
+                        setFormData({
+                          name: supplier.name,
+                          email: supplier.email,
+                          phone: supplier.phone,
+                          address: supplier.address,
+                          gstin: supplier.gstin,
+                        });
+                        setShowForm(true);
+                      }}
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}

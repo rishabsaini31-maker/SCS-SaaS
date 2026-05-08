@@ -1,6 +1,6 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import type { CreateInvoiceInput } from "./invoices.schema";
+import type { CreateInvoiceInput, UpdateInvoiceInput } from "./invoices.schema";
 
 async function generateInvoiceNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
@@ -147,6 +147,14 @@ export const getInvoices = async (filters?: {
       lineItems: { include: { product: true } },
     },
     orderBy: { createdAt: "desc" },
+  });
+};
+
+export const updateInvoice = async (id: string, data: UpdateInvoiceInput) => {
+  await getInvoice(id);
+  return prisma.invoice.update({
+    where: { id },
+    data,
   });
 };
 

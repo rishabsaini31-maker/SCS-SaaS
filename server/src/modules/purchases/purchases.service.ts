@@ -1,6 +1,9 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import type { CreatePurchaseInput } from "./purchases.schema";
+import type {
+  CreatePurchaseInput,
+  UpdatePurchaseInput,
+} from "./purchases.schema";
 
 async function generatePurchaseNumber(): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
@@ -199,6 +202,14 @@ export const getPurchases = async (filters?: {
       lineItems: { include: { product: true } },
     },
     orderBy: { createdAt: "desc" },
+  });
+};
+
+export const updatePurchase = async (id: string, data: UpdatePurchaseInput) => {
+  await getPurchase(id);
+  return prisma.purchase.update({
+    where: { id },
+    data,
   });
 };
 
