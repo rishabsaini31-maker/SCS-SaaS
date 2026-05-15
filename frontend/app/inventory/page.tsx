@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
+import { useNotifications } from "@/lib/NotificationContext";
 
 type Product = {
   id: string;
@@ -23,6 +24,13 @@ export default function InventoryPage() {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [savedCategories, setSavedCategories] = useState<string[]>([]);
   const [categoryForm, setCategoryForm] = useState({ name: "" });
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activatingProductId, setActivatingProductId] = useState<string | null>(
+    null,
+  );
+  const [activationForm, setActivationForm] = useState({
+    sellingPrice: "",
+  });
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -32,8 +40,9 @@ export default function InventoryPage() {
     gst: "18",
   });
   const [submitting, setSubmitting] = useState(false);
+  const { setPendingProducts } = useNotifications();
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const res = await api.get("/products");
       setProducts(res.data);
@@ -48,15 +57,26 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    const loadProducts = async () => {
-      await fetchProducts();
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchProducts();
+  }, [fetchProducts]);
 
-    void loadProducts();
-  }, []);
+  // Check for pending products and show activation modal
+  // Show activation modal for pending products (without auto-triggering)
+  useEffect(() => {
+    // This effect only syncs to notification context, doesn't trigger modal automatically
+    const allPendingProducts = products.filter((p) => p.status === "pending");
+    setPendingProducts(
+      allPendingProducts.map((p) => ({
+        id: p.id,
+        name: p.name,
+        purchasePrice: p.purchasePrice,
+      })),
+    );
+  }, [products, setPendingProducts]);
 
   const categoryOptions = Array.from(
     new Set([
@@ -130,6 +150,36 @@ export default function InventoryPage() {
     } catch (error) {
       console.error("Error adding product:", error);
       alert("Failed to add product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openActivationModal = (product: Product) => {
+    setActivatingProductId(product.id);
+    setActivationForm({ sellingPrice: String(product.sellingPrice || "") });
+    setShowActivationModal(true);
+  };
+
+  const handleActivateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activatingProductId || !activationForm.sellingPrice) {
+      alert("Please enter selling price");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.post(`/products/${activatingProductId}/activate`, {
+        sellingPrice: parseFloat(activationForm.sellingPrice),
+      });
+      setShowActivationModal(false);
+      setActivatingProductId(null);
+      setActivationForm({ sellingPrice: "" });
+      void fetchProducts();
+    } catch (error) {
+      console.error("Error activating product:", error);
+      alert("Failed to activate product");
     } finally {
       setSubmitting(false);
     }
@@ -314,6 +364,55 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {showActivationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full space-y-4">
+            <h2 className="text-xl font-bold">Set Selling Price</h2>
+            <form onSubmit={handleActivateProduct} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Selling Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={activationForm.sellingPrice}
+                  onChange={(e) =>
+                    setActivationForm({
+                      ...activationForm,
+                      sellingPrice: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="0.00"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+                >
+                  {submitting ? "Activating..." : "Activate"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActivationModal(false);
+                    setActivatingProductId(null);
+                    setActivationForm({ sellingPrice: "" });
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-400 text-white rounded-lg hover:bg-slate-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b border-slate-100">
@@ -373,13 +472,23 @@ export default function InventoryPage() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={() => startEditProduct(product)}
-                    className="text-sm font-semibold text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </button>
+                  {product.status === "active" ? (
+                    <button
+                      type="button"
+                      onClick={() => startEditProduct(product)}
+                      className="text-sm font-semibold text-blue-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openActivationModal(product)}
+                      className="text-sm font-semibold text-green-600 hover:underline"
+                    >
+                      Active
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

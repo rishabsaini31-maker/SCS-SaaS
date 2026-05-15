@@ -154,6 +154,8 @@ export default function PurchasePage() {
         const idx = lineItems.length;
         updateLineItem(idx, "productId", foundProduct.id);
         updateLineItem(idx, "unitPrice", foundProduct.purchasePrice);
+        updateLineItem(idx, "quantity", 1);
+        updateLineItem(idx, "productName", foundProduct.name);
         setFormData({ ...formData, barcodeInput: "" });
       } else {
         alert("Product not found");
@@ -166,10 +168,13 @@ export default function PurchasePage() {
 
   const handleCreatePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !formData.supplierId ||
-      lineItems.some((item) => !item.productId || item.quantity === 0)
-    ) {
+    const validLineItems = lineItems.filter((item) => {
+      const hasProductRef =
+        Boolean(item.productId) || Boolean(item.productName?.trim());
+      return hasProductRef && item.quantity > 0 && item.unitPrice > 0;
+    });
+
+    if (!formData.supplierId || validLineItems.length === 0) {
       alert("Please select supplier and add line items");
       return;
     }
@@ -178,7 +183,7 @@ export default function PurchasePage() {
     try {
       await api.post("/purchases", {
         supplierId: formData.supplierId,
-        lineItems: lineItems.map((item) => ({
+        lineItems: validLineItems.map((item) => ({
           productId: item.productId || undefined,
           productName: item.productName || undefined,
           category: item.category || undefined,
@@ -282,11 +287,11 @@ export default function PurchasePage() {
                 <input
                   type="number"
                   step="0.1"
-                  value={formData.gst}
+                  value={formData.gst || ""}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      gst: parseFloat(e.target.value),
+                      gst: parseFloat(e.target.value) || 18,
                     })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
@@ -354,6 +359,9 @@ export default function PurchasePage() {
                         if (prod) {
                           updateLineItem(idx, "unitPrice", prod.purchasePrice);
                           updateLineItem(idx, "productName", prod.name);
+                          if (!item.quantity || item.quantity <= 0) {
+                            updateLineItem(idx, "quantity", 1);
+                          }
                         }
                       }}
                       className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
@@ -392,12 +400,12 @@ export default function PurchasePage() {
                     </select>
                     <input
                       type="number"
-                      value={item.quantity}
+                      value={item.quantity || ""}
                       onChange={(e) =>
                         updateLineItem(
                           idx,
                           "quantity",
-                          parseInt(e.target.value),
+                          parseInt(e.target.value) || 0,
                         )
                       }
                       className="w-16 px-2 py-1 border border-slate-300 rounded text-sm"
@@ -407,12 +415,12 @@ export default function PurchasePage() {
                     <input
                       type="number"
                       step="0.01"
-                      value={item.unitPrice}
+                      value={item.unitPrice || ""}
                       onChange={(e) =>
                         updateLineItem(
                           idx,
                           "unitPrice",
-                          parseFloat(e.target.value),
+                          parseFloat(e.target.value) || 0,
                         )
                       }
                       className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"

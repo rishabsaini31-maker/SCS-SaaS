@@ -109,3 +109,22 @@ export const suggest = async (
     next(err);
   }
 };
+
+export const activate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = productIdSchema.parse(req.params);
+    const { sellingPrice } = req.body;
+    if (sellingPrice === undefined || sellingPrice === null) {
+      res.status(400).json({ error: "sellingPrice is required" });
+      return;
+    }
+    const product = await service.activateProduct(id, parseFloat(sellingPrice));
+    res.json(product);
+  } catch (err) {
+    next(err);
+  }
+};

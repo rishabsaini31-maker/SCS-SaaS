@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { jsPDF } from "jspdf";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 
@@ -43,23 +44,306 @@ type LineItem = {
   unitPrice: number;
 };
 
-const useLocalCategories = () => {
-  const [saved, setSaved] = useState<string[]>([]);
-  useEffect(() => {
-    const stored = window.localStorage.getItem("inventoryCategories");
-    if (stored) {
-      setSaved(JSON.parse(stored) as string[]);
-    }
-  }, []);
-  return saved;
-};
-
 const formatShortDate = (value: string) =>
   new Date(value).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+
+const getInvoiceStatusMeta = (status: string) => {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "paid") {
+    return { label: "Paid", className: "bg-emerald-50 text-emerald-700" };
+  }
+  if (normalized === "pending") {
+    return { label: "Pending", className: "bg-amber-50 text-amber-700" };
+  }
+  if (normalized === "partial") {
+    return { label: "Partial", className: "bg-orange-50 text-orange-700" };
+  }
+  if (normalized === "cancelled") {
+    return { label: "Cancelled", className: "bg-rose-50 text-rose-700" };
+  }
+  if (normalized === "created") {
+    return { label: "Created", className: "bg-blue-50 text-blue-700" };
+  }
+
+  const titleCase = status
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+  return {
+    label: titleCase || "Unknown",
+    className: "bg-slate-100 text-slate-700",
+  };
+};
+
+const getInvoiceShareText = (invoice: Invoice, paidAmount: number) => {
+  const lines = [
+    `Invoice: ${invoice.invoiceNumber}`,
+    `Customer: ${invoice.customer.name}`,
+    `Date: ${formatShortDate(invoice.invoiceDate)}`,
+    `Status: ${getInvoiceStatusMeta(invoice.status).label}`,
+    "",
+    "Line Items:",
+    ...invoice.lineItems.map(
+      (item) =>
+        `- ${item.product.name} x${item.quantity} = ${formatINR(item.quantity * item.unitPrice)}`,
+    ),
+    "",
+    `Subtotal: ${formatINR(invoice.subtotal)}`,
+    `GST: ${formatINR(invoice.gstAmount)}`,
+    `Total: ${formatINR(invoice.totalAmount)}`,
+    `Paid: ${formatINR(paidAmount)}`,
+    `Pending: ${formatINR(Math.max(0, invoice.totalAmount - paidAmount))}`,
+  ];
+
+  if (invoice.notes) {
+    lines.push("", `Notes: ${invoice.notes}`);
+  }
+
+  return lines.join("\n");
+};
+
+const getInvoiceFileName = (invoiceNumber: string) =>
+  `${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, "_")}.pdf`;
+
+const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const usableWidth = pageWidth - margin * 2;
+  const rightX = pageWidth - margin;
+  let cursorY = 18;
+
+  const ensureSpace = (neededHeight: number) => {
+    if (cursorY + neededHeight > pageHeight - 18) {
+      doc.addPage();
+      cursorY = 18;
+    }
+  };
+
+  const addSectionTitle = (title: string) => {
+    ensureSpace(10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title, margin, cursorY);
+    cursorY += 4;
+  };
+
+  const addKeyValue = (
+    label: string,
+    value: string,
+    x: number,
+    y: number,
+    width: number,
+  ) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(label, x, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(15, 23, 42);
+    const wrapped = doc.splitTextToSize(value, width);
+    doc.text(wrapped, x, y + 4);
+    return y + 4 + wrapped.length * 4;
+  };
+
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(margin, cursorY, usableWidth, 22, 3, 3, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("INVOICE", margin + 4, cursorY + 8);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Invoice No: ${invoice.invoiceNumber}`, margin + 4, cursorY + 14);
+  doc.text(
+    `Status: ${getInvoiceStatusMeta(invoice.status).label}`,
+    rightX - 4,
+    cursorY + 8,
+    {
+      align: "right",
+    },
+  );
+  doc.text(
+    `Date: ${formatShortDate(invoice.invoiceDate)}`,
+    rightX - 4,
+    cursorY + 14,
+    {
+      align: "right",
+    },
+  );
+  cursorY += 30;
+
+  const leftColumnWidth = (usableWidth - 6) / 2;
+  const rightColumnX = margin + leftColumnWidth + 6;
+
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, cursorY, leftColumnWidth, 32, 3, 3, "F");
+  doc.roundedRect(rightColumnX, cursorY, leftColumnWidth, 32, 3, 3, "F");
+
+  addKeyValue(
+    "Customer",
+    invoice.customer.name,
+    margin + 4,
+    cursorY + 6,
+    leftColumnWidth - 8,
+  );
+  addKeyValue(
+    "Email",
+    invoice.customer.email,
+    margin + 4,
+    cursorY + 12,
+    leftColumnWidth - 8,
+  );
+
+  addKeyValue(
+    "Subtotal",
+    formatINR(invoice.subtotal),
+    rightColumnX + 4,
+    cursorY + 6,
+    leftColumnWidth - 8,
+  );
+  addKeyValue(
+    "GST",
+    formatINR(invoice.gstAmount),
+    rightColumnX + 4,
+    cursorY + 12,
+    leftColumnWidth - 8,
+  );
+  addKeyValue(
+    "Total",
+    formatINR(invoice.totalAmount),
+    rightColumnX + 4,
+    cursorY + 18,
+    leftColumnWidth - 8,
+  );
+
+  cursorY += 40;
+
+  addSectionTitle("Line Items");
+  cursorY += 2;
+
+  const tableHeaderY = cursorY;
+  const colWidths = [
+    usableWidth * 0.5,
+    usableWidth * 0.12,
+    usableWidth * 0.18,
+    usableWidth * 0.2,
+  ];
+  const colX = [
+    margin,
+    margin + colWidths[0],
+    margin + colWidths[0] + colWidths[1],
+    margin + colWidths[0] + colWidths[1] + colWidths[2],
+  ];
+  const rowHeight = 8;
+
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(margin, tableHeaderY, usableWidth, rowHeight + 2, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(51, 65, 85);
+  doc.text("Description", colX[0] + 2, tableHeaderY + 6.5);
+  doc.text("Qty", colX[1] + 2, tableHeaderY + 6.5);
+  doc.text("Rate", colX[2] + 2, tableHeaderY + 6.5);
+  doc.text("Amount", colX[3] + 2, tableHeaderY + 6.5);
+
+  cursorY = tableHeaderY + rowHeight + 4;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+
+  invoice.lineItems.forEach((item, index) => {
+    const amount = item.quantity * item.unitPrice;
+    const descLines = doc.splitTextToSize(item.product.name, colWidths[0] - 6);
+    const itemRowHeight = Math.max(8, descLines.length * 4 + 2);
+    ensureSpace(itemRowHeight + 5);
+
+    const rowY = cursorY;
+    if (index % 2 === 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, rowY - 2, usableWidth, itemRowHeight + 2, "F");
+    }
+
+    doc.text(descLines, colX[0] + 2, rowY + 3);
+    doc.text(String(item.quantity), colX[1] + 2, rowY + 3);
+    doc.text(formatINR(item.unitPrice), colX[2] + 2, rowY + 3);
+    doc.text(formatINR(amount), colX[3] + 2, rowY + 3);
+    cursorY += itemRowHeight + 2;
+  });
+
+  cursorY += 4;
+  ensureSpace(30);
+  const totalsBoxWidth = 72;
+  const totalsBoxX = rightX - totalsBoxWidth;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(totalsBoxX, cursorY, totalsBoxWidth, 28, 3, 3, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Paid", totalsBoxX + 4, cursorY + 8);
+  doc.text(
+    formatINR(paidAmount),
+    totalsBoxX + totalsBoxWidth - 4,
+    cursorY + 8,
+    { align: "right" },
+  );
+  doc.text("Pending", totalsBoxX + 4, cursorY + 15);
+  doc.text(
+    formatINR(Math.max(0, invoice.totalAmount - paidAmount)),
+    totalsBoxX + totalsBoxWidth - 4,
+    cursorY + 15,
+    { align: "right" },
+  );
+  doc.setDrawColor(148, 163, 184);
+  doc.line(
+    totalsBoxX + 4,
+    cursorY + 18.5,
+    totalsBoxX + totalsBoxWidth - 4,
+    cursorY + 18.5,
+  );
+  doc.setFontSize(11);
+  doc.text("Total", totalsBoxX + 4, cursorY + 25);
+  doc.text(
+    formatINR(invoice.totalAmount),
+    totalsBoxX + totalsBoxWidth - 4,
+    cursorY + 25,
+    { align: "right" },
+  );
+
+  cursorY += 36;
+
+  if (invoice.notes) {
+    addSectionTitle("Notes");
+    const notesLines = doc.splitTextToSize(invoice.notes, usableWidth);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(notesLines, margin, cursorY);
+    cursorY += notesLines.length * 4 + 4;
+  }
+
+  ensureSpace(12);
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, pageHeight - 18, rightX, pageHeight - 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Generated from SCS Inventory SaaS", margin, pageHeight - 11);
+  doc.text("Thank you for your business", rightX, pageHeight - 11, {
+    align: "right",
+  });
+
+  doc.save(getInvoiceFileName(invoice.invoiceNumber));
+};
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
@@ -132,7 +416,6 @@ export default function BillingPage() {
     },
   });
 
-  const savedCategories = useLocalCategories();
   const loading =
     invoicesLoading || customersLoading || productsLoading || paymentsLoading;
   const hasError =
@@ -142,6 +425,27 @@ export default function BillingPage() {
     payments
       .filter((payment) => payment.invoiceId === invoiceId)
       .reduce((sum, payment) => sum + payment.amount, 0);
+
+  const handleDownloadInvoice = (invoice: Invoice) => {
+    const paidAmount = getInvoicePaidAmount(invoice.id);
+    downloadInvoicePdf(invoice, paidAmount);
+  };
+
+  const handleShareInvoice = async (invoice: Invoice) => {
+    const paidAmount = getInvoicePaidAmount(invoice.id);
+    const content = getInvoiceShareText(invoice, paidAmount);
+
+    if (navigator.share) {
+      await navigator.share({
+        title: `Invoice ${invoice.invoiceNumber}`,
+        text: content,
+      });
+      return;
+    }
+
+    await navigator.clipboard.writeText(content);
+    alert("Invoice details copied to clipboard");
+  };
 
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
@@ -303,6 +607,32 @@ export default function BillingPage() {
         ).response?.data?.message ||
         "Failed to create invoice";
       alert(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openInvoiceEditor = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    setInvoiceEditForm({
+      status: invoice.status,
+      notes: invoice.notes || "",
+    });
+  };
+
+  const handleUpdateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInvoice) return;
+
+    setSubmitting(true);
+    try {
+      await api.patch(`/invoices/${editingInvoice.id}`, invoiceEditForm);
+      setEditingInvoice(null);
+      setSelectedInvoice(null);
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      alert("Failed to update invoice");
     } finally {
       setSubmitting(false);
     }
@@ -634,8 +964,8 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-left">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <table className="w-full min-w-275 text-left">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
@@ -665,6 +995,9 @@ export default function BillingPage() {
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase whitespace-nowrap">
                     Status
                   </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -675,6 +1008,7 @@ export default function BillingPage() {
                       0,
                       invoice.totalAmount - paidAmount,
                     );
+                    const statusMeta = getInvoiceStatusMeta(invoice.status);
 
                     return (
                       <tr
@@ -708,14 +1042,36 @@ export default function BillingPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold rounded whitespace-nowrap min-w-18 ${
-                              invoice.status === "created"
-                                ? "bg-blue-50 text-blue-700"
-                                : "bg-emerald-50 text-emerald-700"
+                            className={`inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap ${
+                              statusMeta.className
                             }`}
                           >
-                            {invoice.status}
+                            {statusMeta.label}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDownloadInvoice(invoice);
+                              }}
+                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
+                            >
+                              Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleShareInvoice(invoice);
+                              }}
+                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100"
+                            >
+                              Share
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -848,13 +1204,29 @@ export default function BillingPage() {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => openInvoiceEditor(selectedInvoice)}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
-                  >
-                    Edit Invoice
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadInvoice(selectedInvoice)}
+                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleShareInvoice(selectedInvoice)}
+                      className="px-4 py-2 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                    >
+                      Share
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openInvoiceEditor(selectedInvoice)}
+                      className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                    >
+                      Edit Invoice
+                    </button>
+                  </div>
                 </>
               ) : (
                 <form onSubmit={handleUpdateInvoice} className="space-y-4">

@@ -110,3 +110,14 @@ export const getProductSuggestions = async (query: string) => {
 
   return suggestions.slice(0, 10);
 };
+
+export const activateProduct = async (id: string, sellingPrice: number) => {
+  await getProduct(id); // Verify exists
+  return prisma.product.update({
+    where: { id },
+    data: {
+      sellingPrice,
+      status: "active",
+    },
+  });
+};

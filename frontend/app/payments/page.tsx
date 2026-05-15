@@ -76,6 +76,8 @@ export default function PaymentsPage() {
     "pending",
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "type">("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [formData, setFormData] = useState({
     partyId: "",
     invoiceId: "",
@@ -164,6 +166,28 @@ export default function PaymentsPage() {
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const formatPaymentMethod = (value: string) =>
+    value
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+
+  const getPaymentTypeMeta = (payment: Payment) => {
+    if (payment.customer) {
+      return {
+        label: "Received",
+        chipClass: "bg-emerald-50 text-emerald-700",
+        amountClass: "text-emerald-700",
+      };
+    }
+
+    return {
+      label: "Paid",
+      chipClass: "bg-orange-50 text-orange-700",
+      amountClass: "text-orange-700",
+    };
   };
 
   const customerOrderRows = useMemo(() => {
@@ -366,6 +390,36 @@ export default function PaymentsPage() {
       return partyName.includes(query);
     });
   }, [payments, activeSection, searchTerm]);
+
+  const sortedPayments = useMemo(() => {
+    const direction = sortDirection === "asc" ? 1 : -1;
+    const rows = [...filteredPayments];
+
+    rows.sort((a, b) => {
+      if (sortBy === "amount") {
+        return (a.amount - b.amount) * direction;
+      }
+
+      if (sortBy === "type") {
+        const aType = a.customer ? 0 : 1;
+        const bType = b.customer ? 0 : 1;
+        if (aType !== bType) return (aType - bType) * direction;
+        return (
+          (new Date(a.paymentDate).getTime() -
+            new Date(b.paymentDate).getTime()) *
+          direction
+        );
+      }
+
+      return (
+        (new Date(a.paymentDate).getTime() -
+          new Date(b.paymentDate).getTime()) *
+        direction
+      );
+    });
+
+    return rows;
+  }, [filteredPayments, sortBy, sortDirection]);
 
   if (loading) {
     return <div className="text-slate-500">Loading payments...</div>;
@@ -649,16 +703,43 @@ export default function PaymentsPage() {
 
       {/* Quick Customer / Supplier Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white border border-slate-200 p-5 rounded-xl">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-slate-600 text-sm font-semibold">
-              Customer Payments
-            </p>
-            <span className="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-bold">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-slate-800 text-sm font-semibold">
+                Customer Payments
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Track received amount and outstanding by customer
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold">
               {customerPayments.length} records
             </span>
           </div>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">
+                Total Received
+              </p>
+              <p className="text-xl font-bold text-emerald-700 mt-1">
+                {formatINR(totalReceived)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-600 font-semibold">
+                Pending Customers
+              </p>
+              <p className="text-xl font-bold text-slate-800 mt-1">
+                {
+                  filteredCustomerParties.filter(
+                    (party) => (party.outstandingBalance || 0) > 0,
+                  ).length
+                }
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setCustomerPartyFilter("all")}
               className={`px-3 py-1 rounded text-sm ${customerPartyFilter === "all" ? "bg-slate-100 font-semibold" : "bg-transparent"}`}
@@ -681,38 +762,79 @@ export default function PaymentsPage() {
               Matching: {filteredCustomerParties.length}
             </div>
           </div>
-          <p className="text-sm text-slate-500">Total Received</p>
-          <p className="text-2xl font-bold text-emerald-600">
-            {formatINR(totalReceived)}
-          </p>
-          <div className="mt-3 max-h-36 overflow-auto text-sm">
-            {filteredCustomerParties.slice(0, 8).map((c) => (
-              <div
-                key={c.id}
-                className="flex justify-between py-1 border-b border-slate-50"
-              >
-                <div className="text-slate-800">{c.name}</div>
-                <div className="text-slate-600">
-                  {formatINR(c.outstandingBalance || 0)}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <span>Customer</span>
+              <span>Status</span>
+              <span>Outstanding</span>
+            </div>
+            <div className="max-h-44 overflow-auto text-sm divide-y divide-slate-100">
+              {filteredCustomerParties.slice(0, 8).map((c) => (
+                <div
+                  key={c.id}
+                  className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 items-center"
+                >
+                  <div className="text-slate-800 font-medium truncate">
+                    {c.name}
+                  </div>
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                      (c.outstandingBalance || 0) > 0
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {(c.outstandingBalance || 0) > 0 ? "Pending" : "Settled"}
+                  </span>
+                  <div className="text-slate-700 font-semibold">
+                    {formatINR(c.outstandingBalance || 0)}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {filteredCustomerParties.length === 0 && (
-              <div className="text-slate-500 py-2">No customers</div>
-            )}
+              ))}
+              {filteredCustomerParties.length === 0 && (
+                <div className="text-slate-500 py-3 px-3">No customers</div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 p-5 rounded-xl">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-slate-600 text-sm font-semibold">
-              Supplier Payments
-            </p>
-            <span className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-700 font-bold">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-slate-800 text-sm font-semibold">
+                Supplier Payments
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Track paid amount and payable by supplier
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 font-bold">
               {supplierPayments.length} records
             </span>
           </div>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-orange-100 bg-orange-50/70 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-orange-700 font-semibold">
+                Total Paid
+              </p>
+              <p className="text-xl font-bold text-orange-700 mt-1">
+                {formatINR(totalPaid)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-slate-600 font-semibold">
+                Pending Suppliers
+              </p>
+              <p className="text-xl font-bold text-slate-800 mt-1">
+                {
+                  filteredSupplierParties.filter(
+                    (party) => (party.payableBalance || 0) > 0,
+                  ).length
+                }
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setSupplierPartyFilter("all")}
               className={`px-3 py-1 rounded text-sm ${supplierPartyFilter === "all" ? "bg-slate-100 font-semibold" : "bg-transparent"}`}
@@ -735,25 +857,39 @@ export default function PaymentsPage() {
               Matching: {filteredSupplierParties.length}
             </div>
           </div>
-          <p className="text-sm text-slate-500">Total Paid</p>
-          <p className="text-2xl font-bold text-orange-600">
-            {formatINR(totalPaid)}
-          </p>
-          <div className="mt-3 max-h-36 overflow-auto text-sm">
-            {filteredSupplierParties.slice(0, 8).map((s) => (
-              <div
-                key={s.id}
-                className="flex justify-between py-1 border-b border-slate-50"
-              >
-                <div className="text-slate-800">{s.name}</div>
-                <div className="text-slate-600">
-                  {formatINR(s.payableBalance || 0)}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <span>Supplier</span>
+              <span>Status</span>
+              <span>Payable</span>
+            </div>
+            <div className="max-h-44 overflow-auto text-sm divide-y divide-slate-100">
+              {filteredSupplierParties.slice(0, 8).map((s) => (
+                <div
+                  key={s.id}
+                  className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 items-center"
+                >
+                  <div className="text-slate-800 font-medium truncate">
+                    {s.name}
+                  </div>
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                      (s.payableBalance || 0) > 0
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {(s.payableBalance || 0) > 0 ? "Pending" : "Settled"}
+                  </span>
+                  <div className="text-slate-700 font-semibold">
+                    {formatINR(s.payableBalance || 0)}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {filteredSupplierParties.length === 0 && (
-              <div className="text-slate-500 py-2">No suppliers</div>
-            )}
+              ))}
+              {filteredSupplierParties.length === 0 && (
+                <div className="text-slate-500 py-3 px-3">No suppliers</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -803,6 +939,31 @@ export default function PaymentsPage() {
           placeholder="Search customer/supplier by name..."
           className="md:ml-auto w-full md:w-80 px-3 py-2 border border-slate-300 rounded-lg text-sm"
         />
+
+        <div className="flex items-center gap-2 md:ml-0">
+          <select
+            value={sortBy}
+            onChange={(e) =>
+              setSortBy(e.target.value as "date" | "amount" | "type")
+            }
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+            title="Sort payments by"
+          >
+            <option value="date">Sort: Date</option>
+            <option value="amount">Sort: Amount</option>
+            <option value="type">Sort: Type</option>
+          </select>
+          <button
+            type="button"
+            onClick={() =>
+              setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
+            }
+            className="px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            title={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+          >
+            {sortDirection === "asc" ? "Asc" : "Desc"}
+          </button>
+        </div>
       </div>
 
       {editingPayment && (
@@ -861,83 +1022,122 @@ export default function PaymentsPage() {
 
       {/* Payments Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 border-b border-slate-100">
-            <tr>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Payment #
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Party
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Type
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Amount
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Method
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Note
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Date
-              </th>
-              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {filteredPayments.map((payment) => (
-              <tr key={payment.id} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-medium text-slate-900">
-                  {payment.paymentNumber}
-                </td>
-                <td className="px-6 py-4 text-slate-700">
-                  {payment.customer?.name || payment.supplier?.name || "-"}
-                </td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 text-xs font-bold rounded ${
-                      payment.customer
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-orange-50 text-orange-700"
-                    }`}
-                  >
-                    {payment.customer ? "Received" : "Paid"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-bold">
-                  {formatINR(payment.amount)}
-                </td>
-                <td className="px-6 py-4 text-slate-700">
-                  {payment.paymentMethod}
-                </td>
-                <td className="px-6 py-4 text-slate-700 max-w-xs">
-                  <span className="block truncate" title={payment.notes || "-"}>
-                    {payment.notes || "-"}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-slate-700">
-                  {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
-                </td>
-                <td className="px-6 py-4">
-                  <button
-                    type="button"
-                    onClick={() => openPaymentEditor(payment)}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-800"
-                  >
-                    Edit
-                  </button>
-                </td>
+        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+          <p className="text-sm font-semibold text-slate-800">
+            Payment Records
+          </p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Showing {sortedPayments.length} payment
+            {sortedPayments.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-250 text-left">
+            <thead className="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Payment #
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Party
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Method
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Note
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                  Action
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredPayments.length === 0 && (
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {sortedPayments.map((payment) => {
+                const typeMeta = getPaymentTypeMeta(payment);
+
+                return (
+                  <tr
+                    key={payment.id}
+                    className="hover:bg-slate-50/70 transition-colors"
+                  >
+                    <td className="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">
+                      {payment.paymentNumber}
+                    </td>
+                    <td className="px-6 py-4 text-slate-800">
+                      <p className="font-medium">
+                        {payment.customer?.name ||
+                          payment.supplier?.name ||
+                          "-"}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {payment.customer ? "Customer" : "Supplier"}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex px-2.5 py-1 text-xs font-bold rounded-full ${typeMeta.chipClass}`}
+                      >
+                        {typeMeta.label}
+                      </span>
+                    </td>
+                    <td
+                      className={`px-6 py-4 font-bold ${typeMeta.amountClass}`}
+                    >
+                      {formatINR(payment.amount)}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                      {formatPaymentMethod(payment.paymentMethod)}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 max-w-xs">
+                      <span
+                        className="block truncate"
+                        title={payment.notes || "-"}
+                      >
+                        {payment.notes || "-"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-700 whitespace-nowrap">
+                      <p>
+                        {new Date(payment.paymentDate).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {new Date(payment.paymentDate).toLocaleTimeString(
+                          "en-IN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => openPaymentEditor(payment)}
+                        className="inline-flex px-2.5 py-1.5 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {sortedPayments.length === 0 && (
           <div className="px-6 py-8 text-center text-slate-500">
             No matching payments found
           </div>

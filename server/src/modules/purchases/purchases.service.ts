@@ -82,10 +82,10 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
               name: manualName,
               category: item.category || "General",
               purchasePrice: item.unitPrice,
-              sellingPrice: item.unitPrice,
+              sellingPrice: 0,
               gst: 0,
               stock: item.quantity,
-              status: "active",
+              status: "pending",
             },
             select: { id: true, name: true, category: true },
           });
