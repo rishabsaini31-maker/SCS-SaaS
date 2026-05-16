@@ -51,6 +51,14 @@ const formatShortDate = (value: string) =>
     year: "numeric",
   });
 
+const formatRangeLabel = (range: string) => {
+  if (range === "daily") return "Daily";
+  if (range === "weekly") return "Weekly";
+  if (range === "monthly") return "Monthly";
+  if (range === "yearly") return "Yearly";
+  return "All bills";
+};
+
 const getInvoiceStatusMeta = (status: string) => {
   const normalized = status.trim().toLowerCase();
 
@@ -358,6 +366,8 @@ export default function BillingPage() {
     notes: "",
   });
   const [showForm, setShowForm] = useState(false);
+  const [billSearch, setBillSearch] = useState("");
+  const [billRange, setBillRange] = useState("all");
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
@@ -446,6 +456,73 @@ export default function BillingPage() {
     payments
       .filter((payment) => payment.invoiceId === invoiceId)
       .reduce((sum, payment) => sum + payment.amount, 0);
+
+  const matchesBillRange = (invoiceDate: string) => {
+    if (billRange === "all") return true;
+
+    const invoice = new Date(invoiceDate);
+    const today = new Date();
+    const startOfToday = new Date(today);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    if (billRange === "daily") {
+      return invoice >= startOfToday && invoice <= endOfToday;
+    }
+
+    if (billRange === "weekly") {
+      const startOfWeek = new Date(startOfToday);
+      const day = startOfWeek.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      startOfWeek.setDate(startOfWeek.getDate() + diff);
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(endOfWeek.getDate() + 6);
+      endOfWeek.setHours(23, 59, 59, 999);
+      return invoice >= startOfWeek && invoice <= endOfWeek;
+    }
+
+    if (billRange === "monthly") {
+      return (
+        invoice.getFullYear() === today.getFullYear() &&
+        invoice.getMonth() === today.getMonth()
+      );
+    }
+
+    if (billRange === "yearly") {
+      return invoice.getFullYear() === today.getFullYear();
+    }
+
+    return true;
+  };
+
+  const normalizedBillSearch = billSearch.trim().toLowerCase();
+  const visibleInvoices = invoices.filter((invoice) => {
+    const searchHaystack = [
+      invoice.invoiceNumber,
+      invoice.customer.name,
+      invoice.customer.email,
+      invoice.notes || "",
+      getInvoiceStatusMeta(invoice.status).label,
+      ...invoice.lineItems.map((item) => item.product.name),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return (
+      matchesBillRange(invoice.invoiceDate) &&
+      (normalizedBillSearch === "" ||
+        searchHaystack.includes(normalizedBillSearch))
+    );
+  });
+  const visibleBillTotal = visibleInvoices.reduce(
+    (sum, invoice) => sum + invoice.totalAmount,
+    0,
+  );
+  const visiblePaidTotal = visibleInvoices.reduce(
+    (sum, invoice) => sum + getInvoicePaidAmount(invoice.id),
+    0,
+  );
 
   const handleDownloadInvoice = (invoice: Invoice) => {
     const paidAmount = getInvoicePaidAmount(invoice.id);
@@ -685,6 +762,75 @@ export default function BillingPage() {
         >
           + Create Invoice
         </button>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[1.5fr_0.8fr_auto]">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Search past bills
+            </label>
+            <input
+              type="text"
+              value={billSearch}
+              onChange={(e) => setBillSearch(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              placeholder="Invoice no, customer, email, notes, product"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Date view</label>
+            <select
+              value={billRange}
+              onChange={(e) => setBillRange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            >
+              <option value="all">All bills</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={() => {
+                setBillSearch("");
+                setBillRange("all");
+              }}
+              className="w-full px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+            >
+              Clear filters
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-xs uppercase text-slate-500">Visible bills</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {visibleInvoices.length}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {formatRangeLabel(billRange)} view
+            </p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-xs uppercase text-slate-500">Billed amount</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {formatINR(visibleBillTotal)}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Filtered total</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+            <p className="text-xs uppercase text-slate-500">Collected</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {formatINR(visiblePaidTotal)}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Across visible bills</p>
+          </div>
+        </div>
       </div>
 
       {showForm && (
@@ -1009,7 +1155,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
           <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-            <table className="w-full min-w-275 text-left">
+            <table className="w-full min-w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
@@ -1017,6 +1163,9 @@ export default function BillingPage() {
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Customer
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Items
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Created
@@ -1045,7 +1194,7 @@ export default function BillingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {invoices.map((invoice) =>
+                {visibleInvoices.map((invoice) =>
                   (() => {
                     const paidAmount = getInvoicePaidAmount(invoice.id);
                     const pendingAmount = Math.max(
@@ -1065,6 +1214,9 @@ export default function BillingPage() {
                         </td>
                         <td className="px-6 py-4 text-slate-700">
                           {invoice.customer.name}
+                        </td>
+                        <td className="px-6 py-4 text-slate-700">
+                          {invoice.lineItems.length}
                         </td>
                         <td className="px-6 py-4 text-slate-700">
                           {formatShortDate(invoice.invoiceDate)}
@@ -1099,6 +1251,16 @@ export default function BillingPage() {
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
+                                setSelectedInvoice(invoice);
+                              }}
+                              className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                            >
+                              View Bill
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 handleDownloadInvoice(invoice);
                               }}
                               className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
@@ -1123,214 +1285,256 @@ export default function BillingPage() {
                 )}
               </tbody>
             </table>
-            {invoices.length === 0 && (
+            {visibleInvoices.length === 0 && (
               <div className="px-6 py-8 text-center text-slate-500">
-                No invoices
+                No invoices match the selected filters.
               </div>
             )}
           </div>
         </div>
 
-        {selectedInvoice && (
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
-              <div className="flex justify-between items-start">
-                <h3 className="text-lg font-bold">Invoice Details</h3>
+        <div className="col-span-12 lg:col-span-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-bold">
+                  {selectedInvoice ? "Invoice Details" : "Billing Overview"}
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedInvoice
+                    ? "Full bill view with payment actions."
+                    : "Use the search and date filters to track bills by day, week, month, or year."}
+                </p>
+              </div>
+              {selectedInvoice && (
                 <button
                   className="text-slate-400 hover:text-slate-600"
                   onClick={() => setSelectedInvoice(null)}
                 >
                   ✕
                 </button>
-              </div>
+              )}
+            </div>
 
-              {!editingInvoice ? (
-                <>
-                  <div className="space-y-4 pb-4 border-b">
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">
-                        Invoice Number
-                      </p>
-                      <p className="font-bold text-slate-900">
-                        {selectedInvoice.invoiceNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">
-                        Customer
-                      </p>
-                      <p className="font-bold text-slate-900">
-                        {selectedInvoice.customer.name}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        {selectedInvoice.customer.email}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Date</p>
-                      <p className="font-bold text-slate-900">
-                        {formatShortDate(selectedInvoice.invoiceDate)}
-                      </p>
-                    </div>
+            {!selectedInvoice ? (
+              <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs uppercase text-slate-500">
+                    Active view
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
+                    {formatRangeLabel(billRange)} bills
+                  </p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Search: {billSearch.trim() || "all bills"}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Bills</p>
+                    <p className="mt-1 text-2xl font-bold">
+                      {visibleInvoices.length}
+                    </p>
                   </div>
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Total</p>
+                    <p className="mt-1 text-2xl font-bold">
+                      {formatINR(visibleBillTotal)}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="space-y-2 py-4 border-b">
-                    <h4 className="font-bold text-slate-900 mb-3">
-                      Line Items
-                    </h4>
-                    {selectedInvoice.lineItems.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-slate-700">
-                          {item.product.name} x{item.quantity}
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                  Select any row to view the full bill, line items, payment
+                  status, download the PDF, share it, or edit the invoice.
+                </div>
+              </div>
+            ) : !editingInvoice ? (
+              <>
+                <div className="space-y-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">
+                      Invoice Number
+                    </p>
+                    <p className="font-bold text-slate-900">
+                      {selectedInvoice.invoiceNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">Customer</p>
+                    <p className="font-bold text-slate-900">
+                      {selectedInvoice.customer.name}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {selectedInvoice.customer.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">Date</p>
+                    <p className="font-bold text-slate-900">
+                      {formatShortDate(selectedInvoice.invoiceDate)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 py-4 border-b">
+                  <h4 className="font-bold text-slate-900 mb-3">Line Items</h4>
+                  {selectedInvoice.lineItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-slate-200 p-3"
+                    >
+                      <div className="flex justify-between gap-3 text-sm">
+                        <span className="text-slate-700 font-medium">
+                          {item.product.name}
                         </span>
-                        <span className="font-medium">
+                        <span className="font-semibold">
                           {formatINR(item.quantity * item.unitPrice)}
                         </span>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 py-4">
-                    {(() => {
-                      const paidAmount = getInvoicePaidAmount(
-                        selectedInvoice.id,
-                      );
-                      const pendingAmount = Math.max(
-                        0,
-                        selectedInvoice.totalAmount - paidAmount,
-                      );
-
-                      return (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Subtotal</span>
-                            <span className="font-medium">
-                              {formatINR(selectedInvoice.subtotal)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">GST (18%)</span>
-                            <span className="font-medium">
-                              {formatINR(selectedInvoice.gstAmount)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                            <span>Total</span>
-                            <span>
-                              {formatINR(selectedInvoice.totalAmount)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">Paid Amount</span>
-                            <span className="font-medium text-emerald-700">
-                              {formatINR(paidAmount)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-600">
-                              Pending Amount
-                            </span>
-                            <span className="font-medium text-orange-700">
-                              {formatINR(pendingAmount)}
-                            </span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  {selectedInvoice.notes && (
-                    <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
-                      <p className="text-xs text-slate-500 uppercase mb-1">
-                        Notes
-                      </p>
-                      <p>{selectedInvoice.notes}</p>
+                      <div className="mt-1 flex justify-between text-xs text-slate-500">
+                        <span>Qty: {item.quantity}</span>
+                        <span>Rate: {formatINR(item.unitPrice)}</span>
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadInvoice(selectedInvoice)}
-                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
-                    >
-                      Download
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleShareInvoice(selectedInvoice)}
-                      className="px-4 py-2 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
-                    >
-                      Share
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openInvoiceEditor(selectedInvoice)}
-                      className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
-                    >
-                      Edit Invoice
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <form onSubmit={handleUpdateInvoice} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={invoiceEditForm.status}
-                      onChange={(e) =>
-                        setInvoiceEditForm({
-                          ...invoiceEditForm,
-                          status: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Paid">Paid</option>
-                      <option value="Partial">Partial</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
+                <div className="space-y-2 py-4">
+                  {(() => {
+                    const paidAmount = getInvoicePaidAmount(selectedInvoice.id);
+                    const pendingAmount = Math.max(
+                      0,
+                      selectedInvoice.totalAmount - paidAmount,
+                    );
+
+                    return (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Subtotal</span>
+                          <span className="font-medium">
+                            {formatINR(selectedInvoice.subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">GST (18%)</span>
+                          <span className="font-medium">
+                            {formatINR(selectedInvoice.gstAmount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                          <span>Total</span>
+                          <span>{formatINR(selectedInvoice.totalAmount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Paid Amount</span>
+                          <span className="font-medium text-emerald-700">
+                            {formatINR(paidAmount)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Pending Amount</span>
+                          <span className="font-medium text-orange-700">
+                            {formatINR(pendingAmount)}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {selectedInvoice.notes && (
+                  <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
+                    <p className="text-xs text-slate-500 uppercase mb-1">
                       Notes
-                    </label>
-                    <textarea
-                      value={invoiceEditForm.notes}
-                      onChange={(e) =>
-                        setInvoiceEditForm({
-                          ...invoiceEditForm,
-                          notes: e.target.value,
-                        })
-                      }
-                      rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
+                    </p>
+                    <p>{selectedInvoice.notes}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
-                    >
-                      {submitting ? "Saving..." : "Save Changes"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingInvoice(null)}
-                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadInvoice(selectedInvoice)}
+                    className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleShareInvoice(selectedInvoice)}
+                    className="px-4 py-2 rounded-lg border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
+                  >
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openInvoiceEditor(selectedInvoice)}
+                    className="px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                  >
+                    Edit Invoice
+                  </button>
+                </div>
+              </>
+            ) : (
+              <form onSubmit={handleUpdateInvoice} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={invoiceEditForm.status}
+                    onChange={(e) =>
+                      setInvoiceEditForm({
+                        ...invoiceEditForm,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={invoiceEditForm.notes}
+                    onChange={(e) =>
+                      setInvoiceEditForm({
+                        ...invoiceEditForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    rows={4}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {submitting ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingInvoice(null)}
+                    className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

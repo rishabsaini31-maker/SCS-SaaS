@@ -5,6 +5,31 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 
+const getPurchaseStatusMeta = (status: string) => {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "received") {
+    return { label: "Received", className: "bg-emerald-50 text-emerald-700" };
+  }
+  if (normalized === "pending") {
+    return { label: "Pending", className: "bg-amber-50 text-amber-700" };
+  }
+  if (normalized === "cancelled") {
+    return { label: "Cancelled", className: "bg-rose-50 text-rose-700" };
+  }
+
+  const titleCase = status
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+  return {
+    label: titleCase || "Unknown",
+    className: "bg-slate-100 text-slate-700",
+  };
+};
+
 type Purchase = {
   id: string;
   purchaseNumber: string;
@@ -243,6 +268,8 @@ export default function PurchasePage() {
   }
 
   const totalPurchased = purchases.reduce((sum, p) => sum + p.totalAmount, 0);
+  const averagePurchase =
+    purchases.length > 0 ? totalPurchased / purchases.length : 0;
 
   return (
     <div className="space-y-6">
@@ -496,19 +523,36 @@ export default function PurchasePage() {
         </div>
       )}
 
-      {/* Summary */}
-      <div className="bg-white border border-slate-200 p-5 rounded-xl">
-        <p className="text-slate-500 text-sm mb-2">Total Purchases</p>
-        <h2 className="text-3xl font-bold">{formatINR(totalPurchased)}</h2>
-        <p className="text-xs text-slate-500 mt-2">
-          {purchases.length} purchase orders
-        </p>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="bg-white border border-slate-200 p-5 rounded-xl">
+          <p className="text-slate-500 text-sm mb-2">Total Purchases</p>
+          <h2 className="text-3xl font-bold">{formatINR(totalPurchased)}</h2>
+          <p className="text-xs text-slate-500 mt-2">
+            {purchases.length} purchase orders
+          </p>
+        </div>
+        <div className="bg-white border border-slate-200 p-5 rounded-xl">
+          <p className="text-slate-500 text-sm mb-2">Average Purchase</p>
+          <h2 className="text-3xl font-bold">{formatINR(averagePurchase)}</h2>
+          <p className="text-xs text-slate-500 mt-2">Per purchase order</p>
+        </div>
+        <div className="bg-white border border-slate-200 p-5 rounded-xl">
+          <p className="text-slate-500 text-sm mb-2">Quick View</p>
+          <h2 className="text-3xl font-bold">
+            {purchases[0] ? "Latest" : "Empty"}
+          </h2>
+          <p className="text-xs text-slate-500 mt-2">
+            {purchases[0]
+              ? `${purchases[0].purchaseNumber} • ${purchases[0].supplier.name}`
+              : "Create a purchase order to see it here"}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
           <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-left">
+            <table className="w-full min-w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
@@ -516,6 +560,9 @@ export default function PurchasePage() {
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Supplier
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Items
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Subtotal
@@ -527,39 +574,56 @@ export default function PurchasePage() {
                     Total
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Date
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {purchases.map((purchase) => (
-                  <tr
-                    key={purchase.id}
-                    className="hover:bg-slate-50 cursor-pointer"
-                    onClick={() => setSelectedPurchase(purchase)}
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-900">
-                      {purchase.purchaseNumber}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {purchase.supplier.name}
-                    </td>
-                    <td className="px-6 py-4">
-                      {formatINR(purchase.subtotal)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {formatINR(purchase.gstAmount)}
-                    </td>
-                    <td className="px-6 py-4 font-bold">
-                      {formatINR(purchase.totalAmount)}
-                    </td>
-                    <td className="px-6 py-4 text-slate-700">
-                      {new Date(purchase.purchaseDate).toLocaleDateString(
-                        "en-IN",
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {purchases.map((purchase) => {
+                  const statusMeta = getPurchaseStatusMeta(purchase.status);
+
+                  return (
+                    <tr
+                      key={purchase.id}
+                      className="hover:bg-slate-50 cursor-pointer"
+                      onClick={() => setSelectedPurchase(purchase)}
+                    >
+                      <td className="px-6 py-4 font-medium text-slate-900">
+                        {purchase.purchaseNumber}
+                      </td>
+                      <td className="px-6 py-4 text-slate-700">
+                        {purchase.supplier.name}
+                      </td>
+                      <td className="px-6 py-4 text-slate-700">
+                        {purchase.lineItems.length}
+                      </td>
+                      <td className="px-6 py-4">
+                        {formatINR(purchase.subtotal)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {formatINR(purchase.gstAmount)}
+                      </td>
+                      <td className="px-6 py-4 font-bold">
+                        {formatINR(purchase.totalAmount)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap ${statusMeta.className}`}
+                        >
+                          {statusMeta.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-700">
+                        {new Date(purchase.purchaseDate).toLocaleDateString(
+                          "en-IN",
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {purchases.length === 0 && (
@@ -570,158 +634,204 @@ export default function PurchasePage() {
           </div>
         </div>
 
-        {selectedPurchase && (
-          <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
-              <div className="flex justify-between items-start">
-                <h3 className="text-lg font-bold">Purchase Details</h3>
+        <div className="col-span-12 lg:col-span-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-6 sticky top-6 space-y-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-bold">
+                  {selectedPurchase ? "Purchase Details" : "Purchase Overview"}
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedPurchase
+                    ? "Full PO view with line items, totals, and editing."
+                    : "Select a purchase to see all cart details clearly on the right."}
+                </p>
+              </div>
+              {selectedPurchase && (
                 <button
                   className="text-slate-400 hover:text-slate-600"
                   onClick={() => setSelectedPurchase(null)}
                 >
                   ✕
                 </button>
-              </div>
+              )}
+            </div>
 
-              {!editingPurchase ? (
-                <>
-                  <div className="space-y-4 pb-4 border-b">
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">
-                        PO Number
-                      </p>
-                      <p className="font-bold text-slate-900">
-                        {selectedPurchase.purchaseNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">
-                        Supplier
-                      </p>
-                      <p className="font-bold text-slate-900">
-                        {selectedPurchase.supplier.name}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase">Date</p>
-                      <p className="font-bold text-slate-900">
-                        {new Date(
-                          selectedPurchase.purchaseDate,
-                        ).toLocaleDateString("en-IN")}
-                      </p>
-                    </div>
+            {!selectedPurchase ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Orders</p>
+                    <p className="mt-1 text-2xl font-bold">
+                      {purchases.length}
+                    </p>
                   </div>
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <p className="text-xs uppercase text-slate-500">Value</p>
+                    <p className="mt-1 text-2xl font-bold">
+                      {formatINR(totalPurchased)}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+                  Open a purchase row to view the supplier, full line items,
+                  totals, status, and notes without losing the table.
+                </div>
+              </div>
+            ) : !editingPurchase ? (
+              <>
+                <div className="space-y-4 pb-4 border-b">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">
+                      PO Number
+                    </p>
+                    <p className="font-bold text-slate-900">
+                      {selectedPurchase.purchaseNumber}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">Supplier</p>
+                    <p className="font-bold text-slate-900">
+                      {selectedPurchase.supplier.name}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase">Date</p>
+                    <p className="font-bold text-slate-900">
+                      {new Date(
+                        selectedPurchase.purchaseDate,
+                      ).toLocaleDateString("en-IN")}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="space-y-2 py-4 border-b">
-                    <h4 className="font-bold text-slate-900 mb-3">
-                      Line Items
-                    </h4>
-                    {selectedPurchase.lineItems.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-slate-700">
-                          {item.product.name} x{item.quantity}
+                <div className="space-y-2 py-4 border-b">
+                  <h4 className="font-bold text-slate-900 mb-3">Line Items</h4>
+                  {selectedPurchase.lineItems.map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-slate-200 p-3"
+                    >
+                      <div className="flex justify-between gap-3 text-sm">
+                        <span className="text-slate-700 font-medium">
+                          {item.product.name}
                         </span>
-                        <span className="font-medium">
+                        <span className="font-semibold">
                           {formatINR(item.quantity * item.unitPrice)}
                         </span>
                       </div>
-                    ))}
+                      <div className="mt-1 flex justify-between text-xs text-slate-500">
+                        <span>Qty: {item.quantity}</span>
+                        <span>Rate: {formatINR(item.unitPrice)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2 py-4">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Subtotal</span>
+                    <span className="font-medium">
+                      {formatINR(selectedPurchase.subtotal)}
+                    </span>
                   </div>
-
-                  <div className="space-y-2 py-4">
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">Subtotal</span>
-                      <span className="font-medium">
-                        {formatINR(selectedPurchase.subtotal)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-600">GST (18%)</span>
-                      <span className="font-medium">
-                        {formatINR(selectedPurchase.gstAmount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                      <span>Total</span>
-                      <span>{formatINR(selectedPurchase.totalAmount)}</span>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">GST (18%)</span>
+                    <span className="font-medium">
+                      {formatINR(selectedPurchase.gstAmount)}
+                    </span>
                   </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total</span>
+                    <span>{formatINR(selectedPurchase.totalAmount)}</span>
+                  </div>
+                </div>
 
-                  {selectedPurchase.notes && (
-                    <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
-                      <p className="text-xs text-slate-500 uppercase mb-1">
-                        Notes
-                      </p>
-                      <p>{selectedPurchase.notes}</p>
-                    </div>
-                  )}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <p className="text-xs text-slate-500 uppercase mb-1">
+                    Status
+                  </p>
+                  <span
+                    className={`inline-flex items-center justify-center px-3 py-1 text-xs font-bold rounded-full whitespace-nowrap ${getPurchaseStatusMeta(selectedPurchase.status).className}`}
+                  >
+                    {getPurchaseStatusMeta(selectedPurchase.status).label}
+                  </span>
+                </div>
 
+                {selectedPurchase.notes && (
+                  <div className="mt-4 p-3 bg-slate-50 rounded text-sm text-slate-700">
+                    <p className="text-xs text-slate-500 uppercase mb-1">
+                      Notes
+                    </p>
+                    <p>{selectedPurchase.notes}</p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => openPurchaseEditor(selectedPurchase)}
+                  className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                >
+                  Edit Purchase
+                </button>
+              </>
+            ) : (
+              <form onSubmit={handleUpdatePurchase} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={purchaseEditForm.status}
+                    onChange={(e) =>
+                      setPurchaseEditForm({
+                        ...purchaseEditForm,
+                        status: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Received">Received</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Notes
+                  </label>
+                  <textarea
+                    value={purchaseEditForm.notes}
+                    onChange={(e) =>
+                      setPurchaseEditForm({
+                        ...purchaseEditForm,
+                        notes: e.target.value,
+                      })
+                    }
+                    rows={4}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {submitting ? "Saving..." : "Save Changes"}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => openPurchaseEditor(selectedPurchase)}
-                    className="w-full px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition"
+                    onClick={() => setEditingPurchase(null)}
+                    className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
                   >
-                    Edit Purchase
+                    Cancel
                   </button>
-                </>
-              ) : (
-                <form onSubmit={handleUpdatePurchase} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={purchaseEditForm.status}
-                      onChange={(e) =>
-                        setPurchaseEditForm({
-                          ...purchaseEditForm,
-                          status: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Received">Received</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Notes
-                    </label>
-                    <textarea
-                      value={purchaseEditForm.notes}
-                      onChange={(e) =>
-                        setPurchaseEditForm({
-                          ...purchaseEditForm,
-                          notes: e.target.value,
-                        })
-                      }
-                      rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
-                    >
-                      {submitting ? "Saving..." : "Save Changes"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingPurchase(null)}
-                      className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
+                </div>
+              </form>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
