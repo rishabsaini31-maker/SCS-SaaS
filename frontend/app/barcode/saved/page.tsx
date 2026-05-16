@@ -323,11 +323,10 @@ export default function SavedBarcodesPage() {
                   </div>
                 )}
 
-                <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                <div className="mt-3 text-sm">
                   <span className="font-semibold text-slate-900">
                     {formatINR(product.sellingPrice)}
                   </span>
-                  <span className="text-slate-500">Stock: {product.stock}</span>
                 </div>
               </div>
             </article>

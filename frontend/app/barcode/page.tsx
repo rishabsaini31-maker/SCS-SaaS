@@ -671,14 +671,6 @@ export default function BarcodePage() {
                   </div>
                   <div className="bg-slate-50 p-3 border border-slate-200 rounded-lg">
                     <p className="text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-1">
-                      Current Stock
-                    </p>
-                    <p className="font-semibold text-sm text-slate-900">
-                      {selectedProduct.stock} units
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 p-3 border border-slate-200 rounded-lg">
-                    <p className="text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-1">
                       Barcode
                     </p>
                     <p className="font-semibold text-sm text-slate-900">
@@ -765,6 +757,15 @@ export default function BarcodePage() {
                   : savedBarcode
                     ? "Reuse or Refresh Barcode"
                     : "Generate Barcode"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                className="w-full mt-3 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
+              >
+                <span className="material-symbols-outlined">restart_alt</span>
+                Reset Form
               </button>
             </section>
           </div>
@@ -960,18 +961,6 @@ export default function BarcodePage() {
       </main>
 
       <footer className="h-20 bg-white border-t border-slate-200 px-8 flex items-center justify-between sticky bottom-0 z-40">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="px-6 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-lg">
-              restart_alt
-            </span>
-            Reset Form
-          </button>
-        </div>
         <div className="text-xs text-slate-500 hidden md:block">
           {selectedProduct
             ? `Selected: ${selectedProduct.name}`
