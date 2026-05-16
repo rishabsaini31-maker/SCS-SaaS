@@ -34,18 +34,25 @@ function generateSvg(barcodeValue: string) {
   const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
   const document = dom.window.document as any;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
   try {
+    globalThis.document = dom.window.document as any;
+    globalThis.window = dom.window as any;
     // JsBarcode mutates the svg element
     // @ts-ignore
     JsBarcode(svg, barcodeValue, {
       format: "CODE128",
-      displayValue: true,
+      displayValue: false,
       width: 2,
       height: 40,
       margin: 5,
     });
   } catch (err) {
     throw new CustomError("Failed to generate barcode image", 500);
+  } finally {
+    globalThis.document = previousDocument as any;
+    globalThis.window = previousWindow as any;
   }
   return svg.outerHTML as string;
 }

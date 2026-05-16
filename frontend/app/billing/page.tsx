@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import api from "@/lib/api";
@@ -347,6 +347,10 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
 
 export default function BillingPage() {
   const queryClient = useQueryClient();
+  const barcodeInputRef = useRef<HTMLInputElement | null>(null);
+  const barcodeScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [invoiceEditForm, setInvoiceEditForm] = useState({
@@ -421,6 +425,23 @@ export default function BillingPage() {
   const hasError =
     invoicesError || customersError || productsError || paymentsError;
 
+  useEffect(() => {
+    if (showForm) {
+      window.requestAnimationFrame(() => {
+        barcodeInputRef.current?.focus();
+        barcodeInputRef.current?.select();
+      });
+    }
+  }, [showForm]);
+
+  useEffect(() => {
+    return () => {
+      if (barcodeScanTimerRef.current) {
+        clearTimeout(barcodeScanTimerRef.current);
+      }
+    };
+  }, []);
+
   const getInvoicePaidAmount = (invoiceId: string) =>
     payments
       .filter((payment) => payment.invoiceId === invoiceId)
@@ -480,12 +501,17 @@ export default function BillingPage() {
     const code = barcode.trim();
     if (!code) return;
 
+    if (barcodeScanTimerRef.current) {
+      clearTimeout(barcodeScanTimerRef.current);
+      barcodeScanTimerRef.current = null;
+    }
+
     try {
       const foundInCache = products.find((p) => p.barcode === code);
       const foundProduct = foundInCache
         ? foundInCache
         : (
-            await api.get<Product[]>("/products", { params: { search: code } })
+            await api.get<Product[]>("/products", { params: { barcode: code } })
           ).data.find((p) => p.barcode === code);
 
       if (foundProduct) {
@@ -503,6 +529,9 @@ export default function BillingPage() {
           },
         ]);
         setFormData((prev) => ({ ...prev, barcodeInput: "" }));
+        window.requestAnimationFrame(() => {
+          barcodeInputRef.current?.focus();
+        });
       } else {
         alert("Product not found");
       }
@@ -708,19 +737,34 @@ export default function BillingPage() {
               </label>
               <div className="flex gap-2">
                 <input
+                  ref={barcodeInputRef}
                   type="text"
                   value={formData.barcodeInput}
-                  onChange={(e) =>
-                    setFormData({ ...formData, barcodeInput: e.target.value })
-                  }
-                  onKeyPress={(e) => {
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setFormData({ ...formData, barcodeInput: nextValue });
+
+                    if (barcodeScanTimerRef.current) {
+                      clearTimeout(barcodeScanTimerRef.current);
+                    }
+
+                    const trimmed = nextValue.trim();
+                    if (!trimmed) {
+                      return;
+                    }
+
+                    barcodeScanTimerRef.current = setTimeout(() => {
+                      void handleBarcodeInput(trimmed);
+                    }, 180);
+                  }}
+                  onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      handleBarcodeInput(formData.barcodeInput);
+                      void handleBarcodeInput(formData.barcodeInput);
                     }
                   }}
                   className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="Scan barcode or enter product code (Press Enter)"
+                  placeholder="Scan barcode or enter product code"
                 />
                 <button
                   type="button"

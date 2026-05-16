@@ -23,11 +23,13 @@ export const getAllProducts = async (filters?: {
   category?: string;
   status?: string;
   search?: string;
+  barcode?: string;
 }) => {
   return prisma.product.findMany({
     where: {
       ...(filters?.category && { category: filters.category }),
       ...(filters?.status && { status: filters.status }),
+      ...(filters?.barcode && { barcode: filters.barcode }),
       ...(filters?.search && {
         name: { contains: filters.search, mode: "insensitive" },
       }),

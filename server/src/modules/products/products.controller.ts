@@ -44,6 +44,7 @@ export const getProducts = async (
       category: req.query.category as string | undefined,
       status: req.query.status as string | undefined,
       search: req.query.search as string | undefined,
+      barcode: req.query.barcode as string | undefined,
     });
     res.json(products);
   } catch (err) {
