@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
+import PoweredByBadge from "@/components/PoweredByBadge";
 import ReactQueryProvider from "@/lib/ReactQueryProvider";
 import { NotificationProvider } from "@/lib/NotificationContext";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
             <main className="ml-[240px] mt-[64px] p-8 min-h-screen">
               {children}
             </main>
+            <PoweredByBadge />
           </NotificationProvider>
         </ReactQueryProvider>
       </body>
