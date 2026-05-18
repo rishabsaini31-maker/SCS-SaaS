@@ -213,6 +213,8 @@ model Tenant {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  owner          User?
+
   products       Product[]
   customers      Customer[]
   suppliers      Supplier[]
@@ -223,6 +225,18 @@ model Tenant {
   payments       Payment[]
   ledger         LedgerEntry[]
   settings       TenantSetting?
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 model TenantSetting {

@@ -10,6 +10,7 @@ type Payment = {
   paymentNumber: string;
   customer?: { name: string };
   supplier?: { name: string };
+  purchase?: { id: string };
   amount: number;
   paymentMethod: string;
   paymentDate: string;

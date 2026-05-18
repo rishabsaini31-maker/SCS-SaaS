@@ -3,9 +3,12 @@ import morgan from "morgan";
 import cors from "cors";
 import routes from "./routes";
 import { authenticateJWT } from "./common/middlewares/auth";
+import requireTenant from "./common/middlewares/requireTenant";
 import { errorHandler } from "./common/middlewares/errorHandler";
 import { logger } from "./common/middlewares/logger";
 import { rateLimiter } from "./common/middlewares/rateLimiter";
+import authRouter from "./modules/auth/auth.routes";
+import tenantRouter from "./modules/tenant/tenant.routes";
 
 const app = express();
 
@@ -25,6 +28,11 @@ app.use(morgan("dev"));
 app.use(logger);
 app.use(rateLimiter);
 app.use(authenticateJWT);
+
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/tenants", tenantRouter);
+
+app.use(requireTenant);
 
 // API Routes
 app.use("/api/v1", routes);

@@ -5,7 +5,6 @@ declare module "express" {
     user?: {
       userId?: string;
       tenantId?: string;
-      role?: string;
     };
     tenantId?: string;
   }

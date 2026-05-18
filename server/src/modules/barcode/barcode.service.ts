@@ -3,7 +3,10 @@ import { CustomError } from "../../common/errors/CustomError";
 // @ts-ignore
 import JsBarcode from "jsbarcode";
 import { JSDOM } from "jsdom";
-import { assertTenantOwnership, tenantWhere } from "../../common/tenant/tenant.utils";
+import {
+  assertTenantOwnership,
+  tenantWhere,
+} from "../../common/tenant/tenant.utils";
 
 const BARCODE_PREFIX = "PRD-";
 const BARCODE_PAD = 6;
@@ -15,7 +18,9 @@ function formatBarcode(num: number) {
 async function computeNextBarcode(tenantId?: string): Promise<string> {
   // Get all existing barcodes that match prefix
   const rows = await prisma.product.findMany({
-    where: tenantWhere(tenantId, { barcode: { startsWith: BARCODE_PREFIX } } as any),
+    where: tenantWhere(tenantId, {
+      barcode: { startsWith: BARCODE_PREFIX },
+    } as any),
     select: { barcode: true },
   });
 
@@ -58,9 +63,14 @@ function generateSvg(barcodeValue: string) {
   return svg.outerHTML as string;
 }
 
-export const generateBarcodeForProduct = async (productId: string, tenantId?: string) => {
+export const generateBarcodeForProduct = async (
+  productId: string,
+  tenantId?: string,
+) => {
   // fetch product
-  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
+  const product = await prisma.product.findFirst({
+    where: tenantWhere(tenantId, { id: productId }),
+  });
   if (!product) throw new CustomError("Product not found", 404);
   assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
 
@@ -93,8 +103,13 @@ export const generateBarcodeForProduct = async (productId: string, tenantId?: st
   throw new CustomError("Failed to assign a unique barcode", 500);
 };
 
-export const getBarcodeForProduct = async (productId: string, tenantId?: string) => {
-  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
+export const getBarcodeForProduct = async (
+  productId: string,
+  tenantId?: string,
+) => {
+  const product = await prisma.product.findFirst({
+    where: tenantWhere(tenantId, { id: productId }),
+  });
   if (!product) throw new CustomError("Product not found", 404);
   assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
   if (!product.barcode)
@@ -120,7 +135,9 @@ export const generatePrintData = async (opts: {
     tenantId,
   } = opts;
 
-  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
+  const product = await prisma.product.findFirst({
+    where: tenantWhere(tenantId, { id: productId }),
+  });
   if (!product) throw new CustomError("Product not found", 404);
   assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
   if (!product.barcode)

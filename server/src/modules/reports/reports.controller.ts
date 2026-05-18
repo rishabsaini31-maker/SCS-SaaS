@@ -1,7 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import * as service from "./reports.service";
 
-export const sales = async (req: Request, res: Response, next: NextFunction) => {
+export const sales = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const result = await service.getSalesReport(
       req.tenantId,
@@ -14,7 +18,11 @@ export const sales = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-export const purchases = async (req: Request, res: Response, next: NextFunction) => {
+export const purchases = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const result = await service.getPurchaseReport(
       req.tenantId,
@@ -27,7 +35,11 @@ export const purchases = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-export const stock = async (req: Request, res: Response, next: NextFunction) => {
+export const stock = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const result = await service.getStockReport(req.tenantId);
     res.json(result);

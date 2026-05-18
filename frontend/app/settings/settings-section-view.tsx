@@ -156,7 +156,9 @@ export default function SettingsSectionView({
             <h3 className="font-h1 text-h1">Business Profile</h3>
             <button
               className={`px-4 py-2 text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all ${
-                isUpdating || isLoading ? "bg-slate-300 cursor-not-allowed" : "bg-primary"
+                isUpdating || isLoading
+                  ? "bg-slate-300 cursor-not-allowed"
+                  : "bg-primary"
               }`}
               onClick={handleSaveBusinessProfile}
               disabled={isUpdating || isLoading}
@@ -261,7 +263,9 @@ export default function SettingsSectionView({
             <h3 className="font-h1 text-h1">Billing &amp; GST</h3>
             <button
               className={`px-4 py-2 text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all ${
-                isUpdating || isLoading ? "bg-slate-300 cursor-not-allowed" : "bg-primary"
+                isUpdating || isLoading
+                  ? "bg-slate-300 cursor-not-allowed"
+                  : "bg-primary"
               }`}
               onClick={handleSaveBillingSettings}
               disabled={isUpdating || isLoading}
@@ -316,7 +320,9 @@ export default function SettingsSectionView({
                       className="w-full px-4 py-2.5 rounded-lg border border-[#E2E8F0] font-mono-data text-mono-data focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
                       type="text"
                       value={invoicePrefix}
-                      onChange={(e) => setInvoicePrefix(e.target.value.toUpperCase())}
+                      onChange={(e) =>
+                        setInvoicePrefix(e.target.value.toUpperCase())
+                      }
                       placeholder="e.g., INV-"
                       maxLength={10}
                     />
@@ -337,7 +343,9 @@ export default function SettingsSectionView({
             <h3 className="font-h1 text-h1">Inventory Rules</h3>
             <button
               className={`px-4 py-2 text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 active:scale-95 transition-all ${
-                isUpdating || isLoading ? "bg-slate-300 cursor-not-allowed" : "bg-primary"
+                isUpdating || isLoading
+                  ? "bg-slate-300 cursor-not-allowed"
+                  : "bg-primary"
               }`}
               onClick={handleSaveInventorySettings}
               disabled={isUpdating || isLoading}
@@ -400,7 +408,11 @@ export default function SettingsSectionView({
                       className="w-20 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-center font-mono-data text-mono-data focus:ring-2 focus:ring-blue-500/20 outline-none"
                       type="number"
                       value={lowStockThreshold}
-                      onChange={(e) => setLowStockThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) =>
+                        setLowStockThreshold(
+                          Math.max(1, parseInt(e.target.value) || 1),
+                        )
+                      }
                       min="1"
                       max="1000"
                     />

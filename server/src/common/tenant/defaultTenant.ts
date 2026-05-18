@@ -1,4 +1,5 @@
 import prisma from "../db/prisma";
+import { hashPassword } from "../utils/password";
 
 const DEFAULT_TENANT = {
   businessName: "shop1",
@@ -7,6 +8,8 @@ const DEFAULT_TENANT = {
   phone: null,
   gstNumber: null,
 };
+
+const DEFAULT_OWNER_PASSWORD = process.env.DEFAULT_OWNER_PASSWORD || "shop1-owner";
 
 let cachedDefaultTenantId: string | null = null;
 
@@ -20,6 +23,18 @@ export async function ensureDefaultTenant() {
     select: { id: true },
   });
 
+  await prisma.user.upsert({
+    where: { email: DEFAULT_TENANT.email },
+    update: {
+      tenantId: tenant.id,
+    },
+    create: {
+      tenantId: tenant.id,
+      email: DEFAULT_TENANT.email,
+      passwordHash: hashPassword(DEFAULT_OWNER_PASSWORD),
+    },
+  });
+
   cachedDefaultTenantId = tenant.id;
   return cachedDefaultTenantId;
 }
@@ -27,3 +42,28 @@ export async function ensureDefaultTenant() {
 export async function getDefaultTenantId() {
   return ensureDefaultTenant();
 }
+
+  export async function ensureOwnerAccounts() {
+    const tenants = await prisma.tenant.findMany({
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    await Promise.all(
+      tenants.map((tenant) =>
+        prisma.user.upsert({
+          where: { email: tenant.email },
+          update: {
+            tenantId: tenant.id,
+          },
+          create: {
+            tenantId: tenant.id,
+            email: tenant.email,
+            passwordHash: hashPassword(DEFAULT_OWNER_PASSWORD),
+          },
+        }),
+      ),
+    );
+  }

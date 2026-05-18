@@ -1,8 +1,13 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 
+export type AuthTokenPayload = {
+  userId: string;
+  tenantId: string;
+};
+
 export function signAuthToken(
-  payload: { userId: string; tenantId?: string; role?: string },
+  payload: AuthTokenPayload,
   expiresIn: string = "7d",
 ) {
   return (jwt as any).sign(payload, config.jwtSecret, { expiresIn });

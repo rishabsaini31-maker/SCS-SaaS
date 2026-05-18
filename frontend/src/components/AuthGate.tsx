@@ -1,0 +1,134 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import api from "@/lib/api";
+import { clearAuthToken, getAuthToken, setAuthToken } from "@/lib/auth";
+import { toast } from "@/lib/toast";
+
+type AuthStatus = "checking" | "authenticated" | "guest";
+
+type LoginResponse = {
+  token: string;
+};
+
+export function AuthGate({ children }: { children: ReactNode }) {
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const token = getAuthToken();
+
+    if (!token) {
+      setAuthStatus("guest");
+      return;
+    }
+
+    api
+      .get("/auth/me")
+      .then(() => setAuthStatus("authenticated"))
+      .catch(() => {
+        clearAuthToken();
+        setAuthStatus("guest");
+      });
+  }, []);
+
+  const handleLogin = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      setErrorMessage("");
+      const response = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
+      });
+      setAuthToken(response.data.token);
+      setAuthStatus("authenticated");
+      toast.success("Logged in successfully");
+    } catch {
+      clearAuthToken();
+      setErrorMessage("Invalid email or password");
+      toast.error("Invalid email or password");
+      setAuthStatus("guest");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (authStatus === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_#F1F5F9,_#E2E8F0_45%,_#CBD5E1_100%)]">
+        <div className="text-slate-600 text-sm font-medium">
+          Checking session...
+        </div>
+      </div>
+    );
+  }
+
+  if (authStatus === "guest") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.16),_transparent_34%),linear-gradient(180deg,_#F8FAFC_0%,_#E2E8F0_100%)]">
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-sm p-8">
+          <div className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-600">
+              Owner Login
+            </p>
+            <h1 className="mt-3 text-3xl font-bold text-slate-900">
+              Sign in to your tenant
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              One tenant, one owner account. Use the owner email and password.
+            </p>
+          </div>
+
+          <form className="space-y-4" onSubmit={handleLogin}>
+            {errorMessage ? (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {errorMessage}
+              </div>
+            ) : null}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Email
+              </label>
+              <input
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="owner@business.com"
+                required
+                type="email"
+                value={email}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Password
+              </label>
+              <input
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter password"
+                required
+                type="password"
+                value={password}
+              />
+            </div>
+            <button
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={isSubmitting}
+              type="submit"
+            >
+              {isSubmitting ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}

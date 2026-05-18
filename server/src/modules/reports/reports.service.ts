@@ -1,7 +1,11 @@
 import prisma from "../../common/db/prisma";
 import { tenantWhere } from "../../common/tenant/tenant.utils";
 
-export const getSalesReport = async (tenantId?: string, startDate?: string, endDate?: string) => {
+export const getSalesReport = async (
+  tenantId?: string,
+  startDate?: string,
+  endDate?: string,
+) => {
   return prisma.invoice.findMany({
     where: {
       ...tenantWhere(tenantId),
@@ -19,7 +23,11 @@ export const getSalesReport = async (tenantId?: string, startDate?: string, endD
   });
 };
 
-export const getPurchaseReport = async (tenantId?: string, startDate?: string, endDate?: string) => {
+export const getPurchaseReport = async (
+  tenantId?: string,
+  startDate?: string,
+  endDate?: string,
+) => {
   return prisma.purchase.findMany({
     where: {
       ...tenantWhere(tenantId),

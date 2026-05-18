@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
-import { getDefaultTenantId } from "../tenant/defaultTenant";
+import type { AuthTokenPayload } from "../utils/jwt";
 
 export interface AuthPayload {
   userId?: string;
   tenantId?: string;
-  role?: string;
   [key: string]: any;
 }
 
@@ -29,16 +28,18 @@ export async function authenticateJWT(
   try {
     const verifyFn: any = (jwt as any).verify;
     const payload =
-      ((verifyFn as any).call(null, token, config.jwtSecret) as AuthPayload) ||
-      {};
-    const tenantId = payload.tenantId || (await getDefaultTenantId());
-    // attach safely
+      ((verifyFn as any).call(null, token, config.jwtSecret) as AuthTokenPayload) ||
+      null;
+
+    if (!payload?.userId || !payload.tenantId) {
+      return next();
+    }
+
     (req as any).user = {
       userId: payload.userId,
-      tenantId,
-      role: payload.role,
+      tenantId: payload.tenantId,
     };
-    (req as any).tenantId = tenantId;
+    (req as any).tenantId = payload.tenantId;
   } catch (err) {
     // invalid token -> ignore here; requireTenant middleware will enforce if needed
   }

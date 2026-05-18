@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import PoweredByBadge from "@/components/PoweredByBadge";
+import { AuthGate } from "@/components/AuthGate";
 import ReactQueryProvider from "@/lib/ReactQueryProvider";
 import { NotificationProvider } from "@/lib/NotificationContext";
 
@@ -41,12 +42,14 @@ export default function RootLayout({
       <body className="font-body-md text-on-surface bg-[#F8FAFC]">
         <ReactQueryProvider>
           <NotificationProvider>
-            <Sidebar />
-            <Topbar />
-            <main className="ml-[240px] mt-[64px] p-8 min-h-screen">
-              {children}
-            </main>
-            <PoweredByBadge />
+            <AuthGate>
+              <Sidebar />
+              <Topbar />
+              <main className="ml-[240px] mt-[64px] p-8 min-h-screen">
+                {children}
+              </main>
+              <PoweredByBadge />
+            </AuthGate>
           </NotificationProvider>
         </ReactQueryProvider>
       </body>

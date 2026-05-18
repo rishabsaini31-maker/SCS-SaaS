@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
+import { getAuthToken } from "@/lib/auth";
 
 const baseURL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
@@ -8,6 +9,17 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    const headers = AxiosHeaders.from(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
+  }
+
+  return config;
 });
 
 export const fetcher = (url: string) => api.get(url).then((res) => res.data);

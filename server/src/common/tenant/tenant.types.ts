@@ -5,7 +5,6 @@ export type TenantId = string;
 export interface TenantUserContext {
   userId?: string;
   tenantId?: TenantId;
-  role?: string;
 }
 
 export interface TenantRequest extends Request {

@@ -41,7 +41,9 @@ function notifyListeners() {
 }
 
 export function useToasts() {
-  const [currentToasts, setCurrentToasts] = React.useState<Toast[]>([...toasts]);
+  const [currentToasts, setCurrentToasts] = React.useState<Toast[]>([
+    ...toasts,
+  ]);
 
   React.useEffect(() => {
     listeners.add(setCurrentToasts);

@@ -11,7 +11,11 @@ export const get = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export const update = async (req: Request, res: Response, next: NextFunction) => {
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const data = updateTenantSettingsSchema.parse(req.body);
     const result = await service.updateTenantSettings(req.tenantId, data);
@@ -21,7 +25,11 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const businessProfile = async (req: Request, res: Response, next: NextFunction) => {
+export const businessProfile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const result = await service.getBusinessProfile(req.tenantId);
     res.json(result);
