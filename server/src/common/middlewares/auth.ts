@@ -28,8 +28,11 @@ export async function authenticateJWT(
   try {
     const verifyFn: any = (jwt as any).verify;
     const payload =
-      ((verifyFn as any).call(null, token, config.jwtSecret) as AuthTokenPayload) ||
-      null;
+      ((verifyFn as any).call(
+        null,
+        token,
+        config.jwtSecret,
+      ) as AuthTokenPayload) || null;
 
     if (!payload?.userId || !payload.tenantId) {
       return next();

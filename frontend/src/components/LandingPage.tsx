@@ -30,9 +30,9 @@ export default function LandingPage() {
 <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#contact">Contact</a>
 </div>
 <div className="flex items-center gap-4">
-<button className="px-6 py-2 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary/90 active:scale-95 transition-all duration-150 shadow-sm">
-                    Login
-                </button>
+<Link className="px-6 py-2 bg-primary text-on-primary rounded-lg font-semibold hover:bg-primary/90 active:scale-95 transition-all duration-150 shadow-sm" href="/login">
+          Login
+        </Link>
 </div>
 </nav>
 </header>
@@ -48,9 +48,9 @@ export default function LandingPage() {
                     Manage billing, stock, purchases, payments, barcode labels, and reports in one powerful SaaS platform designed for high-efficiency wholesale operations.
                 </p>
 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-<button className="w-full sm:w-auto px-8 py-4 bg-primary text-on-primary rounded-xl font-bold text-lg hover:shadow-lg active:scale-95 transition-all">
-                        Login
-                    </button>
+<Link className="w-full sm:w-auto px-8 py-4 bg-primary text-on-primary rounded-xl font-bold text-lg hover:shadow-lg active:scale-95 transition-all text-center" href="/login">
+            Login
+          </Link>
 <button className="w-full sm:w-auto px-8 py-4 bg-white border border-outline-variant text-on-surface rounded-xl font-bold text-lg hover:bg-surface-container-low active:scale-95 transition-all linear-shadow">
                         Book Demo
                     </button>
@@ -273,9 +273,9 @@ export default function LandingPage() {
 <h2 className="text-4xl md:text-5xl font-extrabold text-on-primary-container mb-6 relative z-10">Ready to simplify your business operations?</h2>
 <p className="text-on-primary-container/80 text-lg mb-10 max-w-2xl mx-auto relative z-10">Join 10,000+ businesses who trust WholesalePro for their daily operations.</p>
 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
-<button className="px-10 py-4 bg-white text-primary rounded-xl font-bold text-lg hover:bg-surface-container-low transition-all">
-                            Login
-                        </button>
+<Link className="px-10 py-4 bg-white text-primary rounded-xl font-bold text-lg hover:bg-surface-container-low transition-all text-center" href="/login">
+              Login
+            </Link>
 <button className="px-10 py-4 border-2 border-white text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-all">
                             Contact Sales
                         </button>

@@ -33,7 +33,7 @@ export async function loginOwner(data: LoginInput) {
     throw new CustomError("Invalid email or password", 401);
   }
 
-  const passwordMatches = verifyPassword(data.password, owner.passwordHash);
+  const passwordMatches = await verifyPassword(data.password, owner.passwordHash);
   if (!passwordMatches) {
     throw new CustomError("Invalid email or password", 401);
   }

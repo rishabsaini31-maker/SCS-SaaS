@@ -19,6 +19,8 @@ export const getTenantSettings = async (tenantId?: string) => {
     data: tenantCreateData(tenantId, {
       businessName: null,
       gstNumber: null,
+      invoicePrefix: "INV-",
+      lowStockThreshold: 10,
     }) as any,
   });
 };

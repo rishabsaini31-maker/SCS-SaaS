@@ -2,7 +2,7 @@ import prisma from "../../common/db/prisma";
 import { hashPassword } from "../../common/utils/password";
 import type { CreateTenantInput } from "./tenant.schema";
 
-export const createTenant = async (data: CreateTenantInput) => {
+export const bootstrapTenant = async (data: CreateTenantInput) => {
   const { password, ...tenantData } = data;
 
   return prisma.$transaction(async (tx) => {
@@ -11,13 +11,24 @@ export const createTenant = async (data: CreateTenantInput) => {
       data: {
         tenantId: tenant.id,
         email: tenant.email,
-        passwordHash: hashPassword(password),
+        passwordHash: await hashPassword(password),
+      },
+    });
+    await tx.tenantSetting.create({
+      data: {
+        tenantId: tenant.id,
+        businessName: tenant.businessName,
+        gstNumber: tenant.gstNumber ?? null,
+        invoicePrefix: "INV-",
+        lowStockThreshold: 10,
       },
     });
 
     return tenant;
   });
 };
+
+export const createTenant = bootstrapTenant;
 
 export const getTenants = async () => {
   return (prisma as any).tenant.findMany({ orderBy: { createdAt: "desc" } });

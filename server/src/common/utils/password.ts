@@ -1,52 +1,11 @@
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
-const HASH_ALGORITHM = "sha512";
-const ITERATIONS = 120000;
-const KEY_LENGTH = 64;
-const SALT_LENGTH = 16;
+const BCRYPT_ROUNDS = 12;
 
-function makeHash(password: string, salt: string) {
-  const derivedKey = crypto.pbkdf2Sync(
-    password,
-    salt,
-    ITERATIONS,
-    KEY_LENGTH,
-    HASH_ALGORITHM,
-  );
-  return derivedKey.toString("hex");
+export async function hashPassword(password: string) {
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-export function hashPassword(password: string) {
-  const salt = crypto.randomBytes(SALT_LENGTH).toString("hex");
-  const hash = makeHash(password, salt);
-  return [`pbkdf2`, ITERATIONS, salt, hash].join("$");
-}
-
-export function verifyPassword(password: string, storedHash: string) {
-  const [algorithm, iterationsText, salt, hash] = storedHash.split("$");
-  if (
-    algorithm !== "pbkdf2" ||
-    !iterationsText ||
-    !salt ||
-    !hash ||
-    Number.isNaN(Number(iterationsText))
-  ) {
-    return false;
-  }
-
-  const iterations = Number(iterationsText);
-  const derivedHash = crypto.pbkdf2Sync(
-    password,
-    salt,
-    iterations,
-    KEY_LENGTH,
-    HASH_ALGORITHM,
-  );
-  const storedBuffer = Buffer.from(hash, "hex");
-
-  if (storedBuffer.length !== derivedHash.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(storedBuffer, derivedHash);
+export async function verifyPassword(password: string, storedHash: string) {
+  return bcrypt.compare(password, storedHash);
 }

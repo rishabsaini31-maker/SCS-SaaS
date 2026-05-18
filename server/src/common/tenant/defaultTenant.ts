@@ -9,7 +9,8 @@ const DEFAULT_TENANT = {
   gstNumber: null,
 };
 
-const DEFAULT_OWNER_PASSWORD = process.env.DEFAULT_OWNER_PASSWORD || "shop1-owner";
+const DEFAULT_OWNER_PASSWORD =
+  process.env.DEFAULT_OWNER_PASSWORD || "shop1-owner";
 
 let cachedDefaultTenantId: string | null = null;
 
@@ -31,7 +32,7 @@ export async function ensureDefaultTenant() {
     create: {
       tenantId: tenant.id,
       email: DEFAULT_TENANT.email,
-      passwordHash: hashPassword(DEFAULT_OWNER_PASSWORD),
+      passwordHash: await hashPassword(DEFAULT_OWNER_PASSWORD),
     },
   });
 
@@ -43,27 +44,27 @@ export async function getDefaultTenantId() {
   return ensureDefaultTenant();
 }
 
-  export async function ensureOwnerAccounts() {
-    const tenants = await prisma.tenant.findMany({
-      select: {
-        id: true,
-        email: true,
-      },
-    });
+export async function ensureOwnerAccounts() {
+  const tenants = await prisma.tenant.findMany({
+    select: {
+      id: true,
+      email: true,
+    },
+  });
 
-    await Promise.all(
-      tenants.map((tenant) =>
-        prisma.user.upsert({
-          where: { email: tenant.email },
-          update: {
-            tenantId: tenant.id,
-          },
-          create: {
-            tenantId: tenant.id,
-            email: tenant.email,
-            passwordHash: hashPassword(DEFAULT_OWNER_PASSWORD),
-          },
-        }),
-      ),
-    );
-  }
+  await Promise.all(
+    tenants.map(async (tenant) =>
+      prisma.user.upsert({
+        where: { email: tenant.email },
+        update: {
+          tenantId: tenant.id,
+        },
+        create: {
+          tenantId: tenant.id,
+          email: tenant.email,
+          passwordHash: await hashPassword(DEFAULT_OWNER_PASSWORD),
+        },
+      }),
+    ),
+  );
+}
