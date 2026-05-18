@@ -13,7 +13,7 @@ export const create = async (
 ) => {
   try {
     const data = createInvoiceSchema.parse(req.body);
-    const invoice = await service.createInvoice(data);
+    const invoice = await service.createInvoice(data, req.tenantId);
     res.status(201).json(invoice);
   } catch (err) {
     next(err);
@@ -27,7 +27,7 @@ export const getById = async (
 ) => {
   try {
     const { id } = invoiceIdSchema.parse(req.params);
-    const invoice = await service.getInvoice(id);
+    const invoice = await service.getInvoice(id, req.tenantId);
     res.json(invoice);
   } catch (err) {
     next(err);
@@ -40,12 +40,15 @@ export const list = async (req: Request, res: Response, next: NextFunction) => {
     const status = req.query.status as string | undefined;
     const startDate = req.query.startDate as string | undefined;
     const endDate = req.query.endDate as string | undefined;
-    const invoices = await service.getInvoices({
-      customerId,
-      status,
-      startDate,
-      endDate,
-    });
+    const invoices = await service.getInvoices(
+      {
+        customerId,
+        status,
+        startDate,
+        endDate,
+      },
+      req.tenantId,
+    );
     res.json(invoices);
   } catch (err) {
     next(err);
@@ -60,7 +63,7 @@ export const update = async (
   try {
     const { id } = invoiceIdSchema.parse(req.params);
     const data = updateInvoiceSchema.parse(req.body);
-    const invoice = await service.updateInvoice(id, data);
+    const invoice = await service.updateInvoice(id, data, req.tenantId);
     res.json(invoice);
   } catch (err) {
     next(err);
@@ -77,7 +80,10 @@ export const listByCustomer = async (
       ? req.params.customerId[0]
       : req.params.customerId;
     if (!customerId) throw new Error("Customer ID is required");
-    const invoices = await service.getInvoicesByCustomer(customerId);
+    const invoices = await service.getInvoicesByCustomer(
+      customerId,
+      req.tenantId,
+    );
     res.json(invoices);
   } catch (err) {
     next(err);

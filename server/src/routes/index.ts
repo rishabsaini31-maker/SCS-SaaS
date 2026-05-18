@@ -9,6 +9,10 @@ import paymentsRouter from "../modules/payments/payments.routes";
 import ledgerRouter from "../modules/ledger/ledger.routes";
 import barcodeRouter from "../modules/barcode/barcode.routes";
 import categoriesRouter from "../modules/categories/categories.routes";
+import tenantRouter from "../modules/tenant/tenant.routes";
+import dashboardRouter from "../modules/dashboard/dashboard.routes";
+import reportsRouter from "../modules/reports/reports.routes";
+import settingsRouter from "../modules/settings/settings.routes";
 
 const router = Router();
 
@@ -20,7 +24,11 @@ router.use("/invoices", invoicesRouter);
 router.use("/purchases", purchasesRouter);
 router.use("/payments", paymentsRouter);
 router.use("/categories", categoriesRouter);
+router.use("/tenants", tenantRouter);
 router.use("/ledger", ledgerRouter);
 router.use("/barcode", barcodeRouter);
+router.use("/dashboard", dashboardRouter);
+router.use("/reports", reportsRouter);
+router.use("/settings", settingsRouter);
 
 export default router;

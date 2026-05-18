@@ -4,40 +4,56 @@ import type {
   CreateSupplierInput,
   UpdateSupplierInput,
 } from "./suppliers.schema";
+import {
+  assertTenantOwnership,
+  tenantCreateData,
+  tenantWhere,
+} from "../../common/tenant/tenant.utils";
 
-export const createSupplier = async (data: CreateSupplierInput) => {
+export const createSupplier = async (
+  data: CreateSupplierInput,
+  tenantId?: string,
+) => {
   if (data.email) {
-    const existing = await prisma.supplier.findUnique({
-      where: { email: data.email },
+    const existing = await prisma.supplier.findFirst({
+      where: tenantWhere(tenantId, { email: data.email }),
     });
     if (existing) throw new CustomError("Email already exists", 400);
   }
 
   if (data.gstin) {
-    const existing = await prisma.supplier.findMany({
-      where: { gstin: data.gstin },
+    const existing = await prisma.supplier.findFirst({
+      where: tenantWhere(tenantId, { gstin: data.gstin }),
     });
-    if (existing.length > 0) throw new CustomError("GSTIN already exists", 400);
+    if (existing) throw new CustomError("GSTIN already exists", 400);
   }
 
-  return prisma.supplier.create({ data });
+  return prisma.supplier.create({
+    data: tenantCreateData(tenantId, data) as any,
+  });
 };
 
-export const getSupplier = async (id: string) => {
+export const getSupplier = async (id: string, tenantId?: string) => {
   const supplier = await prisma.supplier.findUnique({
     where: { id },
     include: { purchases: true, ledgers: true },
   });
-  if (!supplier) throw new CustomError("Supplier not found", 404);
+  if (!supplier || (tenantId && (supplier as any).tenantId !== tenantId))
+    throw new CustomError("Supplier not found", 404);
+  assertTenantOwnership(tenantId, (supplier as any).tenantId, "Supplier");
   return supplier;
 };
 
-export const getSuppliers = async (filters?: {
-  status?: string;
-  search?: string;
-}) => {
+export const getSuppliers = async (
+  filters?: {
+    status?: string;
+    search?: string;
+  },
+  tenantId?: string,
+) => {
   return prisma.supplier.findMany({
     where: {
+      ...tenantWhere(tenantId),
       ...(filters?.status && { status: filters.status }),
       ...(filters?.search && {
         OR: [
@@ -51,33 +67,45 @@ export const getSuppliers = async (filters?: {
   });
 };
 
-export const updateSupplier = async (id: string, data: UpdateSupplierInput) => {
-  await getSupplier(id);
+export const updateSupplier = async (
+  id: string,
+  data: UpdateSupplierInput,
+  tenantId?: string,
+) => {
+  await getSupplier(id, tenantId);
   return prisma.supplier.update({
     where: { id },
     data,
   });
 };
 
-export const deleteSupplier = async (id: string) => {
-  await getSupplier(id);
+export const deleteSupplier = async (id: string, tenantId?: string) => {
+  await getSupplier(id, tenantId);
   return prisma.supplier.delete({ where: { id } });
 };
 
-export const getSupplierLedger = async (supplierId: string) => {
-  const supplier = await getSupplier(supplierId);
+export const getSupplierLedger = async (
+  supplierId: string,
+  tenantId?: string,
+) => {
+  const supplier = await getSupplier(supplierId, tenantId);
   const ledgers = await prisma.ledgerEntry.findMany({
-    where: { supplierId },
+    where: tenantWhere(tenantId, { supplierId }),
     orderBy: { createdAt: "desc" },
   });
   return { supplier, ledgers };
 };
 
-export const getSupplierRecentItems = async (supplierId: string) => {
+export const getSupplierRecentItems = async (
+  supplierId: string,
+  tenantId?: string,
+) => {
   // Group recent purchase line items by productId/productName for a supplier
   const grouped = await prisma.purchaseLineItem.groupBy({
     by: ["productId", "productName"],
-    where: { purchase: { supplierId } },
+    where: tenantWhere(tenantId, {
+      purchase: { supplierId, ...(tenantId && { tenantId }) },
+    }),
     _max: { createdAt: true, unitPrice: true },
     _count: { _all: true },
     orderBy: { _max: { createdAt: "desc" } },
@@ -90,7 +118,7 @@ export const getSupplierRecentItems = async (supplierId: string) => {
     .filter(Boolean) as string[];
   const products = productIds.length
     ? await prisma.product.findMany({
-        where: { id: { in: productIds } },
+        where: tenantWhere(tenantId, { id: { in: productIds } }),
         select: { id: true, name: true, category: true },
       })
     : [];

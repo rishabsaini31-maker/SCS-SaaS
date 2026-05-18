@@ -13,7 +13,7 @@ export const create = async (
 ) => {
   try {
     const data = createProductSchema.parse(req.body);
-    const product = await service.createProduct(data);
+    const product = await service.createProduct(data, req.tenantId);
     res.status(201).json(product);
   } catch (err) {
     next(err);
@@ -27,7 +27,7 @@ export const getById = async (
 ) => {
   try {
     const { id } = productIdSchema.parse(req.params);
-    const product = await service.getProduct(id);
+    const product = await service.getProduct(id, req.tenantId);
     res.json(product);
   } catch (err) {
     next(err);
@@ -40,12 +40,15 @@ export const getProducts = async (
   next: NextFunction,
 ) => {
   try {
-    const products = await service.getAllProducts({
-      category: req.query.category as string | undefined,
-      status: req.query.status as string | undefined,
-      search: req.query.search as string | undefined,
-      barcode: req.query.barcode as string | undefined,
-    });
+    const products = await service.getAllProducts(
+      {
+        category: req.query.category as string | undefined,
+        status: req.query.status as string | undefined,
+        search: req.query.search as string | undefined,
+        barcode: req.query.barcode as string | undefined,
+      },
+      req.tenantId,
+    );
     res.json(products);
   } catch (err) {
     next(err);
@@ -60,7 +63,7 @@ export const update = async (
   try {
     const { id } = productIdSchema.parse(req.params);
     const data = updateProductSchema.parse(req.body);
-    const product = await service.updateProduct(id, data);
+    const product = await service.updateProduct(id, data, req.tenantId);
     res.json(product);
   } catch (err) {
     next(err);
@@ -74,7 +77,7 @@ export const deleteProduct = async (
 ) => {
   try {
     const { id } = productIdSchema.parse(req.params);
-    await service.deleteProduct(id);
+    await service.deleteProduct(id, req.tenantId);
     res.json({ message: "Product deleted" });
   } catch (err) {
     next(err);
@@ -90,7 +93,7 @@ export const getLowStock = async (
     const threshold = req.query.threshold
       ? parseInt(req.query.threshold as string)
       : 10;
-    const products = await service.getLowStockProducts(threshold);
+    const products = await service.getLowStockProducts(threshold, req.tenantId);
     res.json(products);
   } catch (err) {
     next(err);
@@ -104,7 +107,7 @@ export const suggest = async (
 ) => {
   try {
     const q = (req.query.q as string) || (req.query.query as string) || "";
-    const suggestions = await service.getProductSuggestions(q);
+    const suggestions = await service.getProductSuggestions(q, req.tenantId);
     res.json(suggestions);
   } catch (err) {
     next(err);
@@ -123,7 +126,11 @@ export const activate = async (
       res.status(400).json({ error: "sellingPrice is required" });
       return;
     }
-    const product = await service.activateProduct(id, parseFloat(sellingPrice));
+    const product = await service.activateProduct(
+      id,
+      parseFloat(sellingPrice),
+      req.tenantId,
+    );
     res.json(product);
   } catch (err) {
     next(err);

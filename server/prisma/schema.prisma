@@ -15,50 +15,66 @@ model Product {
   sellingPrice     Float     @default(0)
   gst              Float     @default(0)
   stock            Int       @default(0)
-  barcode          String?   @unique
+  barcode          String?
   image            String?
   status           String    @default("active")
+  tenantId         String?
+  tenant           Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   invoiceItems     InvoiceLineItem[]
   purchaseItems    PurchaseLineItem[]
+  @@index([tenantId])
+  @@unique([barcode, tenantId])
 }
 
 model Customer {
   id                  String    @id @default(cuid())
   name                String
-  email               String?   @unique
+  email               String?
   phone               String?
   address             String?
-  gstin               String?   @unique
+  gstin               String?
   outstandingBalance  Float     @default(0)
   status              String    @default("active")
+  tenantId            String?
+  tenant              Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   invoices            Invoice[]
   payments            Payment[]
   ledgers             LedgerEntry[]
+  @@index([tenantId])
+  @@unique([email, tenantId])
+  @@unique([gstin, tenantId])
 }
 
 model Supplier {
   id              String    @id @default(cuid())
   name            String
-  email           String?   @unique
+  email           String?
   phone           String?
   address         String?
-  gstin           String?   @unique
+  gstin           String?
   payableBalance  Float     @default(0)
   status          String    @default("active")
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   purchases       Purchase[]
   payments        Payment[]
   ledgers         LedgerEntry[]
+  @@index([tenantId])
+  @@unique([email, tenantId])
+  @@unique([gstin, tenantId])
 }
 
 model Invoice {
   id              String    @id @default(cuid())
-  invoiceNumber   String    @unique
+  invoiceNumber   String
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
   customerId      String
   customer        Customer  @relation(fields: [customerId], references: [id])
   invoiceDate     DateTime  @default(now())
@@ -73,11 +89,14 @@ model Invoice {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   @@index([customerId])
-  @@index([invoiceNumber])
+  @@index([tenantId])
+  @@unique([invoiceNumber, tenantId])
 }
 
 model InvoiceLineItem {
   id          String    @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
   invoiceId   String
   invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   productId   String
@@ -88,11 +107,14 @@ model InvoiceLineItem {
   createdAt   DateTime  @default(now())
   @@index([invoiceId])
   @@index([productId])
+  @@index([tenantId])
 }
 
 model Purchase {
   id              String    @id @default(cuid())
-  purchaseNumber  String    @unique
+  purchaseNumber  String
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
   supplierId      String
   supplier        Supplier  @relation(fields: [supplierId], references: [id])
   purchaseDate    DateTime  @default(now())
@@ -107,11 +129,14 @@ model Purchase {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   @@index([supplierId])
-  @@index([purchaseNumber])
+  @@index([tenantId])
+  @@unique([purchaseNumber, tenantId])
 }
 
 model PurchaseLineItem {
   id          String    @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
   purchaseId  String
   purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   productId   String?
@@ -124,11 +149,14 @@ model PurchaseLineItem {
   createdAt   DateTime  @default(now())
   @@index([purchaseId])
   @@index([productId])
+  @@index([tenantId])
 }
 
 model Payment {
   id              String    @id @default(cuid())
-  paymentNumber   String    @unique
+  paymentNumber   String
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
   customerId      String?
   customer        Customer? @relation(fields: [customerId], references: [id])
   supplierId      String?
@@ -148,10 +176,14 @@ model Payment {
   @@index([supplierId])
   @@index([invoiceId])
   @@index([purchaseId])
+  @@index([tenantId])
+  @@unique([paymentNumber, tenantId])
 }
 
 model LedgerEntry {
   id          String    @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
   customerId  String?
   customer    Customer? @relation(fields: [customerId], references: [id])
   supplierId  String?
@@ -168,4 +200,41 @@ model LedgerEntry {
   createdAt   DateTime  @default(now())
   @@index([customerId])
   @@index([supplierId])
+  @@index([tenantId])
+}
+
+model Tenant {
+  id             String   @id @default(cuid())
+  businessName   String
+  ownerName      String
+  email          String   @unique
+  phone          String?
+  gstNumber      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  products       Product[]
+  customers      Customer[]
+  suppliers      Supplier[]
+  invoices       Invoice[]
+  invoiceItems   InvoiceLineItem[]
+  purchases      Purchase[]
+  purchaseItems  PurchaseLineItem[]
+  payments       Payment[]
+  ledger         LedgerEntry[]
+  settings       TenantSetting?
+}
+
+model TenantSetting {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessName    String?
+  gstNumber       String?
+  invoicePrefix   String   @default("INV-")
+  lowStockThreshold Int     @default(10)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
 }

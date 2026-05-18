@@ -2,6 +2,7 @@ import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import routes from "./routes";
+import { authenticateJWT } from "./common/middlewares/auth";
 import { errorHandler } from "./common/middlewares/errorHandler";
 import { logger } from "./common/middlewares/logger";
 import { rateLimiter } from "./common/middlewares/rateLimiter";
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 app.use(logger);
 app.use(rateLimiter);
+app.use(authenticateJWT);
 
 // API Routes
 app.use("/api/v1", routes);

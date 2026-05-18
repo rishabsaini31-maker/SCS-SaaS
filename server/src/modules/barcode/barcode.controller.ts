@@ -14,7 +14,7 @@ export const generate = async (
 ) => {
   try {
     const parsed = generateBarcodeSchema.parse(req.body);
-    const result = await service.generateBarcodeForProduct(parsed.productId);
+    const result = await service.generateBarcodeForProduct(parsed.productId, req.tenantId);
     res.json(result);
   } catch (err) {
     next(err);
@@ -24,7 +24,7 @@ export const generate = async (
 export const get = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = getBarcodeParamsSchema.parse(req.params);
-    const result = await service.getBarcodeForProduct(parsed.productId);
+    const result = await service.getBarcodeForProduct(parsed.productId, req.tenantId);
     res.json(result);
   } catch (err) {
     next(err);
@@ -38,7 +38,7 @@ export const printData = async (
 ) => {
   try {
     const parsed = printDataSchema.parse(req.body);
-    const result = await service.generatePrintData(parsed);
+    const result = await service.generatePrintData({ ...parsed, tenantId: req.tenantId });
     res.json({ labels: result });
   } catch (err) {
     if (err instanceof CustomError) return next(err);

@@ -1,27 +1,37 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
 import type { CreatePaymentInput, UpdatePaymentInput } from "./payments.schema";
+import {
+  assertTenantOwnership,
+  tenantCreateData,
+  tenantWhere,
+} from "../../common/tenant/tenant.utils";
 
-async function generatePaymentNumber(): Promise<string> {
+async function generatePaymentNumber(tenantId?: string): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
   const todayStr = today.replace(/-/g, "");
   const count = await prisma.payment.count({
-    where: { paymentNumber: { startsWith: `PAY-${todayStr}` } },
+    where: tenantWhere(tenantId, {
+      paymentNumber: { startsWith: `PAY-${todayStr}` },
+    }),
   });
   const seq = String(count + 1).padStart(5, "0");
   return `PAY-${todayStr}-${seq}`;
 }
 
-export const createPayment = async (data: CreatePaymentInput) => {
+export const createPayment = async (
+  data: CreatePaymentInput,
+  tenantId?: string,
+) => {
   if (!data.customerId && !data.supplierId) {
     throw new CustomError("Either customerId or supplierId is required", 400);
   }
 
   if (data.customerId) {
-    const customer = await prisma.customer.findUnique({
-      where: { id: data.customerId },
+    const customer = await prisma.customer.findFirst({
+      where: tenantWhere(tenantId, { id: data.customerId }),
     });
     if (!customer) throw new CustomError("Customer not found", 404);
 
@@ -33,8 +43,8 @@ export const createPayment = async (data: CreatePaymentInput) => {
     }
 
     if (data.invoiceId) {
-      const invoice = await prisma.invoice.findUnique({
-        where: { id: data.invoiceId },
+      const invoice = await prisma.invoice.findFirst({
+        where: tenantWhere(tenantId, { id: data.invoiceId }),
         include: { payments: true },
       });
       if (!invoice) throw new CustomError("Invoice not found", 404);
@@ -55,8 +65,8 @@ export const createPayment = async (data: CreatePaymentInput) => {
   }
 
   if (data.supplierId) {
-    const supplier = await prisma.supplier.findUnique({
-      where: { id: data.supplierId },
+    const supplier = await prisma.supplier.findFirst({
+      where: tenantWhere(tenantId, { id: data.supplierId }),
     });
     if (!supplier) throw new CustomError("Supplier not found", 404);
 
@@ -68,8 +78,8 @@ export const createPayment = async (data: CreatePaymentInput) => {
     }
 
     if (data.purchaseId) {
-      const purchase = await prisma.purchase.findUnique({
-        where: { id: data.purchaseId },
+      const purchase = await prisma.purchase.findFirst({
+        where: tenantWhere(tenantId, { id: data.purchaseId }),
         include: { payments: true },
       });
       if (!purchase) throw new CustomError("Purchase not found", 404);
@@ -90,10 +100,10 @@ export const createPayment = async (data: CreatePaymentInput) => {
   }
 
   const payment = await prisma.$transaction(async (tx) => {
-    const paymentNumber = await generatePaymentNumber();
+    const paymentNumber = await generatePaymentNumber(tenantId);
 
     const newPayment = await tx.payment.create({
-      data: {
+      data: tenantCreateData(tenantId, {
         paymentNumber,
         customerId: data.customerId,
         supplierId: data.supplierId,
@@ -102,18 +112,18 @@ export const createPayment = async (data: CreatePaymentInput) => {
         amount: data.amount,
         paymentMethod: data.paymentMethod,
         notes: data.notes,
-      },
+      }) as any,
     });
 
     await tx.ledgerEntry.create({
-      data: {
+      data: tenantCreateData(tenantId, {
         customerId: data.customerId,
         supplierId: data.supplierId,
         paymentId: newPayment.id,
         type: "credit",
         amount: data.amount,
         description: `Payment ${paymentNumber}`,
-      },
+      }) as any,
     });
 
     if (data.customerId) {
@@ -123,8 +133,8 @@ export const createPayment = async (data: CreatePaymentInput) => {
       });
 
       if (data.invoiceId) {
-        const invoice = await tx.invoice.findUnique({
-          where: { id: data.invoiceId },
+        const invoice = await tx.invoice.findFirst({
+          where: tenantWhere(tenantId, { id: data.invoiceId }),
           include: { payments: true },
         });
         if (invoice) {
@@ -148,8 +158,8 @@ export const createPayment = async (data: CreatePaymentInput) => {
       });
 
       if (data.purchaseId) {
-        const purchase = await tx.purchase.findUnique({
-          where: { id: data.purchaseId },
+        const purchase = await tx.purchase.findFirst({
+          where: tenantWhere(tenantId, { id: data.purchaseId }),
           include: { payments: true },
         });
         if (purchase) {
@@ -169,12 +179,12 @@ export const createPayment = async (data: CreatePaymentInput) => {
     return newPayment;
   });
 
-  return getPayment(payment.id);
+  return getPayment(payment.id, tenantId);
 };
 
-export const getPayment = async (id: string) => {
-  const payment = await prisma.payment.findUnique({
-    where: { id },
+export const getPayment = async (id: string, tenantId?: string) => {
+  const payment = await prisma.payment.findFirst({
+    where: tenantWhere(tenantId, { id }),
     include: {
       customer: true,
       supplier: true,
@@ -184,23 +194,32 @@ export const getPayment = async (id: string) => {
     },
   });
   if (!payment) throw new CustomError("Payment not found", 404);
+  assertTenantOwnership(tenantId, (payment as any).tenantId, "Payment");
   return payment;
 };
 
-export const updatePayment = async (id: string, data: UpdatePaymentInput) => {
-  await getPayment(id);
+export const updatePayment = async (
+  id: string,
+  data: UpdatePaymentInput,
+  tenantId?: string,
+) => {
+  await getPayment(id, tenantId);
   return prisma.payment.update({
     where: { id },
     data,
   });
 };
 
-export const getPayments = async (filters?: {
-  customerId?: string;
-  supplierId?: string;
-}) => {
+export const getPayments = async (
+  filters?: {
+    customerId?: string;
+    supplierId?: string;
+  },
+  tenantId?: string,
+) => {
   return prisma.payment.findMany({
     where: {
+      ...tenantWhere(tenantId),
       ...(filters?.customerId && { customerId: filters.customerId }),
       ...(filters?.supplierId && { supplierId: filters.supplierId }),
     },

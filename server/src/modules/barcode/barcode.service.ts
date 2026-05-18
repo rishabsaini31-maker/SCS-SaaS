@@ -3,6 +3,7 @@ import { CustomError } from "../../common/errors/CustomError";
 // @ts-ignore
 import JsBarcode from "jsbarcode";
 import { JSDOM } from "jsdom";
+import { assertTenantOwnership, tenantWhere } from "../../common/tenant/tenant.utils";
 
 const BARCODE_PREFIX = "PRD-";
 const BARCODE_PAD = 6;
@@ -11,10 +12,10 @@ function formatBarcode(num: number) {
   return `${BARCODE_PREFIX}${String(num).padStart(BARCODE_PAD, "0")}`;
 }
 
-async function computeNextBarcode(): Promise<string> {
+async function computeNextBarcode(tenantId?: string): Promise<string> {
   // Get all existing barcodes that match prefix
   const rows = await prisma.product.findMany({
-    where: { barcode: { startsWith: BARCODE_PREFIX } },
+    where: tenantWhere(tenantId, { barcode: { startsWith: BARCODE_PREFIX } } as any),
     select: { barcode: true },
   });
 
@@ -57,10 +58,11 @@ function generateSvg(barcodeValue: string) {
   return svg.outerHTML as string;
 }
 
-export const generateBarcodeForProduct = async (productId: string) => {
+export const generateBarcodeForProduct = async (productId: string, tenantId?: string) => {
   // fetch product
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
   if (!product) throw new CustomError("Product not found", 404);
+  assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
 
   if (product.barcode) {
     const svg = generateSvg(product.barcode);
@@ -70,7 +72,7 @@ export const generateBarcodeForProduct = async (productId: string) => {
   // Retry loop in case of unique constraint collisions
   const maxAttempts = 3;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const next = await computeNextBarcode();
+    const next = await computeNextBarcode(tenantId);
     try {
       const updated = await prisma.product.update({
         where: { id: productId },
@@ -91,9 +93,10 @@ export const generateBarcodeForProduct = async (productId: string) => {
   throw new CustomError("Failed to assign a unique barcode", 500);
 };
 
-export const getBarcodeForProduct = async (productId: string) => {
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+export const getBarcodeForProduct = async (productId: string, tenantId?: string) => {
+  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
   if (!product) throw new CustomError("Product not found", 404);
+  assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
   if (!product.barcode)
     throw new CustomError("Barcode not generated for product", 404);
   const svg = generateSvg(product.barcode);
@@ -106,6 +109,7 @@ export const generatePrintData = async (opts: {
   labelSize: "small" | "medium" | "large";
   showName?: boolean;
   showPrice?: boolean;
+  tenantId?: string;
 }) => {
   const {
     productId,
@@ -113,10 +117,12 @@ export const generatePrintData = async (opts: {
     labelSize,
     showName = true,
     showPrice = true,
+    tenantId,
   } = opts;
 
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const product = await prisma.product.findFirst({ where: tenantWhere(tenantId, { id: productId }) });
   if (!product) throw new CustomError("Product not found", 404);
+  assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
   if (!product.barcode)
     throw new CustomError("Barcode not generated for product", 404);
 

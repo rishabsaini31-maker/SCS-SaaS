@@ -4,38 +4,48 @@ import type {
   CreatePurchaseInput,
   UpdatePurchaseInput,
 } from "./purchases.schema";
+import {
+  assertTenantOwnership,
+  tenantCreateData,
+  tenantWhere,
+} from "../../common/tenant/tenant.utils";
 
-async function generatePurchaseNumber(): Promise<string> {
+async function generatePurchaseNumber(tenantId?: string): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
   const todayStr = today.replace(/-/g, "");
   const count = await prisma.purchase.count({
-    where: { purchaseNumber: { startsWith: `PUR-${todayStr}` } },
+    where: tenantWhere(tenantId, {
+      purchaseNumber: { startsWith: `PUR-${todayStr}` },
+    }),
   });
   const seq = String(count + 1).padStart(5, "0");
   return `PUR-${todayStr}-${seq}`;
 }
 
-export const createPurchase = async (data: CreatePurchaseInput) => {
-  const supplier = await prisma.supplier.findUnique({
-    where: { id: data.supplierId },
+export const createPurchase = async (
+  data: CreatePurchaseInput,
+  tenantId?: string,
+) => {
+  const supplier = await prisma.supplier.findFirst({
+    where: tenantWhere(tenantId, { id: data.supplierId }),
   });
   if (!supplier) throw new CustomError("Supplier not found", 404);
 
-  // validate provided productIds (if any)
   for (const item of data.lineItems) {
     if (item.productId) {
-      const product = await prisma.product.findUnique({
-        where: { id: item.productId },
+      const product = await prisma.product.findFirst({
+        where: tenantWhere(tenantId, { id: item.productId }),
       });
-      if (!product)
+      if (!product) {
         throw new CustomError(`Product ${item.productId} not found`, 404);
+      }
     }
   }
 
   const purchase = await prisma.$transaction(async (tx) => {
-    const purchaseNumber = await generatePurchaseNumber();
+    const purchaseNumber = await generatePurchaseNumber(tenantId);
 
     let subtotal = 0;
     const lineItems: Array<{
@@ -58,8 +68,8 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
       let createdNewProduct = false;
 
       if (item.productId) {
-        product = await tx.product.findUnique({
-          where: { id: item.productId },
+        product = await tx.product.findFirst({
+          where: tenantWhere(tenantId, { id: item.productId }),
           select: { id: true, name: true, category: true },
         });
         if (!product) {
@@ -72,13 +82,15 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
         }
 
         product = await tx.product.findFirst({
-          where: { name: { equals: manualName, mode: "insensitive" } },
+          where: tenantWhere(tenantId, {
+            name: { equals: manualName, mode: "insensitive" },
+          } as any),
           select: { id: true, name: true, category: true },
         });
 
         if (!product) {
           product = await tx.product.create({
-            data: {
+            data: tenantCreateData(tenantId, {
               name: manualName,
               category: item.category || "General",
               purchasePrice: item.unitPrice,
@@ -86,7 +98,7 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
               gst: 0,
               stock: item.quantity,
               status: "pending",
-            },
+            }) as any,
             select: { id: true, name: true, category: true },
           });
           createdNewProduct = true;
@@ -128,7 +140,7 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
     const totalAmount = subtotal + gstAmount;
 
     const newPurchase = await tx.purchase.create({
-      data: {
+      data: tenantCreateData(tenantId, {
         purchaseNumber,
         supplierId: data.supplierId,
         subtotal,
@@ -136,12 +148,12 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
         totalAmount,
         status: data.status || "created",
         notes: data.notes,
-      },
+      }) as any,
     });
 
     for (const item of lineItems) {
       await tx.purchaseLineItem.create({
-        data: {
+        data: tenantCreateData(tenantId, {
           purchaseId: newPurchase.id,
           productId: item.productId,
           productName: item.productName,
@@ -149,18 +161,18 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
-        },
+        }) as any,
       });
     }
 
     await tx.ledgerEntry.create({
-      data: {
+      data: tenantCreateData(tenantId, {
         supplierId: data.supplierId,
         purchaseId: newPurchase.id,
         type: "credit",
         amount: totalAmount,
         description: `Purchase ${purchaseNumber}`,
-      },
+      }) as any,
     });
 
     await tx.supplier.update({
@@ -171,12 +183,12 @@ export const createPurchase = async (data: CreatePurchaseInput) => {
     return newPurchase;
   });
 
-  return getPurchase(purchase.id);
+  return getPurchase(purchase.id, tenantId);
 };
 
-export const getPurchase = async (id: string) => {
-  const purchase = await prisma.purchase.findUnique({
-    where: { id },
+export const getPurchase = async (id: string, tenantId?: string) => {
+  const purchase = await prisma.purchase.findFirst({
+    where: tenantWhere(tenantId, { id }),
     include: {
       supplier: true,
       lineItems: { include: { product: true } },
@@ -185,15 +197,20 @@ export const getPurchase = async (id: string) => {
     },
   });
   if (!purchase) throw new CustomError("Purchase not found", 404);
+  assertTenantOwnership(tenantId, (purchase as any).tenantId, "Purchase");
   return purchase;
 };
 
-export const getPurchases = async (filters?: {
-  supplierId?: string;
-  status?: string;
-}) => {
+export const getPurchases = async (
+  filters?: {
+    supplierId?: string;
+    status?: string;
+  },
+  tenantId?: string,
+) => {
   return prisma.purchase.findMany({
     where: {
+      ...tenantWhere(tenantId),
       ...(filters?.supplierId && { supplierId: filters.supplierId }),
       ...(filters?.status && { status: filters.status }),
     },
@@ -205,22 +222,29 @@ export const getPurchases = async (filters?: {
   });
 };
 
-export const updatePurchase = async (id: string, data: UpdatePurchaseInput) => {
-  await getPurchase(id);
+export const updatePurchase = async (
+  id: string,
+  data: UpdatePurchaseInput,
+  tenantId?: string,
+) => {
+  await getPurchase(id, tenantId);
   return prisma.purchase.update({
     where: { id },
     data,
   });
 };
 
-export const getPurchasesBySupplier = async (supplierId: string) => {
-  const supplier = await prisma.supplier.findUnique({
-    where: { id: supplierId },
+export const getPurchasesBySupplier = async (
+  supplierId: string,
+  tenantId?: string,
+) => {
+  const supplier = await prisma.supplier.findFirst({
+    where: tenantWhere(tenantId, { id: supplierId }),
   });
   if (!supplier) throw new CustomError("Supplier not found", 404);
 
   return prisma.purchase.findMany({
-    where: { supplierId },
+    where: tenantWhere(tenantId, { supplierId }),
     include: {
       supplier: true,
       lineItems: { include: { product: true } },
