@@ -8,176 +8,184 @@ datasource db {
 }
 
 model Product {
-  id               String    @id @default(cuid())
-  name             String
-  category         String?
-  purchasePrice    Float     @default(0)
-  sellingPrice     Float     @default(0)
-  gst              Float     @default(0)
-  stock            Int       @default(0)
-  barcode          String?
-  image            String?
-  status           String    @default("active")
-  tenantId         String?
-  tenant           Tenant?   @relation(fields: [tenantId], references: [id])
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  invoiceItems     InvoiceLineItem[]
-  purchaseItems    PurchaseLineItem[]
-  @@index([tenantId])
+  id            String             @id @default(cuid())
+  name          String
+  category      String?
+  purchasePrice Float              @default(0)
+  sellingPrice  Float              @default(0)
+  gst           Float              @default(0)
+  stock         Int                @default(0)
+  barcode       String?
+  image         String?
+  status        String             @default("active")
+  tenantId      String?
+  tenant        Tenant?            @relation(fields: [tenantId], references: [id])
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  invoiceItems  InvoiceLineItem[]
+  purchaseItems PurchaseLineItem[]
+
   @@unique([barcode, tenantId])
+  @@index([tenantId])
 }
 
 model Customer {
-  id                  String    @id @default(cuid())
-  name                String
-  email               String?
-  phone               String?
-  address             String?
-  gstin               String?
-  outstandingBalance  Float     @default(0)
-  status              String    @default("active")
-  tenantId            String?
-  tenant              Tenant?   @relation(fields: [tenantId], references: [id])
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  invoices            Invoice[]
-  payments            Payment[]
-  ledgers             LedgerEntry[]
-  @@index([tenantId])
+  id                 String        @id @default(cuid())
+  name               String
+  email              String?
+  phone              String?
+  address            String?
+  gstin              String?
+  outstandingBalance Float         @default(0)
+  status             String        @default("active")
+  tenantId           String?
+  tenant             Tenant?       @relation(fields: [tenantId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  invoices           Invoice[]
+  payments           Payment[]
+  ledgers            LedgerEntry[]
+
   @@unique([email, tenantId])
   @@unique([gstin, tenantId])
+  @@index([tenantId])
 }
 
 model Supplier {
-  id              String    @id @default(cuid())
-  name            String
-  email           String?
-  phone           String?
-  address         String?
-  gstin           String?
-  payableBalance  Float     @default(0)
-  status          String    @default("active")
-  tenantId        String?
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  purchases       Purchase[]
-  payments        Payment[]
-  ledgers         LedgerEntry[]
-  @@index([tenantId])
+  id             String        @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  gstin          String?
+  payableBalance Float         @default(0)
+  status         String        @default("active")
+  tenantId       String?
+  tenant         Tenant?       @relation(fields: [tenantId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  purchases      Purchase[]
+  payments       Payment[]
+  ledgers        LedgerEntry[]
+
   @@unique([email, tenantId])
   @@unique([gstin, tenantId])
+  @@index([tenantId])
 }
 
 model Invoice {
-  id              String    @id @default(cuid())
-  invoiceNumber   String
-  tenantId        String?
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
-  customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id])
-  invoiceDate     DateTime  @default(now())
-  subtotal        Float     @default(0)
-  gstAmount       Float     @default(0)
-  totalAmount     Float     @default(0)
-  status          String    @default("created")
-  notes           String?
-  lineItems       InvoiceLineItem[]
-  payments        Payment[]
-  ledger          LedgerEntry?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id            String            @id @default(cuid())
+  invoiceNumber String
+  tenantId      String?
+  tenant        Tenant?           @relation(fields: [tenantId], references: [id])
+  customerId    String
+  customer      Customer          @relation(fields: [customerId], references: [id])
+  invoiceDate   DateTime          @default(now())
+  subtotal      Float             @default(0)
+  gstAmount     Float             @default(0)
+  totalAmount   Float             @default(0)
+  status        String            @default("created")
+  notes         String?
+  lineItems     InvoiceLineItem[]
+  payments      Payment[]
+  ledger        LedgerEntry?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([invoiceNumber, tenantId])
   @@index([customerId])
   @@index([tenantId])
-  @@unique([invoiceNumber, tenantId])
 }
 
 model InvoiceLineItem {
-  id          String    @id @default(cuid())
-  tenantId    String?
-  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
-  invoiceId   String
-  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id])
-  quantity    Int
-  unitPrice   Float
-  totalPrice  Float
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(cuid())
+  tenantId   String?
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+  createdAt  DateTime @default(now())
+
   @@index([invoiceId])
   @@index([productId])
   @@index([tenantId])
 }
 
 model Purchase {
-  id              String    @id @default(cuid())
-  purchaseNumber  String
-  tenantId        String?
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
-  supplierId      String
-  supplier        Supplier  @relation(fields: [supplierId], references: [id])
-  purchaseDate    DateTime  @default(now())
-  subtotal        Float     @default(0)
-  gstAmount       Float     @default(0)
-  totalAmount     Float     @default(0)
-  status          String    @default("created")
-  notes           String?
-  lineItems       PurchaseLineItem[]
-  payments        Payment[]
-  ledger          LedgerEntry?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String             @id @default(cuid())
+  purchaseNumber String
+  tenantId       String?
+  tenant         Tenant?            @relation(fields: [tenantId], references: [id])
+  supplierId     String
+  supplier       Supplier           @relation(fields: [supplierId], references: [id])
+  purchaseDate   DateTime           @default(now())
+  subtotal       Float              @default(0)
+  gstAmount      Float              @default(0)
+  totalAmount    Float              @default(0)
+  status         String             @default("created")
+  notes          String?
+  lineItems      PurchaseLineItem[]
+  payments       Payment[]
+  ledger         LedgerEntry?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([purchaseNumber, tenantId])
   @@index([supplierId])
   @@index([tenantId])
-  @@unique([purchaseNumber, tenantId])
 }
 
 model PurchaseLineItem {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   tenantId    String?
-  tenant      Tenant?   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
   purchaseId  String
-  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   productId   String?
-  product     Product?  @relation(fields: [productId], references: [id])
+  product     Product? @relation(fields: [productId], references: [id])
   productName String?
   category    String?
   quantity    Int
   unitPrice   Float
   totalPrice  Float
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
+
   @@index([purchaseId])
   @@index([productId])
   @@index([tenantId])
 }
 
 model Payment {
-  id              String    @id @default(cuid())
-  paymentNumber   String
-  tenantId        String?
-  tenant          Tenant?   @relation(fields: [tenantId], references: [id])
-  customerId      String?
-  customer        Customer? @relation(fields: [customerId], references: [id])
-  supplierId      String?
-  supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  invoiceId       String?
-  invoice         Invoice?  @relation(fields: [invoiceId], references: [id])
-  purchaseId      String?
-  purchase        Purchase? @relation(fields: [purchaseId], references: [id])
-  amount          Float
-  paymentDate     DateTime  @default(now())
-  paymentMethod   String
-  notes           String?
-  ledger          LedgerEntry?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id            String       @id @default(cuid())
+  paymentNumber String
+  tenantId      String?
+  tenant        Tenant?      @relation(fields: [tenantId], references: [id])
+  customerId    String?
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  supplierId    String?
+  supplier      Supplier?    @relation(fields: [supplierId], references: [id])
+  invoiceId     String?
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id])
+  purchaseId    String?
+  purchase      Purchase?    @relation(fields: [purchaseId], references: [id])
+  amount        Float
+  paymentDate   DateTime     @default(now())
+  paymentMethod String
+  notes         String?
+  ledger        LedgerEntry?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([paymentNumber, tenantId])
   @@index([customerId])
   @@index([supplierId])
   @@index([invoiceId])
   @@index([purchaseId])
   @@index([tenantId])
-  @@unique([paymentNumber, tenantId])
 }
 
 model LedgerEntry {
@@ -198,35 +206,36 @@ model LedgerEntry {
   amount      Float
   description String
   createdAt   DateTime  @default(now())
+
   @@index([customerId])
   @@index([supplierId])
   @@index([tenantId])
 }
 
 model Tenant {
-  id             String   @id @default(cuid())
-  businessName   String
-  ownerName      String
-  email          String   @unique
-  phone          String?
-  gstNumber      String?
-  address        String?
-  status         String   @default("ACTIVE")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id           String   @id @default(cuid())
+  businessName String
+  ownerName    String
+  email        String   @unique
+  phone        String?
+  gstNumber    String?
+  address      String?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  owner          User?
+  owner User?
 
-  products       Product[]
-  customers      Customer[]
-  suppliers      Supplier[]
-  invoices       Invoice[]
-  invoiceItems   InvoiceLineItem[]
-  purchases      Purchase[]
-  purchaseItems  PurchaseLineItem[]
-  payments       Payment[]
-  ledger         LedgerEntry[]
-  settings       TenantSetting?
+  products      Product[]
+  customers     Customer[]
+  suppliers     Supplier[]
+  invoices      Invoice[]
+  invoiceItems  InvoiceLineItem[]
+  purchases     Purchase[]
+  purchaseItems PurchaseLineItem[]
+  payments      Payment[]
+  ledger        LedgerEntry[]
+  settings      TenantSetting?
 }
 
 model User {
@@ -242,28 +251,29 @@ model User {
 }
 
 model SuperAdmin {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   passwordHash String
-  adminType    String   @default("ROOT")
-  status       String   @default("ACTIVE")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  adminType    String     @default("ROOT")
+  status       String     @default("ACTIVE")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
 }
 
 model AuthSession {
-  id            String   @id @default(cuid())
-  tokenId       String   @unique
-  subjectType   String
-  tenantId      String?
-  userId        String?
-  superAdminId  String?
-  status        String   @default("ACTIVE")
-  expiresAt     DateTime
-  revokedAt     DateTime?
-  lastSeenAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String    @id @default(cuid())
+  tokenId      String    @unique
+  subjectType  String
+  tenantId     String?
+  userId       String?
+  superAdminId String?
+  status       String    @default("ACTIVE")
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  lastSeenAt   DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([tenantId])
   @@index([userId])
@@ -272,15 +282,63 @@ model AuthSession {
 }
 
 model TenantSetting {
-  id              String   @id @default(cuid())
-  tenantId        String   @unique
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  businessName    String?
-  gstNumber       String?
-  invoicePrefix   String   @default("INV-")
-  lowStockThreshold Int     @default(10)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessName      String?
+  gstNumber         String?
+  invoicePrefix     String   @default("INV-")
+  lowStockThreshold Int      @default(10)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+/// AUDIT LOG MODEL - Production Security
+/// 
+/// Tracks all administrative actions performed by Super Admins
+/// for security monitoring and compliance.
+/// 
+/// Actions tracked:
+/// - tenant creation
+/// - tenant suspension/reactivation
+/// - password resets
+/// - settings changes
+/// - user management
+/// 
+/// Fields:
+/// - adminId: Super admin who performed action
+/// - action: Action type (e.g., "TENANT_CREATED", "TENANT_SUSPENDED")
+/// - targetType: Type of resource affected (e.g., "TENANT", "USER")
+/// - targetId: ID of affected resource
+/// - metadata: JSON metadata (reason, old values, new values, etc.)
+/// - ipAddress: Admin's IP address for security tracking
+/// - userAgent: Admin's user agent
+/// - createdAt: When action occurred
+model AuditLog {
+  id         String     @id @default(cuid())
+  adminId    String
+  superAdmin SuperAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  action     String // "TENANT_CREATED", "TENANT_SUSPENDED", "PASSWORD_RESET", etc.
+  actionType String @default("ADMIN_ACTION")
+
+  targetType String // "TENANT", "USER", "SETTING", etc.
+  targetId   String?
+
+  // Security context
+  ipAddress String?
+  userAgent String?
+
+  // Change details
+  metadata String? // JSON serialized
+
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType])
+  @@index([targetId])
+  @@index([createdAt])
 }

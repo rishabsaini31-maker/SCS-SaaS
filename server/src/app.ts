@@ -1,34 +1,54 @@
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
+import helmet from "helmet";
 import routes from "./routes";
 import { authenticateJWT } from "./common/middlewares/auth";
 import requireTenant from "./common/middlewares/requireTenant";
 import { errorHandler } from "./common/middlewares/errorHandler";
 import { logger } from "./common/middlewares/logger";
-import { rateLimiter } from "./common/middlewares/rateLimiter";
+import { globalRateLimiter } from "./common/middlewares/rateLimiter";
+import {
+  sanitizeHeaders,
+  securityHeaders,
+  validateJsonPayload,
+} from "./common/middlewares/security";
 import authRouter from "./modules/auth/auth.routes";
 import tenantRouter from "./modules/tenant/tenant.routes";
 import scsAuthRouter from "./modules/scs-auth/scs-auth.routes";
 import scsAdminRouter from "./modules/scs-admin/scs-admin.routes";
+import { config } from "./common/config";
 
 const app = express();
 
-// Middleware
+// SECURITY: Helmet middleware for security headers
+app.use(helmet());
+
+// SECURITY: Additional security headers
+app.use(securityHeaders);
+
+// SECURITY: Sanitize request headers
+app.use(sanitizeHeaders);
+
+const allowedOrigins = config.corsOrigins;
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3002",
-      "http://localhost:3003",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
+
+// SECURITY: Validate and sanitize JSON payloads
 app.use(express.json());
+app.use(validateJsonPayload);
+
 app.use(morgan("dev"));
 app.use(logger);
-app.use(rateLimiter);
+
+// SECURITY: Global rate limiting
+app.use(globalRateLimiter);
+
 app.use(authenticateJWT);
 
 app.use("/api/v1/auth", authRouter);

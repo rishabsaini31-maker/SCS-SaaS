@@ -39,6 +39,11 @@ export async function authenticateJWT(
       return next();
     }
 
+    // In production enforce presence of sessionId to enable server-side revocation
+    if (config.nodeEnv === "production" && !payload.sessionId) {
+      return next();
+    }
+
     if (payload.sessionId) {
       const session = await getActiveSession(payload.sessionId);
       if (

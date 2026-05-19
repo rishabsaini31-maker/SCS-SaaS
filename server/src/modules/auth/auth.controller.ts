@@ -31,3 +31,28 @@ export const me = async (req: Request, res: Response, next: NextFunction) => {
     next(err);
   }
 };
+
+/**
+ * SECURITY: Logout endpoint with server-side session revocation
+ *
+ * Revokes all sessions for the authenticated user.
+ * Frontend must clear the JWT token after receiving this response.
+ */
+export const logout = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await service.logoutOwner(userId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};

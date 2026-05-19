@@ -6,6 +6,11 @@ import {
   tenantIdParamSchema,
   tenantStatusSchema,
 } from "./scs-admin.schema";
+import {
+  logAuditEvent,
+  AuditAction,
+  AuditTargetType,
+} from "../../common/services/auditLog";
 
 export async function dashboard(
   req: Request,
@@ -37,6 +42,24 @@ export async function createShop(
   try {
     const data = createShopSchema.parse(req.body);
     const result = await service.createShop(data);
+
+    // AUDIT LOG: Tenant creation
+    if ((req as any).superAdmin?.id && result.tenant?.id) {
+      await logAuditEvent({
+        adminId: (req as any).superAdmin.id,
+        action: AuditAction.TENANT_CREATED,
+        targetType: AuditTargetType.TENANT,
+        targetId: result.tenant.id,
+        metadata: {
+          businessName: data.businessName,
+          ownerEmail: data.email,
+          phone: data.phone,
+        },
+        ipAddress: req.auditContext?.ipAddress,
+        userAgent: req.auditContext?.userAgent,
+      });
+    }
+
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -52,6 +75,30 @@ export async function updateStatus(
     const { tenantId } = tenantIdParamSchema.parse(req.params);
     const data = tenantStatusSchema.parse(req.body);
     const result = await service.updateTenantStatus(tenantId, data);
+
+    // AUDIT LOG: Tenant status change (suspension, reactivation, etc.)
+    if ((req as any).superAdmin?.id) {
+      const actionMap: Record<string, AuditAction> = {
+        SUSPENDED: AuditAction.TENANT_SUSPENDED,
+        ACTIVE: AuditAction.TENANT_REACTIVATED,
+      };
+
+      const action = actionMap[data.status] || AuditAction.SETTINGS_CHANGED;
+
+      await logAuditEvent({
+        adminId: (req as any).superAdmin.id,
+        action,
+        targetType: AuditTargetType.TENANT,
+        targetId: tenantId,
+        metadata: {
+          newStatus: data.status,
+          reason: (data as any).reason,
+        },
+        ipAddress: req.auditContext?.ipAddress,
+        userAgent: req.auditContext?.userAgent,
+      });
+    }
+
     res.json(result);
   } catch (error) {
     next(error);
@@ -67,6 +114,24 @@ export async function resetOwnerPassword(
     const { tenantId } = tenantIdParamSchema.parse(req.params);
     const data = resetOwnerPasswordSchema.parse(req.body);
     const result = await service.resetTenantOwnerPassword(tenantId, data);
+
+    // AUDIT LOG: Password reset
+    if ((req as any).superAdmin?.id) {
+      await logAuditEvent({
+        adminId: (req as any).superAdmin.id,
+        action: AuditAction.OWNER_PASSWORD_RESET,
+        targetType: AuditTargetType.USER,
+        targetId: result?.owner?.id,
+        metadata: {
+          tenantId,
+          ownerEmail: result?.owner?.email,
+          resetReason: (data as any).reason,
+        },
+        ipAddress: req.auditContext?.ipAddress,
+        userAgent: req.auditContext?.userAgent,
+      });
+    }
+
     res.json(result);
   } catch (error) {
     next(error);

@@ -1,8 +1,9 @@
 import axios, { AxiosHeaders } from "axios";
 import { getAuthToken } from "@/lib/auth";
 
-const baseURL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+import { frontendConfig } from "@/config/env";
+
+const baseURL = frontendConfig.apiUrl;
 
 const api = axios.create({
   baseURL,

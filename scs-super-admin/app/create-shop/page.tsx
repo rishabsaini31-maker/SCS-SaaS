@@ -1,10 +1,5 @@
-import React from 'react'
-import CreateShopForm from '../../src/components/scs-admin/CreateShopForm'
+import OnboardShop from "@/components/OnboardShop";
 
 export default function CreateShopPage() {
-  return (
-    <div className="max-w-2xl">
-      <CreateShopForm />
-    </div>
-  )
+  return <OnboardShop />;
 }

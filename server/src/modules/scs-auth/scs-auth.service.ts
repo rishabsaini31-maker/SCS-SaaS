@@ -1,7 +1,10 @@
 import { randomUUID } from "crypto";
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import { createSuperAdminSession } from "../../common/services/authSession";
+import {
+  createSuperAdminSession,
+  revokeSuperAdminSessions,
+} from "../../common/services/authSession";
 import { hashPassword, verifyPassword } from "../../common/utils/password";
 import signSuperAdminToken from "../../common/utils/scsAdminJwt";
 import type { ScsAdminLoginInput } from "./scs-auth.schema";
@@ -77,6 +80,21 @@ export async function getCurrentSuperAdmin(adminId: string) {
       email: superAdmin.email,
       adminType: superAdmin.adminType,
     },
+  };
+}
+
+/**
+ * PRODUCTION SECURITY: Super admin logout with session revocation
+ *
+ * Revokes all active sessions for the super admin.
+ * Frontend must clear the token after receiving this response.
+ */
+export async function logoutSuperAdmin(adminId: string) {
+  await revokeSuperAdminSessions(adminId);
+
+  return {
+    success: true,
+    message: "Logged out successfully. All sessions revoked.",
   };
 }
 

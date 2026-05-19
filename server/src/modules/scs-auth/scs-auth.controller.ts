@@ -25,3 +25,23 @@ export async function me(req: Request, res: Response, next: NextFunction) {
     next(error);
   }
 }
+
+/**
+ * SECURITY: Super admin logout with server-side session revocation
+ *
+ * Revokes all sessions for the authenticated super admin.
+ * Frontend must clear the JWT token after receiving this response.
+ */
+export async function logout(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = (req as any).superAdmin?.id;
+    if (!adminId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await service.logoutSuperAdmin(adminId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}

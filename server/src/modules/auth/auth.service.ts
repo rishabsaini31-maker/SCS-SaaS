@@ -1,6 +1,9 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
-import { createTenantOwnerSession } from "../../common/services/authSession";
+import {
+  createTenantOwnerSession,
+  revokeSessionsByUser,
+} from "../../common/services/authSession";
 import signAuthToken from "../../common/utils/jwt";
 import { verifyPassword } from "../../common/utils/password";
 import type { LoginInput } from "./auth.schema";
@@ -91,5 +94,21 @@ export async function getCurrentSession(userId: string, tenantId: string) {
       tenantId: owner.tenantId,
     },
     tenant: owner.tenant,
+  };
+}
+
+/**
+ * PRODUCTION SECURITY: Logout with server-side session revocation
+ *
+ * Revokes all active sessions for the user, preventing token reuse.
+ * Frontend must clear the token after logout.
+ */
+export async function logoutOwner(userId: string) {
+  // Revoke all active sessions
+  await revokeSessionsByUser(userId);
+
+  return {
+    success: true,
+    message: "Logged out successfully. All sessions revoked.",
   };
 }

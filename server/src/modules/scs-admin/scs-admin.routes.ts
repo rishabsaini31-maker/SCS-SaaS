@@ -4,17 +4,31 @@ import {
   authenticateSuperAdmin,
   requireSuperAdmin,
 } from "../../common/middlewares/superAdminAuth";
+import { auditContextMiddleware } from "../../common/middlewares/auditContext";
+import {
+  shopCreationRateLimiter,
+  passwordResetRateLimiter,
+} from "../../common/middlewares/rateLimiter";
 
 const router = Router();
+
+// SECURITY: Attach audit context to all requests
+router.use(auditContextMiddleware);
 
 router.use(authenticateSuperAdmin, requireSuperAdmin);
 
 router.get("/dashboard", controller.dashboard);
 router.get("/tenants", controller.list);
-router.post("/shops", controller.createShop);
+
+// SECURITY: Rate limiting for shop creation (10 per hour)
+router.post("/shops", shopCreationRateLimiter, controller.createShop);
+
 router.patch("/tenants/:tenantId/status", controller.updateStatus);
+
+// SECURITY: Rate limiting for password reset (3 per hour)
 router.post(
   "/tenants/:tenantId/reset-owner-password",
+  passwordResetRateLimiter,
   controller.resetOwnerPassword,
 );
 

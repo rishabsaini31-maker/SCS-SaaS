@@ -21,8 +21,14 @@ export async function authenticateSuperAdmin(
   if (!token || !/^Bearer$/i.test(scheme)) return next();
 
   try {
-    const payload = (jwt.verify(token, config.jwtSecret) as SuperAdminTokenPayload) || null;
+    const payload =
+      (jwt.verify(token, config.jwtSecret) as SuperAdminTokenPayload) || null;
     if (!payload?.adminId || !payload?.adminType) {
+      return next();
+    }
+
+    // In production require sessionId for server-side revocation support
+    if (config.nodeEnv === "production" && !payload.sessionId) {
       return next();
     }
 
