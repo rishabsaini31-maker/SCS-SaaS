@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 import type { AuthTokenPayload } from "../utils/jwt";
+import { getActiveSession } from "../services/authSession";
 
 export interface AuthPayload {
   userId?: string;
@@ -36,6 +37,17 @@ export async function authenticateJWT(
 
     if (!payload?.userId || !payload.tenantId) {
       return next();
+    }
+
+    if (payload.sessionId) {
+      const session = await getActiveSession(payload.sessionId);
+      if (
+        !session ||
+        session.userId !== payload.userId ||
+        session.tenantId !== payload.tenantId
+      ) {
+        return next();
+      }
     }
 
     (req as any).user = {

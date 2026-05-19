@@ -9,6 +9,8 @@ import { logger } from "./common/middlewares/logger";
 import { rateLimiter } from "./common/middlewares/rateLimiter";
 import authRouter from "./modules/auth/auth.routes";
 import tenantRouter from "./modules/tenant/tenant.routes";
+import scsAuthRouter from "./modules/scs-auth/scs-auth.routes";
+import scsAdminRouter from "./modules/scs-admin/scs-admin.routes";
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.use(authenticateJWT);
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/tenants", tenantRouter);
+app.use("/api/v1/scs-admin", scsAuthRouter);
+app.use("/api/v1/scs-admin", scsAdminRouter);
 
 app.use(requireTenant);
 

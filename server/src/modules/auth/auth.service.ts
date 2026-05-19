@@ -1,8 +1,10 @@
 import prisma from "../../common/db/prisma";
 import { CustomError } from "../../common/errors/CustomError";
+import { createTenantOwnerSession } from "../../common/services/authSession";
 import signAuthToken from "../../common/utils/jwt";
 import { verifyPassword } from "../../common/utils/password";
 import type { LoginInput } from "./auth.schema";
+import { randomUUID } from "crypto";
 
 const ownerSelect = {
   id: true,
@@ -16,6 +18,8 @@ const ownerSelect = {
       email: true,
       phone: true,
       gstNumber: true,
+      address: true,
+      status: true,
     },
   },
 } as const;
@@ -33,14 +37,29 @@ export async function loginOwner(data: LoginInput) {
     throw new CustomError("Invalid email or password", 401);
   }
 
-  const passwordMatches = await verifyPassword(data.password, owner.passwordHash);
+  if (owner.tenant?.status === "SUSPENDED") {
+    throw new CustomError("Tenant is suspended", 403);
+  }
+
+  const passwordMatches = await verifyPassword(
+    data.password,
+    owner.passwordHash,
+  );
   if (!passwordMatches) {
     throw new CustomError("Invalid email or password", 401);
   }
 
+  const sessionId = randomUUID();
+  await createTenantOwnerSession({
+    userId: owner.id,
+    tenantId: owner.tenantId,
+    tokenId: sessionId,
+  });
+
   const token = signAuthToken({
     userId: owner.id,
     tenantId: owner.tenantId,
+    sessionId,
   });
 
   return {
@@ -51,6 +70,7 @@ export async function loginOwner(data: LoginInput) {
       tenantId: owner.tenantId,
     },
     tenant: owner.tenant,
+    sessionId,
   };
 }
 

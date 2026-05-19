@@ -7,6 +7,7 @@ export const createTenantSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   phone: z.string().optional(),
   gstNumber: z.string().optional(),
+  address: z.string().optional(),
 });
 
 export const tenantIdSchema = z.object({

@@ -4,6 +4,7 @@ import {
   ensureDefaultTenant,
   ensureOwnerAccounts,
 } from "./common/tenant/defaultTenant";
+import { ensureDefaultSuperAdmin } from "./common/tenant/defaultSuperAdmin";
 import { getTenantSettings } from "./modules/settings/settings.service";
 
 dotenv.config();
@@ -13,6 +14,7 @@ const PORT = process.env.PORT || 4000;
 (async () => {
   const tenantId = await ensureDefaultTenant();
   await ensureOwnerAccounts();
+  await ensureDefaultSuperAdmin();
   await getTenantSettings(tenantId);
 
   app.listen(PORT, () => {

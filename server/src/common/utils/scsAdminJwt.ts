@@ -1,17 +1,17 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 
-export type AuthTokenPayload = {
-  userId: string;
-  tenantId: string;
+export type SuperAdminTokenPayload = {
+  adminId: string;
+  adminType: string;
   sessionId?: string;
 };
 
-export function signAuthToken(
-  payload: AuthTokenPayload,
+export function signSuperAdminToken(
+  payload: SuperAdminTokenPayload,
   expiresIn: string = "7d",
 ) {
   return (jwt as any).sign(payload, config.jwtSecret, { expiresIn });
 }
 
-export default signAuthToken;
+export default signSuperAdminToken;

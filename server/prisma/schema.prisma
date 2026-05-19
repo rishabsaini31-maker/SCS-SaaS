@@ -210,6 +210,8 @@ model Tenant {
   email          String   @unique
   phone          String?
   gstNumber      String?
+  address        String?
+  status         String   @default("ACTIVE")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -237,6 +239,36 @@ model User {
   updatedAt    DateTime @updatedAt
 
   @@index([tenantId])
+}
+
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  adminType    String   @default("ROOT")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuthSession {
+  id            String   @id @default(cuid())
+  tokenId       String   @unique
+  subjectType   String
+  tenantId      String?
+  userId        String?
+  superAdminId  String?
+  status        String   @default("ACTIVE")
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  lastSeenAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([superAdminId])
+  @@index([status, expiresAt])
 }
 
 model TenantSetting {
