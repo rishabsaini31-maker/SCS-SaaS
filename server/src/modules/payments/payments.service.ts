@@ -6,13 +6,23 @@ import {
   tenantCreateData,
   tenantWhere,
 } from "../../common/tenant/tenant.utils";
+import { runSerializableTransaction } from "../../common/db/transaction";
 
-async function generatePaymentNumber(tenantId?: string): Promise<string> {
+type PaymentNumberClient = {
+  payment: {
+    count: typeof prisma.payment.count;
+  };
+};
+
+async function generatePaymentNumber(
+  tenantId?: string,
+  tx: PaymentNumberClient = prisma,
+): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
   const todayStr = today.replace(/-/g, "");
-  const count = await prisma.payment.count({
+  const count = await tx.payment.count({
     where: tenantWhere(tenantId, {
       paymentNumber: { startsWith: `PAY-${todayStr}` },
     }),
@@ -99,8 +109,8 @@ export const createPayment = async (
     }
   }
 
-  const payment = await prisma.$transaction(async (tx) => {
-    const paymentNumber = await generatePaymentNumber(tenantId);
+  const payment = await runSerializableTransaction(async (tx) => {
+    const paymentNumber = await generatePaymentNumber(tenantId, tx);
 
     const newPayment = await tx.payment.create({
       data: tenantCreateData(tenantId, {

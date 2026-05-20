@@ -9,13 +9,23 @@ import {
   tenantCreateData,
   tenantWhere,
 } from "../../common/tenant/tenant.utils";
+import { runSerializableTransaction } from "../../common/db/transaction";
 
-async function generatePurchaseNumber(tenantId?: string): Promise<string> {
+type PurchaseNumberClient = {
+  purchase: {
+    count: typeof prisma.purchase.count;
+  };
+};
+
+async function generatePurchaseNumber(
+  tenantId?: string,
+  tx: PurchaseNumberClient = prisma,
+): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
   const todayStr = today.replace(/-/g, "");
-  const count = await prisma.purchase.count({
+  const count = await tx.purchase.count({
     where: tenantWhere(tenantId, {
       purchaseNumber: { startsWith: `PUR-${todayStr}` },
     }),
@@ -44,8 +54,8 @@ export const createPurchase = async (
     }
   }
 
-  const purchase = await prisma.$transaction(async (tx) => {
-    const purchaseNumber = await generatePurchaseNumber(tenantId);
+  const purchase = await runSerializableTransaction(async (tx) => {
+    const purchaseNumber = await generatePurchaseNumber(tenantId, tx);
 
     let subtotal = 0;
     const lineItems: Array<{

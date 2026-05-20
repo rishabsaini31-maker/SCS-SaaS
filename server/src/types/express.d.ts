@@ -7,5 +7,11 @@ declare module "express" {
       tenantId?: string;
     };
     tenantId?: string;
+    superAdmin?: {
+      id?: string;
+      email?: string;
+      adminType?: string;
+      status?: string;
+    };
   }
 }

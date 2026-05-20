@@ -6,19 +6,32 @@ import {
   tenantCreateData,
   tenantWhere,
 } from "../../common/tenant/tenant.utils";
+import { runSerializableTransaction } from "../../common/db/transaction";
 
-async function generateInvoiceNumber(tenantId?: string): Promise<string> {
+type InvoiceNumberClient = {
+  tenantSetting: {
+    findUnique: typeof prisma.tenantSetting.findUnique;
+  };
+  invoice: {
+    count: typeof prisma.invoice.count;
+  };
+};
+
+async function generateInvoiceNumber(
+  tenantId?: string,
+  tx: InvoiceNumberClient = prisma,
+): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
-  const settings = await prisma.tenantSetting.findUnique({
+  const settings = await tx.tenantSetting.findUnique({
     where: { tenantId },
     select: { invoicePrefix: true },
   });
 
   const prefix = settings?.invoicePrefix || "INV-";
   const todayStr = today.replace(/-/g, "");
-  const count = await prisma.invoice.count({
+  const count = await tx.invoice.count({
     where: tenantWhere(tenantId, {
       invoiceNumber: { startsWith: `${prefix}${todayStr}` },
     }),
@@ -31,33 +44,38 @@ export const createInvoice = async (
   data: CreateInvoiceInput,
   tenantId?: string,
 ) => {
-  const customer = await prisma.customer.findFirst({
-    where: tenantWhere(tenantId, { id: data.customerId }),
-  });
-  if (!customer) throw new CustomError("Customer not found", 404);
-
-  for (const item of data.lineItems) {
-    const product = await prisma.product.findFirst({
-      where: tenantWhere(tenantId, { id: item.productId }),
+  const invoice = await runSerializableTransaction(async (tx) => {
+    const customer = await tx.customer.findFirst({
+      where: tenantWhere(tenantId, { id: data.customerId }),
     });
-    if (!product) {
-      throw new CustomError(`Product ${item.productId} not found`, 404);
-    }
-    if (product.stock < item.quantity) {
-      throw new CustomError(`Insufficient stock for ${product.name}`, 400);
-    }
-  }
+    if (!customer) throw new CustomError("Customer not found", 404);
 
-  const invoice = await prisma.$transaction(async (tx) => {
-    const invoiceNumber = await generateInvoiceNumber(tenantId);
+    const invoiceNumber = await generateInvoiceNumber(tenantId, tx);
 
     let subtotal = 0;
-    const lineItems: any[] = [];
+    const lineItems: Array<{
+      productId: string;
+      quantity: number;
+      unitPrice: number;
+      totalPrice: number;
+    }> = [];
     for (const item of data.lineItems) {
       const product = await tx.product.findFirst({
         where: tenantWhere(tenantId, { id: item.productId }),
       });
       if (!product) throw new CustomError(`Product not found`, 404);
+
+      const stockReservation = await tx.product.updateMany({
+        where: tenantWhere(tenantId, {
+          id: item.productId,
+          stock: { gte: item.quantity },
+        }),
+        data: { stock: { decrement: item.quantity } },
+      });
+
+      if (stockReservation.count !== 1) {
+        throw new CustomError(`Insufficient stock for ${product.name}`, 400);
+      }
 
       const totalPrice = product.sellingPrice * item.quantity;
       subtotal += totalPrice;
@@ -93,13 +111,6 @@ export const createInvoice = async (
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
         }) as any,
-      });
-    }
-
-    for (const item of data.lineItems) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
       });
     }
 
