@@ -15,7 +15,10 @@ function formatBarcode(num: number) {
   return `${BARCODE_PREFIX}${String(num).padStart(BARCODE_PAD, "0")}`;
 }
 
-async function computeNextBarcode(tenantId?: string): Promise<string> {
+async function computeNextBarcode(
+  tenantId?: string,
+  offset: number = 0,
+): Promise<string> {
   // Get all existing barcodes that match prefix
   const rows = await prisma.product.findMany({
     where: tenantWhere(tenantId, {
@@ -33,7 +36,9 @@ async function computeNextBarcode(tenantId?: string): Promise<string> {
     if (!Number.isNaN(n) && n > max) max = n;
   }
 
-  return formatBarcode(max + 1);
+  // SECURITY: Add offset to handle collision retries
+  // Each retry uses a different barcode value, preventing infinite retry loops
+  return formatBarcode(max + 1 + offset);
 }
 
 function generateSvg(barcodeValue: string) {
@@ -82,7 +87,8 @@ export const generateBarcodeForProduct = async (
   // Retry loop in case of unique constraint collisions
   const maxAttempts = 3;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const next = await computeNextBarcode(tenantId);
+    // SECURITY: Pass offset to get different barcode values on retry
+    const next = await computeNextBarcode(tenantId, attempt);
     try {
       const updated = await prisma.product.update({
         where: { id: productId },
@@ -93,7 +99,7 @@ export const generateBarcodeForProduct = async (
     } catch (err: any) {
       // unique constraint error code for Prisma is P2002
       if (err && err.code === "P2002") {
-        // collision, retry
+        // collision, retry with different offset
         continue;
       }
       throw err;

@@ -14,7 +14,13 @@ export async function authenticateJWT(
   res: Response,
   next: NextFunction,
 ) {
-  const token = extractBearerToken(req.headers.authorization);
+  // PRODUCTION SECURITY: Check cookie first, fall back to Bearer token
+  let token = (req.cookies as any)?.["auth-token"];
+
+  if (!token) {
+    token = extractBearerToken(req.headers.authorization);
+  }
+
   if (!token) return next();
 
   const payload = verifyJwtToken<AuthTokenPayload>(token);

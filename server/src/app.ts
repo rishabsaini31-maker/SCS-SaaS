@@ -2,6 +2,7 @@ import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import routes from "./routes";
 import { authenticateJWT } from "./common/middlewares/auth";
 import requireTenant from "./common/middlewares/requireTenant";
@@ -38,6 +39,9 @@ app.use(
     credentials: true,
   }),
 );
+
+// SECURITY: Parse cookies for HttpOnly auth tokens
+app.use(cookieParser());
 
 // SECURITY: Validate and sanitize JSON payloads
 app.use(express.json());

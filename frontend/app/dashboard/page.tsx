@@ -269,7 +269,7 @@ export default function DashboardPage() {
 
         <div className="bg-white border border-slate-200 p-5 rounded-xl hover:shadow-md transition-shadow border-l-4 border-l-red-500">
           <div className="flex justify-between items-start mb-3">
-            <span className="text-slate-500 text-xs font-semibold uppercase tracking-wider text-red-600">
+            <span className="text-red-600 text-xs font-semibold uppercase tracking-wider">
               Low Stock
             </span>
             <div className="p-2 bg-red-50 text-red-600 rounded-lg">

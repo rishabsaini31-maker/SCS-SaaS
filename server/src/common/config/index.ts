@@ -5,6 +5,38 @@ import path from "path";
 dotenv.config();
 
 /**
+ * SECURITY: Password strength requirements
+ * Enforced for super-admin accounts to prevent credential compromise
+ */
+function validatePasswordStrength(password: string): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  if (password.length < 12) {
+    errors.push("at least 12 characters");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("at least one uppercase letter");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("at least one lowercase letter");
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push("at least one number");
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push("at least one special character (!@#$%^&*...)");
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
  * PRODUCTION SECURITY CRITICAL
  *
  * Environment validation schema with strict requirements for production.
@@ -14,7 +46,7 @@ dotenv.config();
  * - DATABASE_URL (database connection)
  * - JWT_SECRET (token signing, min 32 chars)
  * - SUPER_ADMIN_EMAIL (super admin email)
- * - SUPER_ADMIN_PASSWORD (super admin password)
+ * - SUPER_ADMIN_PASSWORD (super admin password, 12+ chars with complexity)
  *
  * Never has development fallbacks in production mode.
  */
@@ -27,7 +59,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32).optional(),
   JWT_EXPIRES_IN: z.string().default("7d"),
   SUPER_ADMIN_EMAIL: z.string().email().optional(),
-  SUPER_ADMIN_PASSWORD: z.string().min(8).optional(),
+  SUPER_ADMIN_PASSWORD: z.string().optional(),
   CORS_ORIGINS: z.string().optional(),
 });
 
@@ -73,8 +105,14 @@ function validateProductionEnv() {
 
   if (!env.SUPER_ADMIN_PASSWORD) {
     errors.push("SUPER_ADMIN_PASSWORD is required in production");
-  } else if (env.SUPER_ADMIN_PASSWORD.length < 8) {
-    errors.push("SUPER_ADMIN_PASSWORD must be at least 8 characters");
+  } else {
+    // SECURITY: Enforce strong password for super-admin
+    const passwordCheck = validatePasswordStrength(env.SUPER_ADMIN_PASSWORD);
+    if (!passwordCheck.isValid) {
+      errors.push(
+        `SUPER_ADMIN_PASSWORD must contain: ${passwordCheck.errors.join(", ")}`,
+      );
+    }
   }
 
   if (errors.length > 0) {

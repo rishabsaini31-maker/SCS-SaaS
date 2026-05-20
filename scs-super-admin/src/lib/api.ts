@@ -5,35 +5,24 @@ const API_BASE_URL =
 
 class ApiClient {
   private client: AxiosInstance;
-  private token: string | null = null;
 
   constructor() {
+    // PRODUCTION SECURITY: HttpOnly Cookie-based Authentication
     this.client = axios.create({
       baseURL: API_BASE_URL,
+      withCredentials: true, // Send cookies with every request
       headers: {
         "Content-Type": "application/json",
       },
     });
 
-    // Add token to every request
-    this.client.interceptors.request.use((config) => {
-      if (typeof window !== "undefined") {
-        const token = localStorage.getItem("adminToken");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      }
-      return config;
-    });
-
-    // Handle 401 responses (unauthorized)
+    // Handle 401 responses (unauthorized - token expired or revoked)
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
-          // Token expired or invalid
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          // Token expired or invalid, cookie will be cleared by backend
           if (typeof window !== "undefined") {
-            localStorage.removeItem("adminToken");
             window.location.href = "/login";
           }
         }
@@ -44,23 +33,21 @@ class ApiClient {
 
   // Auth endpoints
   async login(email: string, password: string) {
-    const response = await this.client.post("/scs-admin/login", {
+    const response = await this.client.post("/scs-auth/login", {
       email,
       password,
     });
-    if (response.data.token) {
-      localStorage.setItem("adminToken", response.data.token);
-    }
+    // Token is set in HttpOnly cookie by backend, no need to store manually
     return response.data;
   }
 
   async logout() {
-    await this.client.post("/scs-admin/logout");
-    localStorage.removeItem("adminToken");
+    await this.client.post("/scs-auth/logout");
+    // Cookie is cleared by backend on logout
   }
 
   async getMe() {
-    const response = await this.client.get("/scs-admin/me");
+    const response = await this.client.get("/scs-auth/me");
     return response.data;
   }
 

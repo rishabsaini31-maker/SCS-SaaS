@@ -39,77 +39,87 @@ export const createPayment = async (
     throw new CustomError("Either customerId or supplierId is required", 400);
   }
 
-  if (data.customerId) {
-    const customer = await prisma.customer.findFirst({
-      where: tenantWhere(tenantId, { id: data.customerId }),
-    });
-    if (!customer) throw new CustomError("Customer not found", 404);
-
-    if (data.amount > customer.outstandingBalance) {
-      throw new CustomError(
-        "Payment amount cannot be greater than customer outstanding balance",
-        400,
-      );
-    }
-
-    if (data.invoiceId) {
-      const invoice = await prisma.invoice.findFirst({
-        where: tenantWhere(tenantId, { id: data.invoiceId }),
-        include: { payments: true },
-      });
-      if (!invoice) throw new CustomError("Invoice not found", 404);
-      if (invoice.customerId !== data.customerId) {
-        throw new CustomError("Invoice does not belong to this customer", 400);
-      }
-      const paidSoFar = invoice.payments.reduce(
-        (sum, payment) => sum + payment.amount,
-        0,
-      );
-      if (paidSoFar + data.amount > invoice.totalAmount) {
-        throw new CustomError(
-          "Payment amount exceeds invoice pending amount",
-          400,
-        );
-      }
-    }
-  }
-
-  if (data.supplierId) {
-    const supplier = await prisma.supplier.findFirst({
-      where: tenantWhere(tenantId, { id: data.supplierId }),
-    });
-    if (!supplier) throw new CustomError("Supplier not found", 404);
-
-    if (data.amount > supplier.payableBalance) {
-      throw new CustomError(
-        "Payment amount cannot be greater than supplier payable balance",
-        400,
-      );
-    }
-
-    if (data.purchaseId) {
-      const purchase = await prisma.purchase.findFirst({
-        where: tenantWhere(tenantId, { id: data.purchaseId }),
-        include: { payments: true },
-      });
-      if (!purchase) throw new CustomError("Purchase not found", 404);
-      if (purchase.supplierId !== data.supplierId) {
-        throw new CustomError("Purchase does not belong to this supplier", 400);
-      }
-      const paidSoFar = purchase.payments.reduce(
-        (sum, payment) => sum + payment.amount,
-        0,
-      );
-      if (paidSoFar + data.amount > purchase.totalAmount) {
-        throw new CustomError(
-          "Payment amount exceeds purchase pending amount",
-          400,
-        );
-      }
-    }
-  }
-
+  // SECURITY: PRODUCTION FIX - Move ALL validations inside serializable transaction
+  // to prevent race condition where concurrent payments bypass balance checks
   const payment = await runSerializableTransaction(async (tx) => {
+    // Validate entities exist and fetch current state INSIDE transaction (atomic)
+    if (data.customerId) {
+      const customer = await tx.customer.findFirst({
+        where: tenantWhere(tenantId, { id: data.customerId }),
+      });
+      if (!customer) throw new CustomError("Customer not found", 404);
+
+      // CRITICAL: Balance check happens INSIDE transaction - immune to race conditions
+      if (data.amount > customer.outstandingBalance) {
+        throw new CustomError(
+          "Payment amount cannot be greater than customer outstanding balance",
+          400,
+        );
+      }
+
+      if (data.invoiceId) {
+        const invoice = await tx.invoice.findFirst({
+          where: tenantWhere(tenantId, { id: data.invoiceId }),
+          include: { payments: true },
+        });
+        if (!invoice) throw new CustomError("Invoice not found", 404);
+        if (invoice.customerId !== data.customerId) {
+          throw new CustomError(
+            "Invoice does not belong to this customer",
+            400,
+          );
+        }
+        const paidSoFar = invoice.payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0,
+        );
+        if (paidSoFar + data.amount > invoice.totalAmount) {
+          throw new CustomError(
+            "Payment amount exceeds invoice pending amount",
+            400,
+          );
+        }
+      }
+    }
+
+    if (data.supplierId) {
+      const supplier = await tx.supplier.findFirst({
+        where: tenantWhere(tenantId, { id: data.supplierId }),
+      });
+      if (!supplier) throw new CustomError("Supplier not found", 404);
+
+      // CRITICAL: Balance check happens INSIDE transaction - immune to race conditions
+      if (data.amount > supplier.payableBalance) {
+        throw new CustomError(
+          "Payment amount cannot be greater than supplier payable balance",
+          400,
+        );
+      }
+
+      if (data.purchaseId) {
+        const purchase = await tx.purchase.findFirst({
+          where: tenantWhere(tenantId, { id: data.purchaseId }),
+          include: { payments: true },
+        });
+        if (!purchase) throw new CustomError("Purchase not found", 404);
+        if (purchase.supplierId !== data.supplierId) {
+          throw new CustomError(
+            "Purchase does not belong to this supplier",
+            400,
+          );
+        }
+        const paidSoFar = purchase.payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0,
+        );
+        if (paidSoFar + data.amount > purchase.totalAmount) {
+          throw new CustomError(
+            "Payment amount exceeds purchase pending amount",
+            400,
+          );
+        }
+      }
+    }
     const paymentNumber = await generatePaymentNumber(tenantId, tx);
 
     const newPayment = await tx.payment.create({
