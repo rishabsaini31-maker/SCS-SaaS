@@ -6,7 +6,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const data = scsAdminLoginSchema.parse(req.body);
     const result = await service.loginSuperAdmin(data);
-
+    
     // PRODUCTION SECURITY: Set HttpOnly cookie with JWT
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("auth-token", result.token, {
@@ -16,7 +16,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
     });
-
+    
     // Return admin info but NOT the token (it's in the cookie now)
     res.json({
       admin: result.admin,
@@ -54,10 +54,10 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
     }
 
     const result = await service.logoutSuperAdmin(adminId);
-
+    
     // PRODUCTION SECURITY: Clear HttpOnly cookie
     res.clearCookie("auth-token", { path: "/" });
-
+    
     res.json(result);
   } catch (error) {
     next(error);

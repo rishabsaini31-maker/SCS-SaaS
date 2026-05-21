@@ -7,7 +7,7 @@ import { Topbar } from "@/components/Topbar";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { AuthGate } from "@/components/AuthGate";
 
-const publicRoutes = new Set(["/", "/login", "/landing"]);
+const publicRoutes = new Set(["/", "/login", "/landing", "/pricing", "/about", "/contact"]);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

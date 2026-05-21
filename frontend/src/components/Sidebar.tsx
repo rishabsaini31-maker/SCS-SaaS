@@ -20,11 +20,14 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-[240px] border-r border-slate-200 bg-slate-50 dark:bg-slate-950 flex flex-col py-4 z-50">
-      <div className="px-6 mb-8">
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-h1">
-          WholesalePro
-        </h1>
-        <p className="text-xs text-slate-500 font-body-sm">Management Suite</p>
+      <div className="px-6 mb-8 flex items-center gap-3">
+        <img src="/scs-logo.jpeg" alt="SCS Flow Logo" className="h-10 w-auto rounded-md object-contain" />
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white font-h1 leading-none">
+            SCS Flow
+          </h1>
+          <p className="text-xs text-slate-500 font-body-sm mt-1">Management Suite</p>
+        </div>
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {links.map((link) => {

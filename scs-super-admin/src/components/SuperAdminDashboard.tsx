@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
-
+  
   // PRODUCTION SECURITY: Enable periodic session validation
   useSessionValidation();
-
+  
   const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
   const { data: profile } = useAdminProfile();
   const logout = useLogout();

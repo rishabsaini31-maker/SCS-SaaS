@@ -11,11 +11,11 @@ export async function authenticateSuperAdmin(
 ) {
   // PRODUCTION SECURITY: Check cookie first, fall back to Bearer token
   let token = (req.cookies as any)?.["auth-token"];
-
+  
   if (!token) {
     token = extractBearerToken(req.headers.authorization);
   }
-
+  
   if (!token) return next();
 
   const payload = verifyJwtToken<SuperAdminTokenPayload>(token);

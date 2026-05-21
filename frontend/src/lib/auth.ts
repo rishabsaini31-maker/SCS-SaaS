@@ -1,9 +1,9 @@
 /**
  * PRODUCTION SECURITY: HttpOnly Cookie-based Authentication
- *
+ * 
  * Tokens are now stored in HttpOnly secure cookies set by the backend.
  * Frontend no longer needs to manage token storage (protected against XSS).
- *
+ * 
  * Axios is configured to send credentials (cookies) with each request.
  */
 

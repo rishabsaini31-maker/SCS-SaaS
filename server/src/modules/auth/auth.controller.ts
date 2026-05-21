@@ -10,7 +10,7 @@ export const login = async (
   try {
     const data = loginSchema.parse(req.body);
     const result = await service.loginOwner(data);
-
+    
     // PRODUCTION SECURITY: Set HttpOnly cookie with JWT
     const isProduction = process.env.NODE_ENV === "production";
     res.cookie("auth-token", result.token, {
@@ -20,7 +20,7 @@ export const login = async (
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: "/",
     });
-
+    
     // Return user info but NOT the token (it's in the cookie now)
     res.json({
       user: result.user,
@@ -66,10 +66,10 @@ export const logout = async (
     }
 
     const result = await service.logoutOwner(userId);
-
+    
     // PRODUCTION SECURITY: Clear HttpOnly cookie
     res.clearCookie("auth-token", { path: "/" });
-
+    
     res.json(result);
   } catch (err) {
     next(err);

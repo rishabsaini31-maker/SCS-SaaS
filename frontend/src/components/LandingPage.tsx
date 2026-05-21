@@ -9,7 +9,6 @@ import AboutSection from "./AboutSection";
 import ContactSection from "./ContactSection";
 
 export default function LandingPage() {
-
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen">
       <LandingNavbar />
@@ -239,9 +238,9 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-on-surface-variant font-body-md italic">
-                  "SCS Flow transformed our billing process. What used to
-                  take hours now takes minutes. The inventory tracking is
-                  pinpoint accurate."
+                  "SCS Flow transformed our billing process. What used to take
+                  hours now takes minutes. The inventory tracking is pinpoint
+                  accurate."
                 </p>
               </div>
               <div className="p-8 bg-white border border-outline-variant rounded-2xl linear-shadow">
@@ -260,9 +259,9 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-on-surface-variant font-body-md italic">
-                  "Managing three branches was a nightmare before SCS Flow.
-                  Now I have a unified view of all my stock and sales from my
-                  home office."
+                  "Managing three branches was a nightmare before SCS Flow. Now
+                  I have a unified view of all my stock and sales from my home
+                  office."
                 </p>
               </div>
               <div className="p-8 bg-white border border-outline-variant rounded-2xl linear-shadow">

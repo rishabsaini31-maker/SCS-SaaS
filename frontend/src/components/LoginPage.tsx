@@ -53,7 +53,7 @@ export default function LoginPage() {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,#F1F5F9,#E2E8F0_45%,#CBD5E1_100%)]">
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_#F1F5F9,_#E2E8F0_45%,_#CBD5E1_100%)]">
         <div className="text-slate-600 text-sm font-medium">
           Checking session...
         </div>
@@ -62,7 +62,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.16),transparent_34%),linear-gradient(180deg,#F8FAFC_0%,#E2E8F0_100%)]">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.16),_transparent_34%),linear-gradient(180deg,_#F8FAFC_0%,_#E2E8F0_100%)]">
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-sm p-8">
         <div className="mb-8">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-600">

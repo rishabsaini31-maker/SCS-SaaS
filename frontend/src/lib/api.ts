@@ -25,7 +25,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  },
+  }
 );
 
 export const fetcher = (url: string) => api.get(url).then((res) => res.data);

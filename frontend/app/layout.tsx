@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WholesalePro Dashboard",
+  title: "SCS Flow Dashboard",
   description: "Modern Wholesale ERP Suite",
 };
 

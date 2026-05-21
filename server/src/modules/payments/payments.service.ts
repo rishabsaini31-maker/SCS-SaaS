@@ -64,10 +64,7 @@ export const createPayment = async (
         });
         if (!invoice) throw new CustomError("Invoice not found", 404);
         if (invoice.customerId !== data.customerId) {
-          throw new CustomError(
-            "Invoice does not belong to this customer",
-            400,
-          );
+          throw new CustomError("Invoice does not belong to this customer", 400);
         }
         const paidSoFar = invoice.payments.reduce(
           (sum, payment) => sum + payment.amount,
@@ -103,10 +100,7 @@ export const createPayment = async (
         });
         if (!purchase) throw new CustomError("Purchase not found", 404);
         if (purchase.supplierId !== data.supplierId) {
-          throw new CustomError(
-            "Purchase does not belong to this supplier",
-            400,
-          );
+          throw new CustomError("Purchase does not belong to this supplier", 400);
         }
         const paidSoFar = purchase.payments.reduce(
           (sum, payment) => sum + payment.amount,

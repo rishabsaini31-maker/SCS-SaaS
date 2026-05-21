@@ -4,12 +4,12 @@ import api from "@/lib/api";
 
 /**
  * PRODUCTION SECURITY: Periodic session validation
- *
+ * 
  * Checks session validity every 5 minutes to catch:
  * - Revoked sessions (admin suspended user)
  * - Expired tokens (7-day expiry)
  * - Compromised sessions
- *
+ * 
  * Redirect to login on session failure
  */
 export function useSessionValidation() {
