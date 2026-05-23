@@ -1,5 +1,5 @@
-import SuperAdminDashboard from "@/components/SuperAdminDashboard";
+import SuperAdminEntry from "../src/components/SuperAdminEntry";
 
 export default function Page() {
-  return <SuperAdminDashboard />;
+  return <SuperAdminEntry />;
 }

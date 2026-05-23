@@ -1,13 +1,12 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useLogout, useAdminProfile } from "@/lib/hooks";
+import { useLogout } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
 
 export default function PlatformSettings() {
   const router = useRouter();
   const logout = useLogout();
-  const { data: profile } = useAdminProfile();
   const [saveStatus, setSaveStatus] = useState("");
   const [settings, setSettings] = useState({
     maintenanceMode: false,
@@ -20,7 +19,7 @@ export default function PlatformSettings() {
 
   const handleLogout = async () => {
     await logout.mutateAsync();
-    router.push("/login");
+    router.push("/");
   };
 
   const handleSettingChange = (key: string, value: any) => {
@@ -127,7 +126,7 @@ export default function PlatformSettings() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="font-label-caps text-on-surface">
-                  {profile?.admin?.email || "Admin"}
+                  SCS-Super-Admin
                 </p>
                 <p className="text-[10px] text-secondary">Super Admin</p>
               </div>

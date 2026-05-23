@@ -72,6 +72,7 @@ export const superAdminLoginRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== "production",
   keyGenerator: (req: Request) => {
     return (
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||

@@ -1,7 +1,32 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosHeaders, AxiosInstance } from "axios";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+const SUPER_ADMIN_TOKEN_KEY = "scs-super-admin-token";
+
+function getStoredToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(SUPER_ADMIN_TOKEN_KEY);
+}
+
+function setStoredToken(token: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(SUPER_ADMIN_TOKEN_KEY, token);
+}
+
+function clearStoredToken() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(SUPER_ADMIN_TOKEN_KEY);
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -16,16 +41,26 @@ class ApiClient {
       },
     });
 
+    this.client.interceptors.request.use((config) => {
+      const token = getStoredToken();
+      if (token) {
+        if (config.headers instanceof AxiosHeaders) {
+          config.headers.set("Authorization", `Bearer ${token}`);
+        } else {
+          config.headers = AxiosHeaders.from(config.headers);
+          config.headers.set("Authorization", `Bearer ${token}`);
+        }
+      }
+
+      return config;
+    });
+
     // Handle 401 responses (unauthorized - token expired or revoked)
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          // Token expired or invalid, cookie will be cleared by backend
-          if (typeof window !== "undefined") {
-            window.location.href = "/login";
-          }
-        }
+        // Let callers handle auth errors so super-admin actions like shop creation
+        // can show a local error instead of forcing navigation.
         return Promise.reject(error);
       },
     );
@@ -33,21 +68,23 @@ class ApiClient {
 
   // Auth endpoints
   async login(email: string, password: string) {
-    const response = await this.client.post("/scs-auth/login", {
+    const response = await this.client.post("/scs-admin/login", {
       email,
       password,
     });
-    // Token is set in HttpOnly cookie by backend, no need to store manually
+    if (response.data?.token) {
+      setStoredToken(response.data.token);
+    }
     return response.data;
   }
 
   async logout() {
-    await this.client.post("/scs-auth/logout");
-    // Cookie is cleared by backend on logout
+    await this.client.post("/scs-admin/logout");
+    clearStoredToken();
   }
 
   async getMe() {
-    const response = await this.client.get("/scs-auth/me");
+    const response = await this.client.get("/scs-admin/me");
     return response.data;
   }
 

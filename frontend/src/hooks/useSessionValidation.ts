@@ -4,18 +4,22 @@ import api from "@/lib/api";
 
 /**
  * PRODUCTION SECURITY: Periodic session validation
- * 
+ *
  * Checks session validity every 5 minutes to catch:
  * - Revoked sessions (admin suspended user)
  * - Expired tokens (7-day expiry)
  * - Compromised sessions
- * 
+ *
  * Redirect to login on session failure
  */
-export function useSessionValidation() {
+export function useSessionValidation(enabled = true) {
   const router = useRouter();
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     // Initial validation on mount
     validateSession();
 
@@ -23,7 +27,7 @@ export function useSessionValidation() {
     const validationInterval = setInterval(validateSession, 5 * 60 * 1000);
 
     return () => clearInterval(validationInterval);
-  }, []);
+  }, [enabled]);
 
   async function validateSession() {
     try {

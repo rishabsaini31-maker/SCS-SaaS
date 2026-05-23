@@ -1,14 +1,14 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useCreateTenant, useLogout, useAdminProfile } from "@/lib/hooks";
+import { useCreateTenant, useLogout } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
 
 export default function OnboardShop() {
   const router = useRouter();
   const createTenant = useCreateTenant();
   const logout = useLogout();
-  const { data: profile } = useAdminProfile();
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
     ownerName: "",
@@ -22,7 +22,7 @@ export default function OnboardShop() {
 
   const handleLogout = async () => {
     await logout.mutateAsync();
-    router.push("/login");
+    router.push("/");
   };
 
   const handleChange = (
@@ -144,7 +144,7 @@ export default function OnboardShop() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="font-label-caps text-on-surface">
-                  {profile?.admin?.email || "Admin"}
+                  SCS-Super-Admin
                 </p>
                 <p className="text-[10px] text-secondary">Super Admin</p>
               </div>
@@ -227,15 +227,28 @@ export default function OnboardShop() {
                     <label className="block text-body-sm text-on-surface mb-2 font-medium">
                       Initial Password *
                     </label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-surface-container-low border border-outline rounded-lg text-body-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Enter a secure password"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 pr-20 bg-surface-container-low border border-outline rounded-lg text-body-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="Enter a secure password"
+                        autoComplete="new-password"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-primary hover:text-primary/80"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                      >
+                        {showPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Phone */}

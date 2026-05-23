@@ -4,12 +4,12 @@ import { apiClient } from "@/lib/api";
 
 /**
  * PRODUCTION SECURITY: Periodic session validation for super-admin
- * 
+ *
  * Checks session validity every 5 minutes to catch:
  * - Revoked sessions
  * - Expired tokens (7-day expiry)
  * - Compromised sessions
- * 
+ *
  * Redirect to login on session failure
  */
 export function useSessionValidation() {
@@ -30,9 +30,7 @@ export function useSessionValidation() {
       await apiClient.getMe();
       // Session is valid, continue
     } catch (err: any) {
-      // Session invalid or expired
       if (err.response?.status === 401 || err.response?.status === 403) {
-        // Redirect to login
         router.push("/login");
       }
     }

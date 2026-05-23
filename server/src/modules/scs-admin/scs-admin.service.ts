@@ -149,18 +149,26 @@ export async function resetTenantOwnerPassword(
 }
 
 export async function getDashboardMetrics() {
+  const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
   const [
     totalTenants,
     activeTenants,
     invoiceCount,
     productCount,
     activeSessions,
+    last24hLogins,
   ] = await Promise.all([
     prisma.tenant.count(),
     prisma.tenant.count({ where: { status: "ACTIVE" } }),
     prisma.invoice.count(),
     prisma.product.count(),
     countActiveSessions(),
+    prisma.authSession.count({
+      where: {
+        createdAt: { gte: last24Hours },
+      },
+    }),
   ]);
 
   return {
@@ -169,5 +177,6 @@ export async function getDashboardMetrics() {
     invoiceCount,
     productCount,
     activeSessions,
+    last24hLogins,
   };
 }

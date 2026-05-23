@@ -1,23 +1,22 @@
 "use client";
 import React from "react";
 import Link from "next/link";
-import { useDashboardMetrics, useLogout, useAdminProfile } from "@/lib/hooks";
+import { useDashboardMetrics, useLogout } from "@/lib/hooks";
 import { useSessionValidation } from "@/hooks/useSessionValidation";
 import { useRouter } from "next/navigation";
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
-  
+
   // PRODUCTION SECURITY: Enable periodic session validation
   useSessionValidation();
-  
+
   const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics();
-  const { data: profile } = useAdminProfile();
   const logout = useLogout();
 
   const handleLogout = async () => {
     await logout.mutateAsync();
-    router.push("/login");
+    router.push("/");
   };
 
   const totalShops = metrics?.totalTenants || 0;
@@ -135,7 +134,7 @@ export default function SuperAdminDashboard() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="font-label-caps text-on-surface">
-                  {profile?.admin?.email || "Admin"}
+                  SCS-Super-Admin
                 </p>
                 <p className="text-[10px] text-secondary">Super Admin</p>
               </div>

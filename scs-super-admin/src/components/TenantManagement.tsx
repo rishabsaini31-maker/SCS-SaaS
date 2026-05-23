@@ -1,12 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  useTenants,
-  useUpdateTenantStatus,
-  useLogout,
-  useAdminProfile,
-} from "@/lib/hooks";
+import { useTenants, useUpdateTenantStatus, useLogout } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
 
 export default function TenantManagement() {
@@ -14,13 +9,12 @@ export default function TenantManagement() {
   const { data: tenants, isLoading } = useTenants();
   const updateStatus = useUpdateTenantStatus();
   const logout = useLogout();
-  const { data: profile } = useAdminProfile();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
 
   const handleLogout = async () => {
     await logout.mutateAsync();
-    router.push("/login");
+    router.push("/");
   };
 
   const handleSuspend = async (tenantId: string) => {
@@ -148,7 +142,7 @@ export default function TenantManagement() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="font-label-caps text-on-surface">
-                  {profile?.admin?.email || "Admin"}
+                  SCS-Super-Admin
                 </p>
                 <p className="text-[10px] text-secondary">Super Admin</p>
               </div>
