@@ -18,7 +18,7 @@ function isRetryableTransactionError(error: unknown) {
 }
 
 export async function runSerializableTransaction<T>(
-  work: (tx: Prisma.TransactionClient) => Promise<T>,
+  work: (tx: any) => Promise<T>,
   options: {
     maxAttempts?: number;
     retryDelayMs?: number;
@@ -29,7 +29,7 @@ export async function runSerializableTransaction<T>(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await prisma.$transaction(work, {
+      return await (prisma as any).$transaction(work, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
     } catch (error) {

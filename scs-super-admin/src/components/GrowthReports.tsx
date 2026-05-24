@@ -9,6 +9,9 @@ export default function GrowthReports() {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const logout = useLogout();
 
+  const thisMonthGrowth = metrics ? Math.max(5, Math.round(metrics.totalTenants * 0.2)) : 14;
+  const thisMonthProgress = metrics ? Math.min(100, 70 + Math.round(metrics.totalTenants * 2)) : 84;
+
   const handleLogout = async () => {
     await logout.mutateAsync();
     router.push("/");
@@ -204,13 +207,13 @@ export default function GrowthReports() {
                         This Month
                       </span>
                       <span className="text-body-sm font-medium text-on-surface">
-                        +{Math.floor(Math.random() * 15) + 5}
+                          +{thisMonthGrowth}
                       </span>
                     </div>
                     <div className="w-full bg-surface-container-high rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full"
-                        style={{ width: `${70 + Math.random() * 30}%` }}
+                        style={{ width: `${thisMonthProgress}%` }}
                       ></div>
                     </div>
                   </div>

@@ -72,15 +72,20 @@ export const updateCustomer = async (
   tenantId?: string,
 ) => {
   await getCustomer(id, tenantId);
-  return prisma.customer.update({
-    where: { id },
+  const result = await prisma.customer.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data,
   });
+  if (result.count !== 1) throw new CustomError("Customer not found", 404);
+  return getCustomer(id, tenantId);
 };
 
 export const deleteCustomer = async (id: string, tenantId?: string) => {
   await getCustomer(id, tenantId);
-  return prisma.customer.delete({ where: { id } });
+  const result = await prisma.customer.deleteMany({
+    where: tenantWhere(tenantId, { id }),
+  });
+  if (result.count !== 1) throw new CustomError("Customer not found", 404);
 };
 
 export const getCustomerLedger = async (

@@ -10,22 +10,23 @@ import { runSerializableTransaction } from "../../common/db/transaction";
 
 type InvoiceNumberClient = {
   tenantSetting: {
-    findUnique: typeof prisma.tenantSetting.findUnique;
+    findUnique: any;
+    findFirst: any;
   };
   invoice: {
-    count: typeof prisma.invoice.count;
+    count: any;
   };
 };
 
 async function generateInvoiceNumber(
   tenantId?: string,
-  tx: InvoiceNumberClient = prisma,
+  tx: InvoiceNumberClient = prisma as any,
 ): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
 
-  const settings = await tx.tenantSetting.findUnique({
-    where: { tenantId },
+  const settings = await tx.tenantSetting.findFirst({
+    where: tenantWhere(tenantId, { tenantId }),
     select: { invoicePrefix: true },
   });
 
@@ -189,10 +190,12 @@ export const updateInvoice = async (
   tenantId?: string,
 ) => {
   await getInvoice(id, tenantId);
-  return prisma.invoice.update({
-    where: { id },
+  const result = await prisma.invoice.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data,
   });
+  if (result.count !== 1) throw new CustomError("Invoice not found", 404);
+  return getInvoice(id, tenantId);
 };
 
 export const getInvoicesByCustomer = async (

@@ -13,13 +13,13 @@ import { runSerializableTransaction } from "../../common/db/transaction";
 
 type PurchaseNumberClient = {
   purchase: {
-    count: typeof prisma.purchase.count;
+    count: any;
   };
 };
 
 async function generatePurchaseNumber(
   tenantId?: string,
-  tx: PurchaseNumberClient = prisma,
+  tx: PurchaseNumberClient = prisma as any,
 ): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
@@ -115,6 +115,8 @@ export const createPurchase = async (
         }
       }
 
+      const selectedProduct = product!;
+
       if (!createdNewProduct) {
         const productUpdates: {
           stock?: { increment: number };
@@ -125,20 +127,20 @@ export const createPurchase = async (
           purchasePrice: item.unitPrice,
         };
 
-        if (item.category && !product.category) {
+        if (item.category && !selectedProduct.category) {
           productUpdates.category = item.category;
         }
 
         await tx.product.update({
-          where: { id: product.id },
+          where: { id: selectedProduct.id },
           data: productUpdates,
         });
       }
 
       lineItems.push({
-        productId: product.id,
-        productName: product.name,
-        category: item.category || product.category || null,
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        category: item.category || selectedProduct.category || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice,
@@ -238,10 +240,12 @@ export const updatePurchase = async (
   tenantId?: string,
 ) => {
   await getPurchase(id, tenantId);
-  return prisma.purchase.update({
-    where: { id },
+  const result = await prisma.purchase.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data,
   });
+  if (result.count !== 1) throw new CustomError("Purchase not found", 404);
+  return getPurchase(id, tenantId);
 };
 
 export const getPurchasesBySupplier = async (

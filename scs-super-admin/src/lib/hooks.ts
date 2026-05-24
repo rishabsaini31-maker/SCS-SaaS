@@ -89,11 +89,12 @@ export function useLogout() {
   });
 }
 
-export function useAdminProfile() {
+export function useAdminProfile(enabled = true) {
   return useQuery({
     queryKey: ["admin", "me"],
     queryFn: () => apiClient.getMe(),
     staleTime: Infinity,
+    enabled,
   });
 }
 

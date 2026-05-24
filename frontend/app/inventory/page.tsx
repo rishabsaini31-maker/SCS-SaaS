@@ -18,11 +18,12 @@ type Product = {
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [savedCategories, setSavedCategories] = useState<string[]>([]);
   const [categoryForm, setCategoryForm] = useState({ name: "" });
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [activatingProductId, setActivatingProductId] = useState<string | null>(
@@ -44,14 +45,20 @@ export default function InventoryPage() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await api.get("/products");
-      setProducts(res.data);
-      const storedCategories = window.localStorage.getItem(
-        "inventoryCategories",
+      const [productsRes, categoriesRes] = await Promise.all([
+        api.get("/products"),
+        api.get("/categories"),
+      ]);
+      setProducts(productsRes.data);
+      setAvailableCategories(
+        Array.from(
+          new Set(
+            (categoriesRes.data as Array<{ name?: string }>)
+              .map((category) => category.name?.trim())
+              .filter((category): category is string => Boolean(category)),
+          ),
+        ).sort((a, b) => a.localeCompare(b)),
       );
-      if (storedCategories) {
-        setSavedCategories(JSON.parse(storedCategories) as string[]);
-      }
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -62,6 +69,38 @@ export default function InventoryPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    const syncStoredCategories = async () => {
+      const storedCategories = window.localStorage.getItem("inventoryCategories");
+      if (!storedCategories) return;
+
+      let parsedCategories: string[] = [];
+      try {
+        parsedCategories = JSON.parse(storedCategories) as string[];
+      } catch {
+        parsedCategories = [];
+      }
+
+      const normalized = Array.from(
+        new Set(parsedCategories.map((category) => category.trim()).filter(Boolean)),
+      );
+
+      if (normalized.length === 0) return;
+
+      try {
+        await Promise.all(
+          normalized.map((name) => api.post("/categories", { name })),
+        );
+        window.localStorage.removeItem("inventoryCategories");
+        void fetchProducts();
+      } catch (error) {
+        console.error("Error syncing store categories:", error);
+      }
+    };
+
+    void syncStoredCategories();
   }, [fetchProducts]);
 
   // Check for pending products and show activation modal
@@ -80,23 +119,53 @@ export default function InventoryPage() {
 
   const categoryOptions = Array.from(
     new Set([
+      ...availableCategories,
       ...products.map((product) => product.category).filter(Boolean),
-      ...savedCategories,
     ]),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const visibleProducts = selectedCategory
+    ? products.filter((product) => product.category === selectedCategory)
+    : products;
+
+  const activatingProduct = products.find(
+    (product) => product.id === activatingProductId,
   );
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     const value = categoryForm.name.trim();
     if (!value) return;
-    const nextCategories = Array.from(new Set([...savedCategories, value]));
-    setSavedCategories(nextCategories);
-    window.localStorage.setItem(
-      "inventoryCategories",
-      JSON.stringify(nextCategories),
+
+    api
+      .post("/categories", { name: value })
+      .then(() => {
+        setCategoryForm({ name: "" });
+        setShowCategoryForm(false);
+        void fetchProducts();
+      })
+      .catch((error) => {
+        console.error("Error adding category:", error);
+        alert("Failed to add category");
+      });
+  };
+
+  const handleDeleteCategory = async (category: string) => {
+    const confirmed = window.confirm(
+      `Delete category "${category}" from this store? Products in this category will be moved to no category.`,
     );
-    setCategoryForm({ name: "" });
-    setShowCategoryForm(false);
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/categories/${encodeURIComponent(category)}`);
+      if (selectedCategory === category) {
+        setSelectedCategory("");
+      }
+      void fetchProducts();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      alert("Failed to delete category");
+    }
   };
 
   const startEditProduct = (product: Product) => {
@@ -217,6 +286,110 @@ export default function InventoryPage() {
           >
             + Add Product
           </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
+        <div className="bg-white border border-slate-200 rounded-xl p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Store Categories
+              </h2>
+              <p className="text-sm text-slate-500">
+                Categories are isolated to this store only.
+              </p>
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none"
+            >
+              <option value="">All categories</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categoryOptions.length > 0 ? (
+              categoryOptions.map((category) => {
+                const isActive = selectedCategory === category;
+                const count = products.filter(
+                  (product) => product.category === category,
+                ).length;
+                return (
+                  <div
+                    key={category}
+                    className={`group flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition ${
+                      isActive
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedCategory((current) =>
+                          current === category ? "" : category,
+                        )
+                      }
+                      className="flex items-center gap-2"
+                    >
+                      <span>{category}</span>
+                      <span
+                        className={`text-xs ${isActive ? "text-blue-100" : "text-slate-400"}`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteCategory(category)}
+                      className={`rounded-full p-1 text-xs font-bold transition ${
+                        isActive
+                          ? "text-white/80 hover:bg-white/15 hover:text-white"
+                          : "text-slate-400 hover:bg-slate-200 hover:text-slate-700"
+                      }`}
+                      aria-label={`Delete category ${category}`}
+                      title="Delete category"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-sm text-slate-500">
+                No categories saved for this store yet.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-slate-900 text-white rounded-xl p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+            Inventory Summary
+          </p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <div className="text-3xl font-bold">{products.length}</div>
+              <p className="text-sm text-slate-300">Total products</p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-semibold text-blue-300">
+                {categoryOptions.length}
+              </div>
+              <p className="text-sm text-slate-300">Store categories</p>
+            </div>
+          </div>
+          {selectedCategory ? (
+            <div className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-sm text-slate-200">
+              Showing only {selectedCategory}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -367,7 +540,15 @@ export default function InventoryPage() {
       {showActivationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full space-y-4">
-            <h2 className="text-xl font-bold">Set Selling Price</h2>
+            <h2 className="text-xl font-bold">Activate Product</h2>
+            {activatingProduct && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 space-y-1">
+                <div className="font-semibold text-slate-900">
+                  {activatingProduct.name}
+                </div>
+                <div>Buying Price: {formatINR(activatingProduct.purchasePrice)}</div>
+              </div>
+            )}
             <form onSubmit={handleActivateProduct} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -441,7 +622,7 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {products.map((product) => (
+            {visibleProducts.map((product) => (
               <tr key={product.id} className="hover:bg-slate-50">
                 <td className="px-6 py-4 font-medium text-slate-900">
                   {product.name}
@@ -494,9 +675,11 @@ export default function InventoryPage() {
             ))}
           </tbody>
         </table>
-        {products.length === 0 && (
+        {visibleProducts.length === 0 && (
           <div className="px-6 py-8 text-center text-slate-500">
-            No products in inventory
+            {selectedCategory
+              ? "No products found for this category"
+              : "No products in inventory"}
           </div>
         )}
       </div>

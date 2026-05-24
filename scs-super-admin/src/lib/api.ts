@@ -12,6 +12,10 @@ function getStoredToken() {
   return window.localStorage.getItem(SUPER_ADMIN_TOKEN_KEY);
 }
 
+export function hasStoredSuperAdminToken() {
+  return getStoredToken() !== null;
+}
+
 function setStoredToken(token: string) {
   if (typeof window === "undefined") {
     return;

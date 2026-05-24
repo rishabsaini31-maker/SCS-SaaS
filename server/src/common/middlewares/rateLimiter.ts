@@ -22,6 +22,7 @@ export const globalRateLimiter = rateLimit({
   message: "Too many requests, please try again later.",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: () => process.env.NODE_ENV !== "production",
   keyGenerator: (req: Request) => {
     // Use X-Forwarded-For for reverse proxies, fallback to socket remote address
     return (

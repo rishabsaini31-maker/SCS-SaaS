@@ -57,12 +57,20 @@ export const updateProduct = async (
   tenantId?: string,
 ) => {
   await getProduct(id, tenantId); // Verify exists and tenant
-  return prisma.product.update({ where: { id }, data });
+  const result = await prisma.product.updateMany({
+    where: tenantWhere(tenantId, { id }),
+    data,
+  });
+  if (result.count !== 1) throw new CustomError("Product not found", 404);
+  return getProduct(id, tenantId);
 };
 
 export const deleteProduct = async (id: string, tenantId?: string) => {
   await getProduct(id, tenantId); // Verify exists and tenant
-  return prisma.product.delete({ where: { id } });
+  const result = await prisma.product.deleteMany({
+    where: tenantWhere(tenantId, { id }),
+  });
+  if (result.count !== 1) throw new CustomError("Product not found", 404);
 };
 
 export const getProductsByIds = async (ids: string[], tenantId?: string) => {
@@ -144,11 +152,13 @@ export const activateProduct = async (
   tenantId?: string,
 ) => {
   await getProduct(id, tenantId); // Verify exists and tenant
-  return prisma.product.update({
-    where: { id },
+  const result = await prisma.product.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data: {
       sellingPrice,
       status: "active",
     },
   });
+  if (result.count !== 1) throw new CustomError("Product not found", 404);
+  return getProduct(id, tenantId);
 };

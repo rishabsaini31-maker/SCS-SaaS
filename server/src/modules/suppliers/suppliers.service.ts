@@ -38,8 +38,9 @@ export const getSupplier = async (id: string, tenantId?: string) => {
     where: { id },
     include: { purchases: true, ledgers: true },
   });
-  if (!supplier || (tenantId && (supplier as any).tenantId !== tenantId))
+  if (!supplier || (tenantId && (supplier as any).tenantId !== tenantId)) {
     throw new CustomError("Supplier not found", 404);
+  }
   assertTenantOwnership(tenantId, (supplier as any).tenantId, "Supplier");
   return supplier;
 };
@@ -73,15 +74,20 @@ export const updateSupplier = async (
   tenantId?: string,
 ) => {
   await getSupplier(id, tenantId);
-  return prisma.supplier.update({
-    where: { id },
+  const result = await prisma.supplier.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data,
   });
+  if (result.count !== 1) throw new CustomError("Supplier not found", 404);
+  return getSupplier(id, tenantId);
 };
 
 export const deleteSupplier = async (id: string, tenantId?: string) => {
   await getSupplier(id, tenantId);
-  return prisma.supplier.delete({ where: { id } });
+  const result = await prisma.supplier.deleteMany({
+    where: tenantWhere(tenantId, { id }),
+  });
+  if (result.count !== 1) throw new CustomError("Supplier not found", 404);
 };
 
 export const getSupplierLedger = async (
@@ -100,7 +106,6 @@ export const getSupplierRecentItems = async (
   supplierId: string,
   tenantId?: string,
 ) => {
-  // Group recent purchase line items by productId/productName for a supplier
   const grouped = await prisma.purchaseLineItem.groupBy({
     by: ["productId", "productName"],
     where: tenantWhere(tenantId, {
@@ -112,7 +117,6 @@ export const getSupplierRecentItems = async (
     take: 20,
   });
 
-  // fetch product names for productIds if available
   const productIds = grouped
     .map((g) => g.productId)
     .filter(Boolean) as string[];

@@ -90,12 +90,18 @@ export const generateBarcodeForProduct = async (
     // SECURITY: Pass offset to get different barcode values on retry
     const next = await computeNextBarcode(tenantId, attempt);
     try {
-      const updated = await prisma.product.update({
-        where: { id: productId },
+      const result = await prisma.product.updateMany({
+        where: tenantWhere(tenantId, { id: productId }),
         data: { barcode: next },
       });
-      const svg = generateSvg(updated.barcode!);
-      return { barcode: updated.barcode!, svg };
+      if (result.count !== 1) throw new CustomError("Product not found", 404);
+      const updated = await prisma.product.findFirst({
+        where: tenantWhere(tenantId, { id: productId }),
+      });
+      if (!updated?.barcode)
+        throw new CustomError("Barcode not generated for product", 404);
+      const svg = generateSvg(updated.barcode);
+      return { barcode: updated.barcode, svg };
     } catch (err: any) {
       // unique constraint error code for Prisma is P2002
       if (err && err.code === "P2002") {

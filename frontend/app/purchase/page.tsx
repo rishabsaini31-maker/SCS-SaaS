@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -64,6 +64,8 @@ type LineItem = {
   unitPrice: number;
 };
 
+type CategoryOption = { name?: string };
+
 export default function PurchasePage() {
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(
     null,
@@ -116,29 +118,32 @@ export default function PurchasePage() {
     notes: "",
     gst: 18,
     barcodeInput: "",
+    paymentMethod: "upi",
+    paymentStatus: "Paid",
+    paidAmount: "",
   });
-  const [savedCategories, setSavedCategories] = useState<string[]>([]);
 
-  useEffect(() => {
-    const loadCategories = () => {
-      const storedCategories = window.localStorage.getItem(
-        "inventoryCategories",
-      );
-      if (storedCategories) {
-        setSavedCategories(JSON.parse(storedCategories) as string[]);
-      }
-    };
-    loadCategories();
-  }, []);
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+  } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await api.get<CategoryOption[]>('/categories');
+      return res.data;
+    },
+  });
 
   const categoryOptions = Array.from(
     new Set([
       ...products
         .map((product) => product.category)
         .filter((category): category is string => Boolean(category)),
-      ...savedCategories,
+      ...categories
+        .map((category) => category.name?.trim())
+        .filter((category): category is string => Boolean(category)),
     ]),
-  );
+  ).sort((a, b) => a.localeCompare(b));
 
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
@@ -198,15 +203,25 @@ export default function PurchasePage() {
         Boolean(item.productId) || Boolean(item.productName?.trim());
       return hasProductRef && item.quantity > 0 && item.unitPrice > 0;
     });
+    const { total } = calculateTotals();
+    const isPending = formData.paymentStatus === "Pending";
+    const paidAmount = isPending
+      ? Math.max(0, Number(formData.paidAmount) || 0)
+      : total;
 
     if (!formData.supplierId || validLineItems.length === 0) {
       alert("Please select supplier and add line items");
       return;
     }
 
+    if (paidAmount > total) {
+      alert("Paid amount cannot be greater than total amount");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await api.post("/purchases", {
+      const purchaseRes = await api.post("/purchases", {
         supplierId: formData.supplierId,
         lineItems: validLineItems.map((item) => ({
           productId: item.productId || undefined,
@@ -217,8 +232,27 @@ export default function PurchasePage() {
         })),
         notes: formData.notes || "",
       });
+
+      if (paidAmount > 0) {
+        await api.post("/payments", {
+          supplierId: formData.supplierId,
+          purchaseId: purchaseRes.data.id,
+          amount: paidAmount,
+          paymentMethod: formData.paymentMethod,
+          notes: `Payment for purchase ${purchaseRes.data.purchaseNumber}`,
+        });
+      }
+
       setShowForm(false);
-      setFormData({ supplierId: "", notes: "", gst: 18, barcodeInput: "" });
+      setFormData({
+        supplierId: "",
+        notes: "",
+        gst: 18,
+        barcodeInput: "",
+        paymentMethod: "upi",
+        paymentStatus: "Paid",
+        paidAmount: "",
+      });
       setLineItems([
         { productId: "", productName: "", quantity: 0, unitPrice: 0 },
       ]);
@@ -261,7 +295,8 @@ export default function PurchasePage() {
     }
   };
 
-  const loading = purchasesLoading || suppliersLoading || productsLoading;
+  const loading =
+    purchasesLoading || suppliersLoading || productsLoading || categoriesLoading;
 
   if (loading) {
     return <div className="text-slate-500">Loading purchases...</div>;
@@ -471,6 +506,12 @@ export default function PurchasePage() {
             <div className="bg-slate-50 p-3 rounded space-y-2">
               {(() => {
                 const { subtotal, gst, total } = calculateTotals();
+                const isPending = formData.paymentStatus === "Pending";
+                const paidAmount = isPending
+                  ? Math.max(0, Number(formData.paidAmount) || 0)
+                  : total;
+                const pendingAmount = Math.max(0, total - paidAmount);
+
                 return (
                   <>
                     <div className="flex justify-between text-sm">
@@ -484,6 +525,78 @@ export default function PurchasePage() {
                     <div className="flex justify-between font-bold text-lg border-t pt-2">
                       <span>Total:</span>
                       <span>{formatINR(total)}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-slate-200 mt-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Payment Method
+                        </label>
+                        <select
+                          value={formData.paymentMethod}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              paymentMethod: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        >
+                          <option value="upi">UPI</option>
+                          <option value="cash">Cash</option>
+                          <option value="cheque">Cheque</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Payment Status
+                        </label>
+                        <select
+                          value={formData.paymentStatus}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              paymentStatus: e.target.value,
+                              paidAmount:
+                                e.target.value === "Pending"
+                                  ? formData.paidAmount
+                                  : "",
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                        </select>
+                      </div>
+
+                      {isPending && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1">
+                            Paid Amount
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max={total}
+                            value={formData.paidAmount}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                paidAmount: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                            placeholder="Enter paid amount"
+                          />
+                          <p className="text-xs text-slate-600 mt-1">
+                            Pending: {formatINR(pendingAmount)}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 );

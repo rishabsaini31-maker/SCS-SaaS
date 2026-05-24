@@ -36,14 +36,6 @@ export default function SuperAdminLogin() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,#dbe7ff_0%,#f8fafc_45%,#eef2ff_100%)] text-secondary">
-        Loading session...
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.14),transparent_26%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-on-surface">
       <div className="mx-auto flex min-h-screen w-full max-w-7xl items-center px-4 py-8 lg:px-8">

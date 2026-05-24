@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { runWithTenantContext } from "../tenant/tenantContext";
 
 export function requireTenant(req: Request, res: Response, next: NextFunction) {
   const user = (req as any).user;
@@ -7,7 +8,8 @@ export function requireTenant(req: Request, res: Response, next: NextFunction) {
     return res.status(403).json({ error: "Tenant context required" });
   }
   (req as any).tenantId = tenantId;
-  next();
+
+  return runWithTenantContext(tenantId, () => next());
 }
 
 export default requireTenant;

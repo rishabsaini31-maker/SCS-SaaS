@@ -17,13 +17,6 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle authentication errors
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      // Token expired or revoked, clear session and redirect to login
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
     return Promise.reject(error);
   }
 );

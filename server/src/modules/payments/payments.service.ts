@@ -10,13 +10,13 @@ import { runSerializableTransaction } from "../../common/db/transaction";
 
 type PaymentNumberClient = {
   payment: {
-    count: typeof prisma.payment.count;
+    count: any;
   };
 };
 
 async function generatePaymentNumber(
   tenantId?: string,
-  tx: PaymentNumberClient = prisma,
+  tx: PaymentNumberClient = prisma as any,
 ): Promise<string> {
   const today = new Date().toISOString().split("T")[0];
   if (!today) throw new CustomError("Date generation failed", 500);
@@ -67,7 +67,7 @@ export const createPayment = async (
           throw new CustomError("Invoice does not belong to this customer", 400);
         }
         const paidSoFar = invoice.payments.reduce(
-          (sum, payment) => sum + payment.amount,
+          (sum: number, payment: { amount: number }) => sum + payment.amount,
           0,
         );
         if (paidSoFar + data.amount > invoice.totalAmount) {
@@ -103,7 +103,7 @@ export const createPayment = async (
           throw new CustomError("Purchase does not belong to this supplier", 400);
         }
         const paidSoFar = purchase.payments.reduce(
-          (sum, payment) => sum + payment.amount,
+          (sum: number, payment: { amount: number }) => sum + payment.amount,
           0,
         );
         if (paidSoFar + data.amount > purchase.totalAmount) {
@@ -153,7 +153,8 @@ export const createPayment = async (
         });
         if (invoice) {
           const paidTotal = invoice.payments.reduce(
-            (sum, payment) => sum + payment.amount,
+            (sum: number, payment: { amount: number }) =>
+              sum + payment.amount,
             0,
           );
           const remaining = Math.max(0, invoice.totalAmount - paidTotal);
@@ -178,7 +179,8 @@ export const createPayment = async (
         });
         if (purchase) {
           const paidTotal = purchase.payments.reduce(
-            (sum, payment) => sum + payment.amount,
+            (sum: number, payment: { amount: number }) =>
+              sum + payment.amount,
             0,
           );
           const remaining = Math.max(0, purchase.totalAmount - paidTotal);
@@ -218,10 +220,12 @@ export const updatePayment = async (
   tenantId?: string,
 ) => {
   await getPayment(id, tenantId);
-  return prisma.payment.update({
-    where: { id },
+  const result = await prisma.payment.updateMany({
+    where: tenantWhere(tenantId, { id }),
     data,
   });
+  if (result.count !== 1) throw new CustomError("Payment not found", 404);
+  return getPayment(id, tenantId);
 };
 
 export const getPayments = async (
