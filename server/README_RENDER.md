@@ -64,8 +64,16 @@ Recommended deploy order:
 
 Environment variables for this strategy:
 
-- `DATABASE_URL`: Supabase Session/Transaction pooler URL with `sslmode=require`.
+- `DATABASE_URL`: Supabase pooler URL for runtime. If using transaction pooling, add `pgbouncer=true&connection_limit=1&sslmode=require`.
+- `DIRECT_URL`: direct Supabase database URL for migrations.
 - `MIGRATE_MAX_ATTEMPTS`: retry count for migration job.
 - `MIGRATE_RETRY_DELAY_MS`: retry delay for migration job.
+
+Example split:
+
+```env
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?pgbouncer=true&connection_limit=1&sslmode=require
+DIRECT_URL=postgresql://postgres.<project-ref>:<password>@db.<project-ref>.supabase.co:5432/postgres?sslmode=require
+```
 
 If the job succeeds on Render but Prisma still errors during `prisma migrate deploy`, paste the job logs here and I'll help interpret them.
