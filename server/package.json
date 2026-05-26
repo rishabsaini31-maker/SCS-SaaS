@@ -8,9 +8,10 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "prebuild": "prisma generate",
     "build": "tsc",
-    "prestart": "node scripts/prisma-migrate-with-retry.js",
     "start": "node dist/server.js",
     "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy:retry": "node scripts/prisma-migrate-with-retry.js",
+    "check:db": "node scripts/check-db.js",
     "backfill:tenant": "node scripts/backfill-tenant.js",
     "bootstrap:tenant": "tsx scripts/bootstrap-tenant.ts"
   },

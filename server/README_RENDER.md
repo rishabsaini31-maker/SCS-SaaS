@@ -48,4 +48,24 @@ MIGRATE_RETRY_DELAY_MS=10000
 
 This gives up to ~2 minutes for database reachability during boot.
 
+## Permanent production setup (recommended)
+
+For high-reliability deployments, do not run migrations in web-service startup.
+This repository now follows that pattern:
+
+1. Web service start only runs the API server.
+2. Migrations run in a dedicated Render job: `migrate-db`.
+
+Recommended deploy order:
+
+1. Run `migrate-db` job.
+2. Verify success in logs.
+3. Deploy/restart `scs-inventory-server` web service.
+
+Environment variables for this strategy:
+
+- `DATABASE_URL`: Supabase Session/Transaction pooler URL with `sslmode=require`.
+- `MIGRATE_MAX_ATTEMPTS`: retry count for migration job.
+- `MIGRATE_RETRY_DELAY_MS`: retry delay for migration job.
+
 If the job succeeds on Render but Prisma still errors during `prisma migrate deploy`, paste the job logs here and I'll help interpret them.

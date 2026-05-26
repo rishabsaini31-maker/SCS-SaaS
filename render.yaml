@@ -10,6 +10,15 @@ services:
 
 jobs:
   - type: job
+    name: migrate-db
+    env: node
+    region: oregon
+    branch: main
+    root: server
+    buildCommand: npm ci && npm run build
+    startCommand: npm run migrate:deploy:retry
+
+  - type: job
     name: check-db
     env: node
     region: oregon
