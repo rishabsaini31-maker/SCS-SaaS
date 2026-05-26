@@ -1,5 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { getCurrentTenantId } from "../tenant/tenantContext";
+import { config } from "../config";
 
 const TENANT_SCOPED_MODELS = new Set([
   "Product",
@@ -97,7 +100,14 @@ function scopeTenantArgs(operation: string, args: any, tenantId: string) {
   }
 }
 
-const prisma = new PrismaClient().$extends({
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  max: 1,
+});
+
+const adapter = new PrismaPg(pool);
+
+const prisma = new PrismaClient({ adapter }).$extends({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
