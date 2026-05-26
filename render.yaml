@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: scs-inventory-server
+    env: node
+    region: oregon
+    branch: main
+    root: server
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+
+jobs:
+  - type: job
+    name: check-db
+    env: node
+    region: oregon
+    branch: main
+    root: server
+    buildCommand: npm ci
+    startCommand: node scripts/check-db.js
