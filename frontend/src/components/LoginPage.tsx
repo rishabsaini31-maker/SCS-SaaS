@@ -2,34 +2,74 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { toast } from "@/lib/toast";
+import {
+  getLoginRedirectTarget,
+  waitForAuthenticatedSession,
+} from "@/lib/session";
 
 type LoginResponse = {
   token: string;
 };
 
-export default function LoginPage() {
+type LoginPageProps = {
+  redirectTo?: string;
+};
+
+export default function LoginPage({ redirectTo }: LoginPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const redirectTarget = getLoginRedirectTarget(
+    redirectTo ?? searchParams.get("redirectTo"),
+  );
+  const redirectLabel =
+    redirectTarget === "/dashboard"
+      ? "Dashboard"
+      : redirectTarget
+          .replace(/^\//, "")
+          .split("/")
+          .filter(Boolean)
+          .map((segment) => segment.replace(/-/g, " "))
+          .join(" / ");
 
   useEffect(() => {
-    // Check if already authenticated via cookie
-    api
-      .get("/auth/me")
-      .then(() => {
-        router.replace("/dashboard");
-      })
-      .catch(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      try {
+        const authenticated = await waitForAuthenticatedSession();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (authenticated) {
+          router.replace(redirectTarget);
+          return;
+        }
+
         setIsChecking(false);
-      });
-  }, [router]);
+      } catch {
+        if (!cancelled) {
+          setIsChecking(false);
+        }
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [redirectTarget, router]);
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
@@ -37,13 +77,20 @@ export default function LoginPage() {
 
     try {
       setErrorMessage("");
-      const response = await api.post<LoginResponse>("/auth/login", {
+      await api.post<LoginResponse>("/auth/login", {
         email,
         password,
       });
-      // Token is set in HttpOnly cookie by backend, no need to store manually
+
+      const authenticated = await waitForAuthenticatedSession();
+
+      if (!authenticated) {
+        throw new Error("Session was not ready after login");
+      }
+
       toast.success("Logged in successfully");
-      router.replace("/dashboard");
+      router.replace(redirectTarget);
+      router.refresh();
     } catch {
       setErrorMessage("Invalid email or password");
       toast.error("Invalid email or password");
@@ -75,6 +122,10 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-slate-500">
             One tenant, one owner account. Use the owner email and password.
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            Returning to {redirectLabel}
+          </div>
         </div>
 
         <form className="space-y-4" onSubmit={handleLogin}>
