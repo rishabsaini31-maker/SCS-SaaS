@@ -19,6 +19,12 @@ const TENANT_SCOPED_MODELS = new Set([
   "AuthSession",
 ]);
 
+function getRuntimeDatabaseUrl() {
+  const runtimeUrl = new URL(config.databaseUrl);
+  runtimeUrl.searchParams.delete("sslmode");
+  return runtimeUrl.toString();
+}
+
 function mergeTenantWhere(where: any, tenantId: string) {
   if (!where) {
     return { tenantId };
@@ -101,7 +107,7 @@ function scopeTenantArgs(operation: string, args: any, tenantId: string) {
 }
 
 const pool = new Pool({
-  connectionString: config.databaseUrl,
+  connectionString: getRuntimeDatabaseUrl(),
   max: 1,
   ssl: config.databaseUrl.includes("pooler.supabase.com")
     ? { rejectUnauthorized: false }
