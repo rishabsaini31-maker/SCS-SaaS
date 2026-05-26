@@ -103,6 +103,9 @@ function scopeTenantArgs(operation: string, args: any, tenantId: string) {
 const pool = new Pool({
   connectionString: config.databaseUrl,
   max: 1,
+  ssl: config.databaseUrl.includes("pooler.supabase.com")
+    ? { rejectUnauthorized: false }
+    : undefined,
 });
 
 const adapter = new PrismaPg(pool);
