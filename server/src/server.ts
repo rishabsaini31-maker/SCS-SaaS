@@ -1,11 +1,5 @@
 import app from "./app";
 import dotenv from "dotenv";
-import {
-  ensureDefaultTenant,
-  ensureOwnerAccounts,
-} from "./common/tenant/defaultTenant";
-import { ensureDefaultSuperAdmin } from "./common/tenant/defaultSuperAdmin";
-import { getTenantSettings } from "./modules/settings/settings.service";
 import { config, assertConfig } from "./common/config";
 
 dotenv.config();
@@ -22,13 +16,25 @@ try {
 }
 
 const PORT = config.port;
+const shouldRunStartupBootstrap =
+  config.nodeEnv !== "production" ||
+  process.env.RUN_STARTUP_BOOTSTRAP === "true";
 
 (async () => {
   try {
-    const tenantId = await ensureDefaultTenant();
-    await ensureOwnerAccounts();
-    await ensureDefaultSuperAdmin();
-    await getTenantSettings(tenantId);
+    if (shouldRunStartupBootstrap) {
+      const { ensureDefaultTenant, ensureOwnerAccounts } =
+        await import("./common/tenant/defaultTenant");
+      const { ensureDefaultSuperAdmin } =
+        await import("./common/tenant/defaultSuperAdmin");
+      const { getTenantSettings } =
+        await import("./modules/settings/settings.service");
+
+      const tenantId = await ensureDefaultTenant();
+      await ensureOwnerAccounts();
+      await ensureDefaultSuperAdmin();
+      await getTenantSettings(tenantId);
+    }
 
     app.listen(PORT, () => {
       // eslint-disable-next-line no-console
