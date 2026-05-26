@@ -22,6 +22,15 @@ import { config } from "./common/config";
 
 const app = express();
 
+// Public health endpoint (used by platforms like Render for health checks)
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // SECURITY: Helmet middleware for security headers
 app.use(helmet());
 
