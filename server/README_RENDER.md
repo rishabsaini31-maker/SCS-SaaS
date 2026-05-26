@@ -26,4 +26,26 @@ If the job reports:
 - TCP failure: check `DATABASE_URL` host/port and network access.
 - TLS failure: ensure `?sslmode=require` is present if your DB requires TLS.
 
+## Fix for deploy error: `P1001: Can't reach database server`
+
+If Render shows this during startup while running `prisma migrate deploy`, apply these checks:
+
+1. Use the Supabase pooler connection string in Render `DATABASE_URL` (not the direct `db.<project-ref>.supabase.co:5432` host).
+2. Include `?sslmode=require` at the end of `DATABASE_URL`.
+3. Keep startup migration retries enabled (already wired in this repo).
+
+The server startup now retries `prisma migrate deploy` before failing:
+
+- `MIGRATE_MAX_ATTEMPTS` (default: `6`)
+- `MIGRATE_RETRY_DELAY_MS` (default: `10000`)
+
+Example for slower DB warmup:
+
+```bash
+MIGRATE_MAX_ATTEMPTS=12
+MIGRATE_RETRY_DELAY_MS=10000
+```
+
+This gives up to ~2 minutes for database reachability during boot.
+
 If the job succeeds on Render but Prisma still errors during `prisma migrate deploy`, paste the job logs here and I'll help interpret them.
