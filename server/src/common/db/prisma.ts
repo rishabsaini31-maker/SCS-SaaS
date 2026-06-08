@@ -17,6 +17,7 @@ const TENANT_SCOPED_MODELS = new Set([
   "TenantSetting",
   "User",
   "AuthSession",
+  "Backup",
 ]);
 
 function getRuntimeDatabaseUrl() {

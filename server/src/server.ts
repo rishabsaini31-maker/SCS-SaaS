@@ -46,11 +46,22 @@ if (!shouldRunStartupBootstrap && config.nodeEnv === "production") {
       await getTenantSettings(tenantId);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       // eslint-disable-next-line no-console
       console.log(`✓ Server running on port ${PORT}`);
       // eslint-disable-next-line no-console
       console.log(`✓ Environment: ${config.nodeEnv}`);
+
+      // Start automated backup scheduler
+      try {
+        const { startBackupScheduler } = await import("./modules/backup/backup.scheduler");
+        startBackupScheduler();
+        // eslint-disable-next-line no-console
+        console.log("✓ Automated backup scheduler initialized");
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("❌ Failed to start backup scheduler:", err);
+      }
     });
   } catch (error) {
     // eslint-disable-next-line no-console

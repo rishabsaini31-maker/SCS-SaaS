@@ -248,6 +248,7 @@ model Tenant {
   suppliers     Supplier[]
   settings      TenantSetting?
   owner         User?
+  backups       Backup[]
 }
 
 model User {
@@ -346,4 +347,19 @@ model AuditLog {
   @@index([targetType])
   @@index([targetId])
   @@index([createdAt])
+}
+
+model Backup {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  type        String   // "MONTHLY" or "YEARLY"
+  year        Int
+  month       Int?     // 1-12 for monthly, null for yearly
+  data        Json     // Snapshot of sales, inventory, customers, suppliers, payments, orders
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type, year, month])
+  @@index([tenantId])
 }

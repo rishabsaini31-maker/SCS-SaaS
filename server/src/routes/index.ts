@@ -12,6 +12,7 @@ import categoriesRouter from "../modules/categories/categories.routes";
 import dashboardRouter from "../modules/dashboard/dashboard.routes";
 import reportsRouter from "../modules/reports/reports.routes";
 import settingsRouter from "../modules/settings/settings.routes";
+import backupRouter from "../modules/backup/backup.routes";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/barcode", barcodeRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/reports", reportsRouter);
 router.use("/settings", settingsRouter);
+router.use("/backups", backupRouter);
 
 export default router;
