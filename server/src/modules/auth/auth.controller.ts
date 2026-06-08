@@ -75,3 +75,29 @@ export const logout = async (
     next(err);
   }
 };
+
+export const demoLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await service.loginDemoOwner();
+    
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("auth-token", result.token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
+    });
+    
+    res.json({
+      user: result.user,
+      tenant: result.tenant,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

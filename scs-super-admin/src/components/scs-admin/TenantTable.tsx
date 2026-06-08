@@ -30,7 +30,7 @@ export default function TenantTable() {
                   </div>
                 </div>
               </td>
-              <td className="py-4 text-body-sm text-on-surface">Enterprise</td>
+              <td className="py-4 text-body-sm text-on-surface">Pro</td>
               <td className="py-4 text-mono-data text-secondary">Oct 12, 2023</td>
               <td className="py-4">
                 <span className="px-2 py-1 bg-green-100 text-green-700 text-[11px] font-bold rounded-full uppercase">Live</span>

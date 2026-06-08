@@ -112,3 +112,51 @@ export async function logoutOwner(userId: string) {
     message: "Logged out successfully. All sessions revoked.",
   };
 }
+
+export async function loginDemoOwner() {
+  let owner = await prisma.user.findUnique({
+    where: { email: "shop1@local.invalid" },
+    select: ownerSelect,
+  });
+
+  if (!owner) {
+    const { ensureDefaultTenant } = await import("../../common/tenant/defaultTenant");
+    await ensureDefaultTenant();
+    owner = await prisma.user.findUnique({
+      where: { email: "shop1@local.invalid" },
+      select: ownerSelect,
+    });
+  }
+
+  if (!owner) {
+    throw new CustomError("Demo owner account not found", 404);
+  }
+
+  if (owner.tenant?.status === "SUSPENDED") {
+    throw new CustomError("Demo Tenant is suspended", 403);
+  }
+
+  const sessionId = randomUUID();
+  await createTenantOwnerSession({
+    userId: owner.id,
+    tenantId: owner.tenantId,
+    tokenId: sessionId,
+  });
+
+  const token = signAuthToken({
+    userId: owner.id,
+    tenantId: owner.tenantId,
+    sessionId,
+  });
+
+  return {
+    token,
+    user: {
+      id: owner.id,
+      email: owner.email,
+      tenantId: owner.tenantId,
+    },
+    tenant: owner.tenant,
+    sessionId,
+  };
+}

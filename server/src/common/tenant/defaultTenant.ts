@@ -38,6 +38,141 @@ if (!DEFAULT_OWNER_PASSWORD) {
 
 let cachedDefaultTenantId: string | null = null;
 
+async function seedDefaultTenantData(tenantId: string) {
+  // Check if products already exist
+  const productCount = await prisma.product.count({
+    where: { tenantId },
+  });
+  if (productCount > 0) return;
+
+  // Create mock products
+  const titanium = await prisma.product.create({
+    data: {
+      name: "Titanium Chronograph",
+      category: "Electronics",
+      purchasePrice: 200.0,
+      sellingPrice: 299.0,
+      gst: 18.0,
+      stock: 142,
+      barcode: "8429103948",
+      status: "active",
+      tenantId,
+    }
+  });
+
+  const sonic = await prisma.product.create({
+    data: {
+      name: "SonicWave Over-Ear",
+      category: "Electronics",
+      purchasePrice: 120.0,
+      sellingPrice: 189.5,
+      gst: 18.0,
+      stock: 4,
+      barcode: "5529188371",
+      status: "active",
+      tenantId,
+    }
+  });
+
+  const trainers = await prisma.product.create({
+    data: {
+      name: "Velocity X-1 Trainers",
+      category: "Apparel",
+      purchasePrice: 80.0,
+      sellingPrice: 120.0,
+      gst: 12.0,
+      stock: 88,
+      barcode: "3391028475",
+      status: "active",
+      tenantId,
+    }
+  });
+
+  // Create mock customers
+  const customer1 = await prisma.customer.create({
+    data: {
+      name: "Modern Retailers Pvt Ltd",
+      email: "modern@retailers.invalid",
+      phone: "+91 98765 43210",
+      address: "123 Business Park, Mumbai",
+      outstandingBalance: 12400.0,
+      tenantId,
+    }
+  });
+
+  const customer2 = await prisma.customer.create({
+    data: {
+      name: "Sharma General Stores",
+      email: "sharma@general.invalid",
+      phone: "+91 98765 43211",
+      address: "Main Market, New Delhi",
+      outstandingBalance: 3200.0,
+      tenantId,
+    }
+  });
+
+  // Create mock suppliers
+  await prisma.supplier.create({
+    data: {
+      name: "Global Imports Co.",
+      email: "global@imports.invalid",
+      phone: "+91 98765 43213",
+      address: "Port Road, Chennai",
+      payableBalance: 24500.0,
+      tenantId,
+    }
+  });
+
+  // Create some mock invoices
+  const invoice1 = await prisma.invoice.create({
+    data: {
+      invoiceNumber: "INV-9021",
+      customerId: customer1.id,
+      subtotal: 598.0,
+      gstAmount: 107.64,
+      totalAmount: 705.64,
+      status: "created",
+      tenantId,
+      notes: "Mock demo invoice",
+    }
+  });
+
+  await prisma.invoiceLineItem.create({
+    data: {
+      invoiceId: invoice1.id,
+      productId: titanium.id,
+      quantity: 2,
+      unitPrice: 299.0,
+      totalPrice: 598.0,
+      tenantId,
+    }
+  });
+
+  const invoice2 = await prisma.invoice.create({
+    data: {
+      invoiceNumber: "INV-8955",
+      customerId: customer2.id,
+      subtotal: 189.5,
+      gstAmount: 34.11,
+      totalAmount: 223.61,
+      status: "created",
+      tenantId,
+      notes: "Mock demo invoice 2",
+    }
+  });
+
+  await prisma.invoiceLineItem.create({
+    data: {
+      invoiceId: invoice2.id,
+      productId: sonic.id,
+      quantity: 1,
+      unitPrice: 189.5,
+      totalPrice: 189.5,
+      tenantId,
+    }
+  });
+}
+
 export async function ensureDefaultTenant() {
   if (cachedDefaultTenantId) return cachedDefaultTenantId;
 
@@ -59,6 +194,8 @@ export async function ensureDefaultTenant() {
       passwordHash: await hashPassword(DEFAULT_OWNER_PASSWORD),
     },
   });
+
+  await seedDefaultTenantData(tenant.id);
 
   cachedDefaultTenantId = tenant.id;
   return cachedDefaultTenantId;

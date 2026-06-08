@@ -1,82 +1,127 @@
 "use client";
 import React, { useState } from 'react';
 
+const plans = [
+  {
+    name: 'Basic',
+    description: 'Essential features for small shops looking to get started.',
+    monthlyPrice: 699,
+    annualPrice: 7500,
+    features: [
+      'Unlimited invoices',
+      '1 user account',
+      'Core billing & inventory',
+    ],
+    popular: false,
+    buttonText: 'Contact Team',
+  },
+  {
+    name: 'Pro',
+    description: 'Advanced features and priority support for growing teams.',
+    monthlyPrice: 1599,
+    annualPrice: 15000,
+    features: [
+      'Unlimited invoices',
+      '7 user accounts',
+      'Priority support response',
+      'Barcoding',
+      'Advanced reports & insights',
+    ],
+    popular: true,
+    buttonText: 'Contact Team',
+  },
+];
+
 export default function PricingSection() {
   const [annual, setAnnual] = useState(true);
-  
+
   return (
     <section id="pricing" className="py-24 bg-surface-container-lowest">
       <div className="max-w-7xl mx-auto px-container-padding">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-on-surface tracking-tight">Simple pricing for growing stores</h2>
           <p className="text-on-surface-variant mt-4 max-w-2xl mx-auto text-lg">
-            Start free — upgrade anytime. 
+            Choose the plan that fits your business stage. Upgrade or downgrade anytime.
           </p>
           <div className="flex items-center justify-center gap-4 mt-8">
             <span className={`text-sm font-medium ${!annual ? 'text-on-surface' : 'text-on-surface-variant'}`}>Monthly</span>
-            <button 
+            <button
               onClick={() => setAnnual(!annual)}
-              className="w-14 h-7 rounded-full bg-surface-container-highest flex items-center p-1 transition-colors"
+              className="w-14 h-7 rounded-full bg-surface-container-highest flex items-center p-1 transition-colors cursor-pointer"
+              aria-label="Toggle annual pricing"
             >
               <div className={`w-5 h-5 rounded-full bg-primary transition-transform ${annual ? 'translate-x-7' : ''}`} />
             </button>
             <span className={`text-sm font-medium ${annual ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-              Annually <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-1 font-bold uppercase tracking-wider">Save 20%</span>
+              Annually
             </span>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto items-center">
-          {/* Starter */}
-          <div className="p-8 bg-white border border-outline-variant rounded-2xl md:rounded-r-none md:border-r-0 hover:shadow-sm transition-shadow">
-            <h3 className="text-xl font-bold mb-2 text-on-surface">Starter</h3>
-            <p className="text-on-surface-variant text-sm mb-6 h-10">Perfect for new businesses getting off the ground.</p>
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-on-surface">${annual ? '0' : '0'}</span>
-              <span className="text-on-surface-variant text-sm">/mo</span>
-            </div>
-            <ul className="space-y-4 mb-8">
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Up to 100 Invoices/mo</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Basic Inventory</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> 1 User Account</li>
-            </ul>
-            <button className="w-full py-3 rounded-lg border border-outline-variant font-semibold text-on-surface hover:bg-surface-container-low transition-colors text-sm">Start Free</button>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
+          {plans.map((plan) => {
+            const price = annual ? plan.annualPrice : plan.monthlyPrice;
+            const period = annual ? '/yr' : '/mo';
 
-          {/* Business */}
-          <div className="p-8 bg-surface border border-outline-variant rounded-2xl relative shadow-xl z-10">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-on-surface text-surface text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Most Popular</div>
-            <h3 className="text-xl font-bold mb-2 text-on-surface">Business</h3>
-            <p className="text-on-surface-variant text-sm mb-6 h-10">For growing wholesalers with consistent volume.</p>
-            <div className="mb-6">
-              <span className="text-5xl font-bold text-on-surface">${annual ? '39' : '49'}</span>
-              <span className="text-on-surface-variant text-sm">/mo</span>
-            </div>
-            <ul className="space-y-4 mb-8">
-              <li className="flex items-center gap-3 text-sm text-on-surface"><span className="material-symbols-outlined text-primary text-sm">check</span> Unlimited Invoices</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface"><span className="material-symbols-outlined text-primary text-sm">check</span> Advanced Inventory & Barcodes</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface"><span className="material-symbols-outlined text-primary text-sm">check</span> Up to 5 User Accounts</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface"><span className="material-symbols-outlined text-primary text-sm">check</span> Priority Support</li>
-            </ul>
-            <button className="w-full py-3 rounded-lg bg-on-surface text-surface font-semibold hover:bg-on-surface/90 transition-colors text-sm">Start Free Trial</button>
-          </div>
+            return (
+              <div
+                key={plan.name}
+                className={`flex flex-col p-8 rounded-2xl border transition-all duration-300 ${
+                  plan.popular
+                    ? 'bg-surface border-2 border-primary relative shadow-md hover:shadow-xl hover:-translate-y-1.5'
+                    : 'bg-white border-outline-variant hover:border-primary/50 hover:shadow-lg hover:-translate-y-1'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-on-surface text-surface text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    Most Popular
+                  </div>
+                )}
+                <h3 className="text-xl font-bold mb-2 text-on-surface">{plan.name}</h3>
+                <p className="text-on-surface-variant text-sm mb-6 h-12 flex items-start">
+                  {plan.description}
+                </p>
+                
+                <div className="mb-6 h-20 flex flex-col justify-end">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-on-surface">
+                      ₹{price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-on-surface-variant text-sm font-normal">{period}</span>
+                  </div>
+                  <div className="mt-1 h-6">
+                    {annual && (
+                      <span className="text-xs text-on-surface-variant/70 italic">
+                        Billed annually
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-          {/* Scale */}
-          <div className="p-8 bg-white border border-outline-variant rounded-2xl md:rounded-l-none md:border-l-0 hover:shadow-sm transition-shadow">
-            <h3 className="text-xl font-bold mb-2 text-on-surface">Scale</h3>
-            <p className="text-on-surface-variant text-sm mb-6 h-10">Advanced features for high-volume operations.</p>
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-on-surface">${annual ? '99' : '119'}</span>
-              <span className="text-on-surface-variant text-sm">/mo</span>
-            </div>
-            <ul className="space-y-4 mb-8">
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Multi-warehouse Support</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Custom API Integrations</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Unlimited Users</li>
-              <li className="flex items-center gap-3 text-sm text-on-surface-variant"><span className="material-symbols-outlined text-on-surface text-sm">check</span> Dedicated Account Manager</li>
-            </ul>
-            <button className="w-full py-3 rounded-lg border border-outline-variant font-semibold text-on-surface hover:bg-surface-container-low transition-colors text-sm">Contact Sales</button>
-          </div>
+                <ul className="space-y-4 mb-8 flex-grow">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-on-surface-variant">
+                      <span className={`material-symbols-outlined text-sm mt-0.5 ${plan.popular ? 'text-primary' : 'text-on-surface'}`}>
+                        check
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <a
+                  href="#contact"
+                  className={`w-full py-3 rounded-lg font-semibold text-sm transition-colors cursor-pointer text-center block ${
+                    plan.popular
+                      ? 'bg-on-surface text-surface hover:bg-on-surface/90'
+                      : 'border border-outline-variant text-on-surface hover:bg-surface-container-low'
+                  }`}
+                >
+                  {plan.buttonText}
+                </a>
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>

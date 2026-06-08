@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 
 export default function CreateShopForm() {
   const [name, setName] = useState('')
-  const [plan, setPlan] = useState('Starter')
+  const [plan, setPlan] = useState('Basic')
   const [email, setEmail] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,9 +26,8 @@ export default function CreateShopForm() {
         <div>
           <label className="text-label-caps text-secondary block mb-1">Plan</label>
           <select value={plan} onChange={e => setPlan(e.target.value)} className="w-full rounded-lg border border-outline-variant p-2">
-            <option>Starter</option>
-            <option>Professional</option>
-            <option>Enterprise</option>
+            <option>Basic</option>
+            <option>Pro</option>
           </select>
         </div>
         <div className="flex justify-end">
