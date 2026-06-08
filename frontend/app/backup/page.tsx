@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
+import * as XLSX from "xlsx";
 import { formatINR } from "@/lib/currency";
 import { toast } from "@/lib/toast";
 
@@ -78,20 +79,175 @@ export default function BackupPage() {
     }
   };
 
-  const downloadBackupJSON = (backup: Backup) => {
-    const periodName = backup.type === "MONTHLY" && backup.month
-      ? `${MONTH_NAMES[backup.month - 1]}-${backup.year}`
-      : `Year-${backup.year}`;
-    const filename = `${backup.type.toLowerCase()}-backup-${periodName}.json`;
-    const jsonStr = JSON.stringify(backup.data, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success(`${backup.type} backup file downloaded successfully.`);
+  };
+
+  const downloadBackupJSON = (backup: Backup) => {
+    const periodName = backup.type === "MONTHLY" && backup.month
+      ? `${MONTH_NAMES[backup.month - 1]}-${backup.year}`
+      : `Year-${backup.year}`;
+    const filename = `${backup.type.toLowerCase()}-backup-${periodName}.json`;
+    const jsonStr = JSON.stringify(backup.data, null, 2);
+    downloadFile(jsonStr, filename, "application/json");
+    toast.success(`${backup.type} backup downloaded as JSON.`);
+  };
+
+  const downloadBackupExcel = (backup: Backup) => {
+    const periodName = backup.type === "MONTHLY" && backup.month
+      ? `${MONTH_NAMES[backup.month - 1]}-${backup.year}`
+      : `Year-${backup.year}`;
+    const filename = `${backup.type.toLowerCase()}-backup-${periodName}.xlsx`;
+
+    const wb = XLSX.utils.book_new();
+    const data = backup.data || {};
+
+    if (data.summary) {
+      const summarySheet = XLSX.utils.json_to_sheet([
+        { Metric: "Total Sales", Value: data.summary.totalSales },
+        { Metric: "Sales Count", Value: data.summary.salesCount },
+        { Metric: "Total Purchases", Value: data.summary.totalPurchases },
+        { Metric: "Purchases Count", Value: data.summary.purchasesCount },
+        { Metric: "Payments Received", Value: data.summary.paymentsReceived },
+        { Metric: "Payments Paid", Value: data.summary.paymentsPaid },
+        { Metric: "Total Customers", Value: data.summary.totalCustomers ?? 0 },
+        { Metric: "Total Suppliers", Value: data.summary.totalSuppliers ?? 0 },
+        { Metric: "Active Products", Value: data.summary.activeProductsCount ?? 0 },
+      ]);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+    }
+
+    if (data.sales?.length) {
+      const salesSheet = XLSX.utils.json_to_sheet(
+        data.sales.map((inv: any) => ({
+          Invoice: inv.invoiceNumber,
+          Date: new Date(inv.invoiceDate).toLocaleDateString(),
+          Customer: inv.customerName,
+          Total: inv.totalAmount,
+          Status: inv.status,
+          Items: inv.lineItems?.map((li: any) => `${li.productName} (x${li.quantity})`).join(", ") || "",
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, salesSheet, "Sales");
+    }
+
+    if (data.inventory?.length) {
+      const inventorySheet = XLSX.utils.json_to_sheet(
+        data.inventory.map((p: any) => ({
+          Product: p.name,
+          Category: p.category || "Uncategorized",
+          Stock: p.stock,
+          "Purchase Price": p.purchasePrice,
+          "Selling Price": p.sellingPrice,
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, inventorySheet, "Inventory");
+    }
+
+    if (data.customers?.length) {
+      const customersSheet = XLSX.utils.json_to_sheet(
+        data.customers.map((c: any) => ({
+          Name: c.name,
+          Email: c.email,
+          Phone: c.phone,
+          "Outstanding Balance": c.outstandingBalance,
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, customersSheet, "Customers");
+    }
+
+    if (data.suppliers?.length) {
+      const suppliersSheet = XLSX.utils.json_to_sheet(
+        data.suppliers.map((s: any) => ({
+          Name: s.name,
+          Email: s.email,
+          Phone: s.phone,
+          "Payable Balance": s.payableBalance,
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, suppliersSheet, "Suppliers");
+    }
+
+    if (data.payments?.length) {
+      const paymentsSheet = XLSX.utils.json_to_sheet(
+        data.payments.map((p: any) => ({
+          "Payment Number": p.paymentNumber,
+          Date: new Date(p.paymentDate).toLocaleDateString(),
+          Party: p.partyName,
+          Type: p.type,
+          Amount: p.amount,
+          Method: p.paymentMethod,
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, paymentsSheet, "Payments");
+    }
+
+    if (data.orders?.length) {
+      const ordersSheet = XLSX.utils.json_to_sheet(
+        data.orders.map((p: any) => ({
+          "Order Number": p.purchaseNumber,
+          Date: new Date(p.purchaseDate).toLocaleDateString(),
+          Supplier: p.supplierName,
+          Total: p.totalAmount,
+          Status: p.status,
+          Items: p.lineItems?.map((li: any) => `${li.productName} (x${li.quantity})`).join(", ") || "",
+        }))
+      );
+      XLSX.utils.book_append_sheet(wb, ordersSheet, "Orders");
+    }
+
+    if (data.months) {
+      const monthsSheet = XLSX.utils.json_to_sheet(
+        Object.entries(data.months).map(([month, mData]: [string, any]) => {
+          const summary = mData?.summary || {};
+          return {
+            Month: MONTH_NAMES[Number(month) - 1] || month,
+            "Total Sales": summary.totalSales || 0,
+            "Sales Count": summary.salesCount || 0,
+            "Total Purchases": summary.totalPurchases || 0,
+            "Purchases Count": summary.purchasesCount || 0,
+            "Payments Received": summary.paymentsReceived || 0,
+            "Payments Paid": summary.paymentsPaid || 0,
+            "Active Products": summary.activeProductsCount || 0,
+          };
+        })
+      );
+      XLSX.utils.book_append_sheet(wb, monthsSheet, "Monthly Summary");
+    }
+
+    XLSX.writeFile(wb, filename);
+    toast.success(`${backup.type} backup downloaded as Excel.`);
+  };
+
+  const downloadBackupCSV = (backup: Backup) => {
+    const periodName = backup.type === "MONTHLY" && backup.month
+      ? `${MONTH_NAMES[backup.month - 1]}-${backup.year}`
+      : `Year-${backup.year}`;
+    const baseFilename = `${backup.type.toLowerCase()}-backup-${periodName}`;
+    const data = backup.data || {};
+
+    const exportSheetCSV = (sheetName: string, records: any[]) => {
+      if (!records || records.length === 0) return;
+      const ws = XLSX.utils.json_to_sheet(records);
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      downloadFile(csv, `${baseFilename}-${sheetName}.csv`, "text/csv");
+    };
+
+    if (data.sales?.length) exportSheetCSV("sales", data.sales);
+    if (data.inventory?.length) exportSheetCSV("inventory", data.inventory);
+    if (data.customers?.length) exportSheetCSV("customers", data.customers);
+    if (data.suppliers?.length) exportSheetCSV("suppliers", data.suppliers);
+    if (data.payments?.length) exportSheetCSV("payments", data.payments);
+    if (data.orders?.length) exportSheetCSV("orders", data.orders);
+    if (data.months) exportSheetCSV("monthly-summary", Object.entries(data.months).map(([month, mData]: [string, any]) => ({ month, ...mData?.summary })));
+
+    toast.success(`${backup.type} backup CSV(s) downloaded.`);
   };
 
   const filteredBackups = useMemo(() => {
@@ -310,7 +466,23 @@ export default function BackupPage() {
                             className="inline-flex items-center justify-center p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition cursor-pointer"
                             title="Download JSON Backup"
                           >
-                            <span className="material-symbols-outlined text-sm">download</span>
+                            <span className="material-symbols-outlined text-sm">json</span>
+                          </button>
+                          <button
+                            onClick={() => downloadBackupExcel(backup)}
+                            type="button"
+                            className="inline-flex items-center justify-center p-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-lg transition cursor-pointer"
+                            title="Download Excel"
+                          >
+                            <span className="material-symbols-outlined text-sm">table</span>
+                          </button>
+                          <button
+                            onClick={() => downloadBackupCSV(backup)}
+                            type="button"
+                            className="inline-flex items-center justify-center p-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg transition cursor-pointer"
+                            title="Download CSV"
+                          >
+                            <span className="material-symbols-outlined text-sm">csv</span>
                           </button>
                         </div>
                       </td>
@@ -343,10 +515,26 @@ export default function BackupPage() {
                 <button
                   type="button"
                   onClick={() => downloadBackupJSON(selectedBackup)}
-                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-450 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  Download raw JSON
+                  <span className="material-symbols-outlined text-sm">json</span>
+                  JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadBackupExcel(selectedBackup)}
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">table</span>
+                  Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadBackupCSV(selectedBackup)}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">csv</span>
+                  CSV
                 </button>
                 <button
                   onClick={closeDrawer}
