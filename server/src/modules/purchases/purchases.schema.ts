@@ -22,6 +22,7 @@ export const createPurchaseSchema = z.object({
     ),
   status: z.string().optional(),
   notes: z.string().optional(),
+  gstRate: z.number().nonnegative().optional(),
 });
 
 export const updatePurchaseSchema = z.object({

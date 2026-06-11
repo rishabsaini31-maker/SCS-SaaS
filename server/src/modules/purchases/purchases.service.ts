@@ -148,7 +148,8 @@ export const createPurchase = async (
       });
     }
 
-    const gstAmount = subtotal * 0.18;
+    const gstRate = data.gstRate !== undefined ? data.gstRate : 18;
+    const gstAmount = subtotal * (gstRate / 100);
     const totalAmount = subtotal + gstAmount;
 
     const newPurchase = await tx.purchase.create({

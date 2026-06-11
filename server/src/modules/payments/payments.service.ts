@@ -7,6 +7,7 @@ import {
   tenantWhere,
 } from "../../common/tenant/tenant.utils";
 import { runSerializableTransaction } from "../../common/db/transaction";
+import { recordAutoPaymentTransaction } from "../pota-baki/pota-baki.service";
 
 type PaymentNumberClient = {
   payment: {
@@ -127,6 +128,17 @@ export const createPayment = async (
         paymentMethod: data.paymentMethod,
         notes: data.notes,
       }) as any,
+    });
+
+    await recordAutoPaymentTransaction(tx, {
+      tenantId: tenantId!,
+      customerId: data.customerId,
+      supplierId: data.supplierId,
+      invoiceId: data.invoiceId,
+      purchaseId: data.purchaseId,
+      amount: data.amount,
+      paymentMethod: data.paymentMethod,
+      notes: data.notes || undefined,
     });
 
     await tx.ledgerEntry.create({

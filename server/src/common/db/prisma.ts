@@ -18,6 +18,9 @@ const TENANT_SCOPED_MODELS = new Set([
   "User",
   "AuthSession",
   "Backup",
+  "CashBook",
+  "CashTransaction",
+  "CashBookAuditLog",
 ]);
 
 function getRuntimeDatabaseUrl() {

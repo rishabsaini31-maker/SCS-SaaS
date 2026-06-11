@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -162,10 +162,52 @@ export default function MobileBillingPage() {
     };
   }, []);
 
+  const invoicePaidAmounts = useMemo(() => {
+    const map = new Map<string, number>();
+    payments.forEach((p) => {
+      if (p.invoiceId) {
+        map.set(p.invoiceId, (map.get(p.invoiceId) || 0) + p.amount);
+      }
+    });
+    return map;
+  }, [payments]);
+
   const getInvoicePaidAmount = (invoiceId: string) =>
-    payments
-      .filter((payment) => payment.invoiceId === invoiceId)
-      .reduce((sum, payment) => sum + payment.amount, 0);
+    invoicePaidAmounts.get(invoiceId) || 0;
+
+  const filteredCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLowerCase();
+    if (!query) return customers.slice(0, 100);
+    return customers.filter((c) => c.name.toLowerCase().includes(query)).slice(0, 100);
+  }, [customers, customerSearch]);
+
+  const customerOptions = useMemo(() => {
+    const list = [...filteredCustomers];
+    if (formData.customerId && !list.some((c) => c.id === formData.customerId)) {
+      const selectedCust = customers.find((c) => c.id === formData.customerId);
+      if (selectedCust) {
+        list.push(selectedCust);
+      }
+    }
+    return list;
+  }, [filteredCustomers, formData.customerId, customers]);
+
+  const filteredProducts = useMemo(() => {
+    const query = productSearch.trim().toLowerCase();
+    if (!query) return products.slice(0, 100);
+    return products.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 100);
+  }, [products, productSearch]);
+
+  const getProductOptionsForLineItem = (selectedProductId: string) => {
+    const list = [...filteredProducts];
+    if (selectedProductId && !list.some((p) => p.id === selectedProductId)) {
+      const selectedProd = products.find((p) => p.id === selectedProductId);
+      if (selectedProd) {
+        list.push(selectedProd);
+      }
+    }
+    return list;
+  };
 
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
@@ -293,6 +335,7 @@ export default function MobileBillingPage() {
         })),
         status: formData.paymentStatus,
         notes: formData.notes || "",
+        gstRate: applyGst ? formData.gst : 0,
       });
 
       if (paidAmount > 0) {
@@ -408,17 +451,11 @@ export default function MobileBillingPage() {
                 className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
               >
                 <option value="">Select customer</option>
-                {customers
-                  .filter((c) =>
-                    customerSearch
-                      ? c.name.toLowerCase().includes(customerSearch.toLowerCase())
-                      : true,
-                  )
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                {customerOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -522,17 +559,11 @@ export default function MobileBillingPage() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     >
                       <option value="">Select product</option>
-                      {products
-                        .filter((p) =>
-                          productSearch
-                            ? p.name.toLowerCase().includes(productSearch.toLowerCase())
-                            : true,
-                        )
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (Stock: {p.stock})
-                          </option>
-                        ))}
+                      {getProductOptionsForLineItem(item.productId).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} (Stock: {p.stock})
+                        </option>
+                      ))}
                     </select>
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -615,13 +646,38 @@ export default function MobileBillingPage() {
                       <span>{formatINR(total)}</span>
                     </div>
 
-<div className="grid grid-cols-2 gap-2 pt-2 border-t">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Payment Method
+                      </label>
+                      <select
+                        value={formData.paymentMethod}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                      >
+                        <option value="upi">UPI</option>
+                        <option value="cash">Cash</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                       <select
                         value={paymentStatus}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             paymentStatus: e.target.value,
+                            paidAmount:
+                              e.target.value === "Pending"
+                                ? formData.paidAmount
+                                : "",
                           })
                         }
                         className="px-3 py-2 border border-slate-300 rounded-lg text-sm"

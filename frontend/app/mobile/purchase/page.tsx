@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
@@ -135,6 +135,40 @@ export default function MobilePurchasePage() {
   const averagePurchase =
     purchases.length > 0 ? totalPurchased / purchases.length : 0;
 
+  const filteredSuppliers = useMemo(() => {
+    const query = supplierSearch.trim().toLowerCase();
+    if (!query) return suppliers.slice(0, 100);
+    return suppliers.filter((s) => s.name.toLowerCase().includes(query)).slice(0, 100);
+  }, [suppliers, supplierSearch]);
+
+  const supplierOptions = useMemo(() => {
+    const list = [...filteredSuppliers];
+    if (formData.supplierId && !list.some((s) => s.id === formData.supplierId)) {
+      const selectedSup = suppliers.find((s) => s.id === formData.supplierId);
+      if (selectedSup) {
+        list.push(selectedSup);
+      }
+    }
+    return list;
+  }, [filteredSuppliers, formData.supplierId, suppliers]);
+
+  const filteredProducts = useMemo(() => {
+    const query = productSearch.trim().toLowerCase();
+    if (!query) return products.slice(0, 100);
+    return products.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 100);
+  }, [products, productSearch]);
+
+  const getProductOptionsForLineItem = (selectedProductId: string) => {
+    const list = [...filteredProducts];
+    if (selectedProductId && !list.some((p) => p.id === selectedProductId)) {
+      const selectedProd = products.find((p) => p.id === selectedProductId);
+      if (selectedProd) {
+        list.push(selectedProd);
+      }
+    }
+    return list;
+  };
+
   const addLineItem = () => {
     setLineItems([...lineItems, { productId: "", quantity: 0, unitPrice: 0 }]);
   };
@@ -197,6 +231,7 @@ export default function MobilePurchasePage() {
           unitPrice: parseFloat(String(item.unitPrice)),
         })),
         notes: formData.notes || "",
+        gstRate: applyGst ? formData.gst : 0,
       });
 
       if (paidAmount > 0) {
@@ -301,17 +336,11 @@ export default function MobilePurchasePage() {
                 className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
               >
                 <option value="">Select supplier</option>
-                {suppliers
-                  .filter((s) =>
-                    supplierSearch
-                      ? s.name.toLowerCase().includes(supplierSearch.toLowerCase())
-                      : true,
-                  )
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
+                {supplierOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -430,17 +459,11 @@ export default function MobilePurchasePage() {
                       className="w-full mb-2 px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     >
                       <option value="">Select product</option>
-                      {products
-                        .filter((p) =>
-                          productSearch
-                            ? p.name.toLowerCase().includes(productSearch.toLowerCase())
-                            : true,
-                        )
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({formatINR(p.purchasePrice)})
-                          </option>
-                        ))}
+                      {getProductOptionsForLineItem(item.productId).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({formatINR(p.purchasePrice)})
+                        </option>
+                      ))}
                     </select>
                     <input
                       type="text"

@@ -247,8 +247,11 @@ model Tenant {
   purchaseItems PurchaseLineItem[]
   suppliers     Supplier[]
   settings      TenantSetting?
-  owner         User?
-  backups       Backup[]
+  owner             User?
+  backups           Backup[]
+  cashBooks         CashBook[]
+  cashTransactions  CashTransaction[]
+  cashBookAuditLogs CashBookAuditLog[]
 }
 
 model User {
@@ -362,4 +365,85 @@ model Backup {
 
   @@unique([tenantId, type, year, month])
   @@index([tenantId])
+}
+
+enum CashBookStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashDirection {
+  IN
+  OUT
+}
+
+enum CashTransactionType {
+  CASH_SALE
+  CUSTOMER_PAYMENT
+  EXPENSE
+  ANGADIYA_PAYMENT
+  STAFF_CASH_TAKEN
+  OWNER_WITHDRAWAL
+  PERSONAL_EXPENSE
+  TEMPORARY_CASH_ADVANCE
+  LOAN_GIVEN
+  LOAN_RECEIVED
+  BANK_DEPOSIT
+  BANK_WITHDRAWAL
+  OTHER
+}
+
+model CashBook {
+  id             String             @id @default(cuid())
+  tenantId       String
+  date           DateTime
+  openingBalance Decimal            @db.Decimal(12, 2)
+  totalCashIn    Decimal            @default(0) @db.Decimal(12, 2)
+  totalCashOut   Decimal            @default(0) @db.Decimal(12, 2)
+  closingBalance Decimal            @db.Decimal(12, 2)
+  status         CashBookStatus
+  closedAt       DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  tenant         Tenant             @relation(fields: [tenantId], references: [id])
+  transactions   CashTransaction[]
+  auditLogs      CashBookAuditLog[]
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+}
+
+model CashTransaction {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  cashBookId         String
+  type               CashTransactionType
+  direction          CashDirection
+  amount             Decimal             @db.Decimal(12, 2)
+  description        String?
+  personName         String?
+  mobile             String?
+  purpose            String?
+  expectedReturnDate DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  cashBook           CashBook            @relation(fields: [cashBookId], references: [id])
+
+  @@index([tenantId])
+  @@index([cashBookId])
+}
+
+model CashBookAuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  cashBookId String
+  userId     String
+  action     String
+  createdAt  DateTime @default(now())
+  cashBook   CashBook @relation(fields: [cashBookId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([cashBookId])
 }

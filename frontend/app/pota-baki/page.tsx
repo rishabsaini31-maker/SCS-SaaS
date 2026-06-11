@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { formatINR } from "@/lib/currency";
 import { toast } from "@/lib/toast";
+import api from "@/lib/api";
 
 type Transaction = {
   id: string;
@@ -18,51 +20,84 @@ type Transaction = {
   description?: string;
 };
 
-const defaultTransactions: Transaction[] = [
-  {
-    id: "tx-1",
-    time: "10:30 AM",
-    type: "cash_sale",
-    typeName: "Cash Sale",
-    person: "ABC Traders",
-    amount: 15000,
-    direction: "IN",
-    description: "Sale of items to ABC Traders",
-  },
-  {
-    id: "tx-2",
-    time: "01:00 PM",
-    type: "staff",
-    typeName: "Staff Cash Taken",
-    person: "Ramesh Kumar",
-    amount: 5000,
-    direction: "OUT",
-    staffName: "Ramesh Kumar",
-    returnDate: new Date(Date.now() + 86400000 * 5).toISOString().slice(0, 10),
-    description: "Temporary advance to staff",
-  },
-  {
-    id: "tx-3",
-    time: "03:00 PM",
-    type: "owner",
-    typeName: "Owner Withdrawal",
-    person: "Family Expense",
-    amount: 30000,
-    direction: "OUT",
-    category: "Home Expense",
-    description: "Personal withdrawal for family expenses",
-  },
-  {
-    id: "tx-4",
-    time: "04:45 PM",
-    type: "customer_payment",
-    typeName: "Customer Payment",
-    person: "Metro Mart",
-    amount: 5000,
-    direction: "IN",
-    description: "Received payment against invoice",
-  },
-];
+const mapDbTxToFrontend = (dbTx: any): Transaction => {
+  const time = new Date(dbTx.createdAt).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  let type = "";
+  let typeName = "";
+
+  switch (dbTx.type) {
+    case "CASH_SALE":
+      type = "cash_sale";
+      typeName = "Cash Sale";
+      break;
+    case "CUSTOMER_PAYMENT":
+      type = "customer_payment";
+      typeName = "Customer Payment";
+      break;
+    case "EXPENSE":
+      type = "expense";
+      typeName = "Expense";
+      break;
+    case "ANGADIYA_PAYMENT":
+      type = "angadiya";
+      typeName = "Angadiya Payment";
+      break;
+    case "STAFF_CASH_TAKEN":
+      type = "staff";
+      typeName = "Staff Cash Taken";
+      break;
+    case "OWNER_WITHDRAWAL":
+      type = "owner";
+      typeName = "Owner Withdrawal";
+      break;
+    case "PERSONAL_EXPENSE":
+      type = "personal";
+      typeName = "Personal Expense";
+      break;
+    case "TEMPORARY_CASH_ADVANCE":
+      type = "advance";
+      typeName = "Temporary Cash Advance";
+      break;
+    case "LOAN_GIVEN":
+      type = "loan";
+      typeName = "Loan Given";
+      break;
+    case "LOAN_RECEIVED":
+      type = "loan";
+      typeName = "Loan Received";
+      break;
+    case "BANK_DEPOSIT":
+      type = "bank";
+      typeName = "Bank Deposit";
+      break;
+    case "BANK_WITHDRAWAL":
+      type = "bank";
+      typeName = "Bank Withdrawal";
+      break;
+    default:
+      type = "other";
+      typeName = "Other";
+  }
+
+  return {
+    id: dbTx.id,
+    time,
+    type,
+    typeName,
+    person: dbTx.personName || "",
+    amount: dbTx.amount,
+    direction: dbTx.direction,
+    staffName: dbTx.personName || undefined,
+    returnDate: dbTx.expectedReturnDate ? new Date(dbTx.expectedReturnDate).toISOString().slice(0, 10) : undefined,
+    category: dbTx.purpose || undefined,
+    description: dbTx.description || undefined,
+  };
+};
 
 const transactionTypes = [
   { value: "cash_sale", name: "Cash Sale", direction: "IN" },
@@ -78,12 +113,14 @@ const transactionTypes = [
 ];
 
 export default function PotaBakiPage() {
-  const [openingBalance, setOpeningBalance] = useState<number>(200000);
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
   const [isEditingOpening, setIsEditingOpening] = useState(false);
-  const [tempOpening, setTempOpening] = useState("200000");
+  const [tempOpening, setTempOpening] = useState("0");
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [cashBook, setCashBook] = useState<any>(null);
+  const [monthlyReport, setMonthlyReport] = useState<any>(null);
 
   // Form State
   const [txType, setTxType] = useState("staff");
@@ -93,32 +130,52 @@ export default function PotaBakiPage() {
   const [ownerCategory, setOwnerCategory] = useState("Home Expense");
   const [description, setDescription] = useState("");
 
-  // Load from local storage
+  
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toLocaleDateString("en-CA"));
+  const isToday = selectedDate === new Date().toLocaleDateString("en-CA");
+
+  const { data: dateData, refetch: loadTodayData } = useQuery({
+    queryKey: ["cashbook", selectedDate],
+    queryFn: async () => {
+      const response = await api.get(`/pota-baki?date=${selectedDate}`);
+      return response.data;
+    }
+  });
+
   useEffect(() => {
-    const savedTx = localStorage.getItem("scs_pota_transactions");
-    const savedOpening = localStorage.getItem("scs_pota_opening");
-    
-    if (savedTx) {
-      try {
-        setTransactions(JSON.parse(savedTx));
-      } catch (e) {
-        setTransactions(defaultTransactions);
-      }
+    if (dateData?.cashBook) {
+      const data = dateData.cashBook;
+      setOpeningBalance(data.openingBalance);
+      setTempOpening(String(data.openingBalance));
+      setCashBook(data);
     } else {
-      setTransactions(defaultTransactions);
+      setOpeningBalance(0);
+      setTempOpening("0");
+      setCashBook(null);
     }
-
-    if (savedOpening) {
-      setOpeningBalance(Number(savedOpening));
-      setTempOpening(savedOpening);
+    if (dateData?.transactions) {
+      setTransactions(dateData.transactions.map(mapDbTxToFrontend));
+    } else {
+      setTransactions([]);
     }
-  }, []);
+  }, [dateData]);
 
-  // Save to local storage
-  const saveState = (newTx: Transaction[], newOpening: number) => {
-    localStorage.setItem("scs_pota_transactions", JSON.stringify(newTx));
-    localStorage.setItem("scs_pota_opening", String(newOpening));
+  const isReadOnly = !isToday || cashBook?.status === "CLOSED";
+
+
+  const loadMonthlyReport = async () => {
+    try {
+      const response = await api.get("/pota-baki/monthly-report");
+      setMonthlyReport(response.data);
+    } catch (err) {
+      console.error("Failed to load monthly report", err);
+    }
   };
+
+  // Load from backend APIs
+  useEffect(() => {
+    loadMonthlyReport();
+  }, []);
 
   const selectedTypeObj = useMemo(() => {
     return transactionTypes.find((t) => t.value === txType) || transactionTypes[0];
@@ -156,42 +213,40 @@ export default function PotaBakiPage() {
 
   // Monthly stats summary
   const monthlySnap = useMemo(() => {
-    let staffAdvances = 0;
-    let ownerWithdrawals = 0;
-    let angadiyaSettled = 0;
-
-    transactions.forEach((tx) => {
-      if (tx.type === "staff" || tx.type === "advance") {
-        staffAdvances += tx.amount;
-      } else if (tx.type === "owner" || tx.type === "personal") {
-        ownerWithdrawals += tx.amount;
-      } else if (tx.type === "angadiya") {
-        angadiyaSettled += tx.amount;
-      }
-    });
-
-    // Seed dummy values to make it look premium
+    if (!monthlyReport) {
+      return {
+        staffAdvances: 0,
+        ownerWithdrawals: 0,
+        angadiyaSettled: 0,
+      };
+    }
     return {
-      staffAdvances: staffAdvances + 37000,
-      ownerWithdrawals: ownerWithdrawals + 85000,
-      angadiyaSettled: angadiyaSettled + 840000,
+      staffAdvances: monthlyReport.totalStaffCashTaken,
+      ownerWithdrawals: monthlyReport.totalOwnerWithdrawals,
+      angadiyaSettled: monthlyReport.totalAngadiyaPayments,
     };
-  }, [transactions]);
+  }, [monthlyReport]);
 
-  const handleUpdateOpening = (e: React.FormEvent) => {
+  const handleUpdateOpening = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(tempOpening);
     if (!isNaN(val) && val >= 0) {
-      setOpeningBalance(val);
-      setIsEditingOpening(false);
-      saveState(transactions, val);
-      toast.success("Opening balance updated successfully!");
+      try {
+        await api.patch("/pota-baki/opening-balance", {
+          openingBalance: val,
+        });
+        setIsEditingOpening(false);
+        toast.success("Opening balance updated successfully!");
+        await loadTodayData();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to update opening balance");
+      }
     } else {
       toast.error("Please enter a valid amount");
     }
   };
 
-  const handleAddTransaction = (e: React.FormEvent) => {
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(amountInput);
     if (isNaN(amt) || amt <= 0) {
@@ -214,59 +269,88 @@ export default function PotaBakiPage() {
       personName = "Cash Customer";
     }
 
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+    // Map frontend txType to backend CashTransactionType enum
+    let dbType = "";
+    switch (typeDetails.value) {
+      case "cash_sale": dbType = "CASH_SALE"; break;
+      case "customer_payment": dbType = "CUSTOMER_PAYMENT"; break;
+      case "expense": dbType = "EXPENSE"; break;
+      case "angadiya": dbType = "ANGADIYA_PAYMENT"; break;
+      case "staff": dbType = "STAFF_CASH_TAKEN"; break;
+      case "owner": dbType = "OWNER_WITHDRAWAL"; break;
+      case "personal": dbType = "PERSONAL_EXPENSE"; break;
+      case "advance": dbType = "TEMPORARY_CASH_ADVANCE"; break;
+      case "loan": dbType = "LOAN_GIVEN"; break;
+      case "bank": dbType = "BANK_DEPOSIT"; break;
+      default: dbType = "OTHER";
+    }
 
-    const newTx: Transaction = {
-      id: "tx-" + Date.now(),
-      time: timeStr,
-      type: typeDetails.value,
-      typeName: typeDetails.name,
-      person: personName,
-      amount: amt,
-      direction: typeDetails.direction as "IN" | "OUT",
-      staffName: typeDetails.value === "staff" || typeDetails.value === "advance" ? staffName.trim() : undefined,
-      returnDate: typeDetails.value === "staff" || typeDetails.value === "advance" ? returnDate : undefined,
-      category: typeDetails.value === "owner" || typeDetails.value === "personal" ? ownerCategory : undefined,
-      description: description.trim() || undefined,
-    };
+    try {
+      await api.post("/pota-baki/transactions", {
+        type: dbType,
+        amount: amt,
+        description: description.trim() || null,
+        personName,
+        purpose: typeDetails.value === "owner" || typeDetails.value === "personal" ? ownerCategory : null,
+        expectedReturnDate: (typeDetails.value === "staff" || typeDetails.value === "advance") && returnDate ? returnDate : null,
+      });
 
-    const updatedTx = [newTx, ...transactions];
-    setTransactions(updatedTx);
-    saveState(updatedTx, openingBalance);
-
-    // Reset fields
-    setAmountInput("");
-    setStaffName("");
-    setReturnDate("");
-    setDescription("");
-    toast.success(`Transaction recorded: ${newTx.typeName}`);
-  };
-
-  const handleDeleteTransaction = (id: string) => {
-    if (confirm("Are you sure you want to delete this transaction?")) {
-      const updatedTx = transactions.filter((t) => t.id !== id);
-      setTransactions(updatedTx);
-      saveState(updatedTx, openingBalance);
-      toast.success("Transaction deleted successfully");
+      // Reset fields
+      setAmountInput("");
+      setStaffName("");
+      setReturnDate("");
+      setDescription("");
+      
+      toast.success(`Transaction recorded: ${typeDetails.name}`);
+      await loadTodayData();
+      await loadMonthlyReport();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to record transaction");
     }
   };
 
-  const handleCloseDay = () => {
-    setTransactions([]);
-    setOpeningBalance(totals.closing);
-    saveState([], totals.closing);
-    setIsCloseModalOpen(false);
-    toast.success("Pota closed successfully! Today's closing balance is now the new opening balance.");
+  const handleDeleteTransaction = async (id: string) => {
+    if (confirm("Are you sure you want to delete this transaction?")) {
+      try {
+        await api.delete(`/pota-baki/transactions/${id}`);
+        toast.success("Transaction deleted successfully");
+        await loadTodayData();
+        await loadMonthlyReport();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to delete transaction");
+      }
+    }
+  };
+
+  const handleCloseDay = async () => {
+    try {
+      await api.post("/pota-baki/close");
+      setIsCloseModalOpen(false);
+      toast.success("Pota closed successfully! Today's closing balance is now the new opening balance.");
+      await loadTodayData();
+      await loadMonthlyReport();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to close pota");
+    }
+  };
+
+  const handleReopenDay = async () => {
+    if (confirm("Are you sure you want to reopen the cash book for today?")) {
+      try {
+        await api.post("/pota-baki/reopen");
+        toast.success("Cash book reopened successfully!");
+        await loadTodayData();
+        await loadMonthlyReport();
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to reopen cash book");
+      }
+    }
   };
 
   const handlePrint = () => {
     window.print();
   };
+
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 print:p-0 print:m-0">
@@ -280,25 +364,116 @@ export default function PotaBakiPage() {
             Track daily cash position, withdrawals, staff advances, and closing balance.
           </p>
         </div>
+        
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1">
+            <button 
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() - 1);
+                setSelectedDate(d.toLocaleDateString("en-CA"));
+              }}
+              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs hover:bg-slate-100"
+            >
+              ← Prev
+            </button>
+            <input 
+              type="date" 
+              value={selectedDate}
+              max={new Date().toLocaleDateString("en-CA")}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent border-none text-sm font-bold focus:ring-0"
+            />
+            <button 
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setDate(d.getDate() + 1);
+                setSelectedDate(d.toLocaleDateString("en-CA"));
+              }}
+              disabled={isToday}
+              className="px-2 py-1 bg-white border border-slate-200 rounded text-xs hover:bg-slate-100 disabled:opacity-50"
+            >
+              Next →
+            </button>
+          </div>
           <button
+
             onClick={handlePrint}
             className="flex-1 sm:flex-initial bg-white border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             Export Statement
           </button>
-          <button
-            onClick={() => setIsCloseModalOpen(true)}
-            className="flex-1 sm:flex-initial bg-white border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined text-[18px]">lock_clock</span>
-            Close Day
-          </button>
+          {isReadOnly ? (
+            <button
+              onClick={handleReopenDay}
+              className="flex-1 sm:flex-initial bg-blue-50 border border-blue-200 text-blue-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">lock_open</span>
+              Reopen Day
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsCloseModalOpen(true)}
+              className="flex-1 sm:flex-initial bg-white border border-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">lock_clock</span>
+              Close Day
+            </button>
+          )}
+        </div>
+      </div>
+
+      
+      {/* Read-Only Banner */}
+      {!isToday && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <span className="material-symbols-outlined text-amber-500">history</span>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700 font-semibold">
+                This is a historical cash book for {selectedDate}. Editing is disabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Data Banner */}
+      {!isToday && !cashBook && (
+        <div className="bg-slate-50 border border-slate-200 p-6 rounded-lg text-center">
+          <span className="material-symbols-outlined text-slate-400 text-4xl mb-2">inbox</span>
+          <p className="text-slate-600 font-medium">No Pota Baki found for selected date</p>
+        </div>
+      )}
+
+      {/* Reconciliation Card */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm print:hidden">
+        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-4">Reconciliation Summary</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+             <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Selected Date</p>
+             <p className="font-bold text-slate-800">{selectedDate}</p>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+             <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Previous Day Closing</p>
+             <p className="font-bold text-slate-800">{formatINR(dateData?.previousDayClosing || 0)}</p>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+             <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Current Day Opening</p>
+             <p className="font-bold text-slate-800">{formatINR(openingBalance)}</p>
+          </div>
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+             <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Current Day Closing</p>
+             <p className="font-bold text-blue-700">{formatINR(totals.closing)}</p>
+          </div>
         </div>
       </div>
 
       {/* Summary Cards */}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 print:grid-cols-4">
         {/* Card 1: Opening Balance */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative group">
@@ -338,7 +513,8 @@ export default function PotaBakiPage() {
               </h3>
               <button
                 onClick={() => setIsEditingOpening(true)}
-                className="opacity-0 group-hover:opacity-100 text-blue-600 text-xs hover:underline transition-opacity print:hidden"
+                disabled={isReadOnly}
+                className={`opacity-0 group-hover:opacity-100 text-blue-600 text-xs hover:underline transition-opacity print:hidden ${isReadOnly ? "hidden" : ""}`}
               >
                 Edit
               </button>
@@ -461,7 +637,8 @@ export default function PotaBakiPage() {
                 <select
                   value={txType}
                   onChange={(e) => setTxType(e.target.value)}
-                  className="w-full border-slate-200 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isReadOnly}
+                  className="w-full border-slate-200 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                 >
                   {transactionTypes.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -483,7 +660,8 @@ export default function PotaBakiPage() {
                   placeholder="0.00"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  className="w-full border-slate-200 rounded-lg text-sm font-mono focus:ring-blue-500 focus:border-blue-500"
+                  disabled={isReadOnly}
+                  className="w-full border-slate-200 rounded-lg text-sm font-mono focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
 
@@ -500,7 +678,8 @@ export default function PotaBakiPage() {
                       placeholder="e.g. Ramesh Kumar"
                       value={staffName}
                       onChange={(e) => setStaffName(e.target.value)}
-                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500"
+                      disabled={isReadOnly}
+                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500 disabled:opacity-50"
                     />
                   </div>
                   <div>
@@ -512,7 +691,8 @@ export default function PotaBakiPage() {
                       required
                       value={returnDate}
                       onChange={(e) => setReturnDate(e.target.value)}
-                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500"
+                      disabled={isReadOnly}
+                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500 disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -528,7 +708,8 @@ export default function PotaBakiPage() {
                     <select
                       value={ownerCategory}
                       onChange={(e) => setOwnerCategory(e.target.value)}
-                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500"
+                      disabled={isReadOnly}
+                      className="w-full border-slate-200 bg-white rounded-lg text-sm focus:ring-blue-500 disabled:opacity-50"
                     >
                       <option value="Home Expense">Home Expense</option>
                       <option value="Personal Travel">Personal Travel</option>
@@ -548,13 +729,15 @@ export default function PotaBakiPage() {
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full border-slate-200 rounded-lg text-sm focus:ring-blue-500"
+                  disabled={isReadOnly}
+                  className="w-full border-slate-200 rounded-lg text-sm focus:ring-blue-500 disabled:opacity-50"
                 ></textarea>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                disabled={isReadOnly}
+                className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-[20px]">save</span>
                 Save Transaction
@@ -668,13 +851,15 @@ export default function PotaBakiPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center print:hidden">
-                        <button
-                          onClick={() => handleDeleteTransaction(tx.id)}
-                          className="text-slate-300 hover:text-red-600 transition-colors"
-                          title="Delete Transaction"
-                        >
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
+                        {cashBook?.status !== "CLOSED" && (
+                          <button
+                            onClick={() => handleDeleteTransaction(tx.id)}
+                            className="text-slate-300 hover:text-red-600 transition-colors"
+                            title="Delete Transaction"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

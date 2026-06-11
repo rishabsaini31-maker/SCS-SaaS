@@ -88,7 +88,8 @@ export const createInvoice = async (
       });
     }
 
-    const gstAmount = subtotal * 0.18;
+    const gstRate = data.gstRate !== undefined ? data.gstRate : 0;
+    const gstAmount = subtotal * (gstRate / 100);
     const totalAmount = subtotal + gstAmount;
 
     const newInvoice = await tx.invoice.create({

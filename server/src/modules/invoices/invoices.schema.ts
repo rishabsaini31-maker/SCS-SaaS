@@ -12,6 +12,7 @@ export const createInvoiceSchema = z.object({
     .min(1, "At least one line item is required"),
   status: z.string().optional(),
   notes: z.string().optional(),
+  gstRate: z.number().nonnegative().optional(),
 });
 
 export const updateInvoiceSchema = z.object({
