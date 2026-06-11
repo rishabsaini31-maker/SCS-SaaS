@@ -338,11 +338,20 @@ export default function ReportsPage() {
       : 0;
     const totalPending = Math.max(0, totalRevenue - totalCollected);
 
+    const totalProfit = visibleInvoices.reduce((sum, invoice) => {
+      const invoiceProfit = invoice.lineItems.reduce((itemSum: number, item: any) => {
+        const costPrice = item.product ? item.product.purchasePrice : 0;
+        return itemSum + ((item.unitPrice - costPrice) * item.quantity);
+      }, 0);
+      return sum + invoiceProfit;
+    }, 0);
+
     return {
       totalRevenue,
       totalCollected,
       averageInvoice,
       totalPending,
+      totalProfit,
       orderCount: visibleInvoices.length,
       chart: buildWeeklySeries(
         visibleInvoices.map((invoice) => ({
@@ -492,6 +501,7 @@ export default function ReportsPage() {
         ? [
             `Total Revenue: ${formatINR(salesData.totalRevenue)}`,
             `Collected: ${formatINR(salesData.totalCollected)}`,
+            `Profit/Margin: ${formatINR(salesData.totalProfit)}`,
             `Pending: ${formatINR(salesData.totalPending)}`,
           ]
         : activeReport === "Purchase Report"
@@ -539,6 +549,12 @@ export default function ReportsPage() {
             icon: "shopping_cart",
           },
           {
+            label: "Profit / Margin",
+            value: formatINR(salesData.totalProfit),
+            tone: "emerald",
+            icon: "payments",
+          },
+          {
             label: "Average Invoice",
             value: formatINR(salesData.averageInvoice),
             tone: "amber",
@@ -548,7 +564,7 @@ export default function ReportsPage() {
             label: "Pending",
             value: formatINR(salesData.totalPending),
             tone: "red",
-            icon: "payments",
+            icon: "pending_actions",
           },
         ]
       : activeReport === "Purchase Report"
@@ -785,7 +801,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${cards.length === 5 ? 'xl:grid-cols-5' : 'xl:grid-cols-4'} gap-4 items-stretch`}>
         {cards.map((card) => (
           <div
             key={card.label}
