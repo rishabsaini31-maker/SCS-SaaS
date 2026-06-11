@@ -229,32 +229,6 @@ export default function MobilePurchasePage() {
     }
   };
 
-  const openPurchaseEditor = (purchase: Purchase) => {
-    setEditingPurchase(purchase);
-    setPurchaseEditForm({
-      status: purchase.status,
-      notes: purchase.notes || "",
-    });
-  };
-
-  const handleUpdatePurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPurchase) return;
-
-    setSubmitting(true);
-    try {
-      await api.patch(`/purchases/${editingPurchase.id}`, purchaseEditForm);
-      setEditingPurchase(null);
-      setSelectedPurchase(null);
-      await refetchPurchases();
-    } catch (error) {
-      console.error("Error updating purchase:", error);
-      alert("Failed to update purchase");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
