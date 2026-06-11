@@ -113,6 +113,9 @@ export default function PurchasePage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
   ]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [applyGst, setApplyGst] = useState(true);
   const [formData, setFormData] = useState({
     supplierId: "",
     notes: "",
@@ -168,7 +171,7 @@ export default function PurchasePage() {
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
     );
-    const gst = subtotal * (formData.gst / 100);
+    const gst = applyGst ? (subtotal * (formData.gst / 100)) : 0;
     return { subtotal, gst, total: subtotal + gst };
   };
 
@@ -327,6 +330,13 @@ export default function PurchasePage() {
                 <label className="block text-sm font-medium mb-1">
                   Supplier *
                 </label>
+                <input
+                  type="text"
+                  value={supplierSearch}
+                  onChange={(e) => setSupplierSearch(e.target.value)}
+                  placeholder="Search supplier..."
+                  className="w-full mb-2 px-3 py-2 border border-slate-300 rounded-lg"
+                />
                 <select
                   value={formData.supplierId}
                   onChange={(e) =>
@@ -335,30 +345,49 @@ export default function PurchasePage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 >
                   <option value="">Select supplier</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
+                  {suppliers
+                    .filter((s) =>
+                      supplierSearch
+                        ? s.name.toLowerCase().includes(supplierSearch.toLowerCase())
+                        : true,
+                    )
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   GST % (Editable)
                 </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={formData.gst || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      gst: parseFloat(e.target.value) || 18,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="18"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.gst || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        gst: parseFloat(e.target.value) || 18,
+                      })
+                    }
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="18"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setApplyGst(!applyGst)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                      applyGst
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-300 text-slate-700"
+                    }`}
+                  >
+                    {applyGst ? "Applied" : "Skip"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -408,6 +437,18 @@ export default function PurchasePage() {
                   + Add Item
                 </button>
               </div>
+              <div className="relative mb-2">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  search
+                </span>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full pl-10 pr-4 py-1 border border-slate-300 rounded text-sm"
+                />
+              </div>
               <div className="space-y-2 border border-slate-200 rounded-lg p-3">
                 {lineItems.map((item, idx) => (
                   <div key={idx} className="flex gap-2 items-end">
@@ -429,11 +470,17 @@ export default function PurchasePage() {
                       className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
                     >
                       <option value="">Select product</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({formatINR(p.purchasePrice)})
-                        </option>
-                      ))}
+                      {products
+                        .filter((p) =>
+                          productSearch
+                            ? p.name.toLowerCase().includes(productSearch.toLowerCase())
+                            : true,
+                        )
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({formatINR(p.purchasePrice)})
+                          </option>
+                        ))}
                     </select>
                     <input
                       type="text"

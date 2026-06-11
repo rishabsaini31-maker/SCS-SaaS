@@ -20,6 +20,7 @@ export function Sidebar() {
     { name: "Inventory", href: "/inventory", icon: "inventory_2" },
     { name: "Parties", href: "/parties", icon: "group" },
     { name: "Payments", href: "/payments", icon: "payments" },
+    { name: "💰 Pota Baki", href: "/pota-baki", icon: "payments" },
     { name: "Reports", href: "/reports", icon: "assessment" },
     { name: "Barcode", href: "/barcode", icon: "barcode_scanner" },
     { name: "Backup", href: "/backup", icon: "backup" },

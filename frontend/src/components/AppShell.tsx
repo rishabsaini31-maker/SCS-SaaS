@@ -12,7 +12,7 @@ const publicRoutes = new Set(["/", "/login", "/landing", "/pricing", "/about", "
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  if (publicRoutes.has(pathname)) {
+  if (publicRoutes.has(pathname) || pathname.startsWith("/mobile")) {
     return <>{children}</>;
   }
 

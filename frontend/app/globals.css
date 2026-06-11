@@ -106,3 +106,14 @@ body {
   height: 2px;
   background-color: #004ac6;
 }
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 768px) {
+  .mobile-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

@@ -372,6 +372,9 @@ export default function BillingPage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
   ]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [applyGst, setApplyGst] = useState(true);
   const [formData, setFormData] = useState({
     customerId: "",
     notes: "",
@@ -570,7 +573,7 @@ export default function BillingPage() {
       (sum, item) => sum + item.quantity * item.unitPrice,
       0,
     );
-    const gst = subtotal * (formData.gst / 100);
+    const gst = applyGst ? (subtotal * (formData.gst / 100)) : 0;
     return { subtotal, gst, total: subtotal + gst };
   };
 
@@ -842,6 +845,13 @@ export default function BillingPage() {
                 <label className="block text-sm font-medium mb-1">
                   Customer *
                 </label>
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Search customer..."
+                  className="w-full mb-2 px-3 py-2 border border-slate-300 rounded-lg"
+                />
                 <select
                   value={formData.customerId}
                   onChange={(e) =>
@@ -850,30 +860,49 @@ export default function BillingPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                 >
                   <option value="">Select customer</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {customers
+                    .filter((c) =>
+                      customerSearch
+                        ? c.name.toLowerCase().includes(customerSearch.toLowerCase())
+                        : true,
+                    )
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   GST % (Editable)
                 </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={formData.gst}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      gst: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="18"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={formData.gst}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        gst: parseFloat(e.target.value),
+                      })
+                    }
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="18"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setApplyGst(!applyGst)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                      applyGst
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-300 text-slate-700"
+                    }`}
+                  >
+                    {applyGst ? "Applied" : "Skip"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -938,29 +967,49 @@ export default function BillingPage() {
                   + Add Item
                 </button>
               </div>
+              <div className="relative mb-2">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  search
+                </span>
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full pl-10 pr-4 py-1 border border-slate-300 rounded text-sm"
+                />
+              </div>
               <div className="space-y-2 border border-slate-200 rounded-lg p-3">
                 {lineItems.map((item, idx) => (
                   <div key={idx} className="flex gap-2 items-start">
-                    <select
-                      value={item.productId}
-                      onChange={(e) => {
-                        const prod = products.find(
-                          (p) => p.id === e.target.value,
-                        );
-                        updateLineItem(idx, "productId", e.target.value);
-                        if (prod)
-                          updateLineItem(idx, "unitPrice", prod.sellingPrice);
-                      }}
-                      className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm"
-                    >
-                      <option value="">Select product</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (Stock: {p.stock},{" "}
-                          {formatINR(p.sellingPrice)})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex-1">
+                      <select
+                        value={item.productId}
+                        onChange={(e) => {
+                          const prod = products.find(
+                            (p) => p.id === e.target.value,
+                          );
+                          updateLineItem(idx, "productId", e.target.value);
+                          if (prod)
+                            updateLineItem(idx, "unitPrice", prod.sellingPrice);
+                        }}
+                        className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                      >
+                        <option value="">Select product</option>
+                        {products
+                          .filter((p) =>
+                            productSearch
+                              ? p.name.toLowerCase().includes(productSearch.toLowerCase())
+                              : true,
+                          )
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} (Stock: {p.stock},{" "}
+                              {formatINR(p.sellingPrice)})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                     <div className="w-24">
                       <input
                         type="number"
