@@ -35,18 +35,24 @@ type Customer = {
   outstandingBalance: number;
 };
 
-type Supplier = {
-  id: string;
-  name: string;
-  payableBalance: number;
-};
-
 export default function MobileDashboardPage() {
   const today = new Date();
   const todayStart = new Date(today);
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date(today);
   todayEnd.setHours(23, 59, 59, 999);
+
+  const { data: session } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: async () => {
+      const res = await api.get("/auth/me");
+      return res.data;
+    },
+  });
+
+  const isSalesman = session?.user?.role === "SALESMAN";
+  const userName = session?.user?.name || "";
+  const storeName = session?.tenant?.businessName || "";
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ["invoices", "today"],
@@ -90,20 +96,11 @@ export default function MobileDashboardPage() {
     },
   });
 
-  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery({
-    queryKey: ["suppliers"],
-    queryFn: async () => {
-      const res = await api.get<Supplier[]>("/suppliers");
-      return res.data;
-    },
-  });
-
   const loading =
     invoicesLoading ||
     purchasesLoading ||
     productsLoading ||
-    customersLoading ||
-    suppliersLoading;
+    customersLoading;
 
   const todaySales = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
   const todayPurchases = purchases.reduce((sum, pur) => sum + pur.totalAmount, 0);
@@ -111,12 +108,12 @@ export default function MobileDashboardPage() {
     (sum, c) => sum + (c.outstandingBalance || 0),
     0,
   );
-  const outstandingPayables = suppliers.reduce(
-    (sum, s) => sum + (s.payableBalance || 0),
-    0,
-  );
 
-  const recentActivity = [...invoices.slice(0, 3), ...purchases.slice(0, 3)].sort(
+  const recentActivityRaw = isSalesman
+    ? [...invoices.slice(0, 5)]
+    : [...invoices.slice(0, 3), ...purchases.slice(0, 3)];
+
+  const recentActivity = recentActivityRaw.sort(
     (a, b) =>
       new Date("invoiceDate" in b ? b.invoiceDate : b.purchaseDate).getTime() -
       new Date("invoiceDate" in a ? a.invoiceDate : a.purchaseDate).getTime(),
@@ -132,7 +129,10 @@ export default function MobileDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Welcome, {userName || "User"}</h1>
+        <p className="text-sm text-slate-500">{storeName}</p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <MobileCard
@@ -143,26 +143,30 @@ export default function MobileDashboardPage() {
           bgColor="bg-blue-50"
         />
         <MobileCard
-          title="Today's Purchases"
-          value={formatINR(todayPurchases)}
-          icon="shopping_cart"
-          iconColor="text-purple-600"
-          bgColor="bg-purple-50"
-        />
-        <MobileCard
-          title="Receivables"
-          value={formatINR(outstandingReceivables)}
-          icon="call_received"
+          title="Today's Bills"
+          value={invoices.length.toString()}
+          icon="receipt_long"
           iconColor="text-emerald-600"
           bgColor="bg-emerald-50"
         />
-        <MobileCard
-          title="Payables"
-          value={formatINR(outstandingPayables)}
-          icon="call_made"
-          iconColor="text-orange-600"
-          bgColor="bg-orange-50"
-        />
+        {!isSalesman && (
+          <>
+            <MobileCard
+              title="Today's Purchases"
+              value={formatINR(todayPurchases)}
+              icon="shopping_cart"
+              iconColor="text-purple-600"
+              bgColor="bg-purple-50"
+            />
+            <MobileCard
+              title="Receivables"
+              value={formatINR(outstandingReceivables)}
+              icon="call_received"
+              iconColor="text-emerald-600"
+              bgColor="bg-emerald-50"
+            />
+          </>
+        )}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4">

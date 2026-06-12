@@ -6,6 +6,8 @@ import { extractBearerToken, verifyJwtToken } from "../utils/jwtAuth";
 export interface AuthPayload {
   userId?: string;
   tenantId?: string;
+  role?: string;
+  staffId?: string;
   [key: string]: any;
 }
 
@@ -33,7 +35,7 @@ export async function authenticateJWT(
     return next();
   }
 
-  if (payload.sessionId) {
+  if (payload.sessionId && (!payload.role || payload.role === "OWNER")) {
     const session = await getActiveSession(payload.sessionId);
     if (
       !session ||
@@ -47,6 +49,8 @@ export async function authenticateJWT(
   req.user = {
     userId: payload.userId,
     tenantId: payload.tenantId,
+    role: payload.role || "OWNER",
+    staffId: payload.staffId,
   };
   req.tenantId = payload.tenantId;
 

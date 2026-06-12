@@ -28,7 +28,7 @@ const ownerSelect = {
 } as const;
 
 export async function loginOwner(data: LoginInput) {
-  const owner = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { email: data.email },
     select: {
       ...ownerSelect,
@@ -36,17 +36,48 @@ export async function loginOwner(data: LoginInput) {
     },
   });
 
-  if (!owner) {
+  let staffUser = null;
+
+  if (!user) {
+    staffUser = await prisma.staffUser.findUnique({
+      where: { email: data.email },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            businessName: true,
+            ownerName: true,
+            email: true,
+            phone: true,
+            gstNumber: true,
+            address: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!staffUser) {
+      throw new CustomError("Invalid email or password", 401);
+    }
+  }
+
+  const account = user || staffUser;
+  if (!account) {
     throw new CustomError("Invalid email or password", 401);
   }
 
-  if (owner.tenant?.status === "SUSPENDED") {
+  if (account.tenant?.status === "SUSPENDED") {
     throw new CustomError("Tenant is suspended", 403);
+  }
+
+  if (staffUser && !staffUser.isActive) {
+    throw new CustomError("Your account has been disabled", 403);
   }
 
   const passwordMatches = await verifyPassword(
     data.password,
-    owner.passwordHash,
+    account.passwordHash,
   );
   if (!passwordMatches) {
     throw new CustomError("Invalid email or password", 401);
@@ -54,30 +85,76 @@ export async function loginOwner(data: LoginInput) {
 
   const sessionId = randomUUID();
   await createTenantOwnerSession({
-    userId: owner.id,
-    tenantId: owner.tenantId,
+    userId: account.id,
+    tenantId: account.tenantId,
     tokenId: sessionId,
   });
 
   const token = signAuthToken({
-    userId: owner.id,
-    tenantId: owner.tenantId,
+    userId: account.id,
+    tenantId: account.tenantId,
     sessionId,
+    role: staffUser ? staffUser.role : "OWNER",
+    staffId: staffUser ? staffUser.id : undefined,
   });
+
+  if (staffUser) {
+    await prisma.staffUser.update({
+      where: { id: staffUser.id },
+      data: { lastLoginAt: new Date() },
+    });
+  }
 
   return {
     token,
     user: {
-      id: owner.id,
-      email: owner.email,
-      tenantId: owner.tenantId,
+      id: account.id,
+      email: account.email,
+      tenantId: account.tenantId,
+      role: staffUser ? staffUser.role : "OWNER",
+      name: staffUser ? staffUser.name : account.tenant?.ownerName,
     },
-    tenant: owner.tenant,
+    tenant: account.tenant,
     sessionId,
   };
 }
 
-export async function getCurrentSession(userId: string, tenantId: string) {
+export async function getCurrentSession(userId: string, tenantId: string, role: string = "OWNER", staffId?: string) {
+  if (role === "SALESMAN" || staffId) {
+    const staff = await prisma.staffUser.findFirst({
+      where: { id: staffId || userId, tenantId },
+      include: {
+        tenant: {
+          select: {
+            id: true,
+            businessName: true,
+            ownerName: true,
+            email: true,
+            phone: true,
+            gstNumber: true,
+            address: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!staff) {
+      throw new CustomError("Session not found", 401);
+    }
+
+    return {
+      user: {
+        id: staff.id,
+        email: staff.email,
+        tenantId: staff.tenantId,
+        role: staff.role,
+        name: staff.name,
+      },
+      tenant: staff.tenant,
+    };
+  }
+
   const owner = await prisma.user.findFirst({
     where: { id: userId, tenantId },
     select: ownerSelect,
@@ -92,6 +169,8 @@ export async function getCurrentSession(userId: string, tenantId: string) {
       id: owner.id,
       email: owner.email,
       tenantId: owner.tenantId,
+      role: "OWNER",
+      name: owner.tenant?.ownerName,
     },
     tenant: owner.tenant,
   };

@@ -97,6 +97,8 @@ model Invoice {
   totalAmount   Float             @default(0)
   status        String            @default("created")
   notes         String?
+  createdByStaffId   String?
+  createdByStaffName String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   customer      Customer          @relation(fields: [customerId], references: [id])
@@ -252,6 +254,7 @@ model Tenant {
   cashBooks         CashBook[]
   cashTransactions  CashTransaction[]
   cashBookAuditLogs CashBookAuditLog[]
+  staffUsers        StaffUser[]
 }
 
 model User {
@@ -262,6 +265,27 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+enum StaffRole {
+  OWNER
+  SALESMAN
+}
+
+model StaffUser {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         StaffRole @default(SALESMAN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
 }

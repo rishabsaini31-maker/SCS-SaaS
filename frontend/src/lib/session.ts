@@ -11,8 +11,8 @@ export async function waitForAuthenticatedSession(
 ) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      await api.get("/auth/me");
-      return true;
+      const res = await api.get("/auth/me");
+      return res.data;
     } catch (error) {
       const responseStatus = (error as { response?: { status?: number } })
         .response?.status;

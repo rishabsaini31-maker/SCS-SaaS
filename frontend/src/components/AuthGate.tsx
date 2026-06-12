@@ -21,13 +21,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
     const bootstrapSession = async () => {
       try {
-        const authenticated = await waitForAuthenticatedSession();
+        const sessionData = await waitForAuthenticatedSession();
 
         if (cancelled) {
           return;
         }
 
-        setAuthStatus(authenticated ? "authenticated" : "guest");
+        if (sessionData) {
+          if (sessionData.user?.role === "SALESMAN" && !pathname.startsWith("/mobile")) {
+            window.location.href = "/mobile/dashboard";
+            return;
+          }
+          setAuthStatus("authenticated");
+        } else {
+          setAuthStatus("guest");
+        }
       } catch {
         if (!cancelled) {
           setAuthStatus("guest");
@@ -40,7 +48,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   if (authStatus === "checking") {
     return (

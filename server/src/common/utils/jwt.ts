@@ -5,6 +5,8 @@ export type AuthTokenPayload = {
   userId: string;
   tenantId: string;
   sessionId?: string;
+  role?: string;
+  staffId?: string;
 };
 
 export function signAuthToken(

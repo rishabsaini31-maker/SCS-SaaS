@@ -11,7 +11,9 @@ import {
 } from "@/lib/session";
 
 type LoginResponse = {
-  token: string;
+  user?: {
+    role?: string;
+  };
 };
 
 type LoginPageProps = {
@@ -77,7 +79,7 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
 
     try {
       setErrorMessage("");
-      await api.post<LoginResponse>("/auth/login", {
+      const res = await api.post<LoginResponse>("/auth/login", {
         email,
         password,
       });
@@ -89,7 +91,9 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
       }
 
       toast.success("Logged in successfully");
-      router.replace(redirectTarget);
+      const userRole = res.data?.user?.role;
+      const finalRedirect = userRole === "SALESMAN" ? "/mobile/dashboard" : redirectTarget;
+      router.replace(finalRedirect);
       router.refresh();
     } catch {
       setErrorMessage("Invalid email or password");
@@ -114,13 +118,13 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
       <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur-sm p-8">
         <div className="mb-8">
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-600">
-            Owner Login
+            Owner & Staff Login
           </p>
           <h1 className="mt-3 text-3xl font-bold text-slate-900">
-            Sign in to your tenant
+            Sign in to your account
           </h1>
           <p className="mt-2 text-sm text-slate-500">
-            One tenant, one owner account. Use the owner email and password.
+            Owners and staff members can log in here.
           </p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
             <span className="h-2 w-2 rounded-full bg-blue-500" />

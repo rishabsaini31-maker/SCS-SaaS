@@ -13,7 +13,7 @@ export const create = async (
 ) => {
   try {
     const data = createInvoiceSchema.parse(req.body);
-    const invoice = await service.createInvoice(data, req.tenantId);
+    const invoice = await service.createInvoice(data, req.tenantId, req.user);
     res.status(201).json(invoice);
   } catch (err) {
     next(err);

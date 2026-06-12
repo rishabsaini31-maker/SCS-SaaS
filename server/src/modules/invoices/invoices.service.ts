@@ -44,6 +44,7 @@ async function generateInvoiceNumber(
 export const createInvoice = async (
   data: CreateInvoiceInput,
   tenantId?: string,
+  user?: { role?: string; staffId?: string; name?: string }
 ) => {
   const invoice = await runSerializableTransaction(async (tx) => {
     const customer = await tx.customer.findFirst({
@@ -92,6 +93,15 @@ export const createInvoice = async (
     const gstAmount = subtotal * (gstRate / 100);
     const totalAmount = subtotal + gstAmount;
 
+    let createdByStaffId = undefined;
+    let createdByStaffName = undefined;
+
+    if (user?.role === "SALESMAN" && user?.staffId) {
+      createdByStaffId = user.staffId;
+      const staff = await tx.staffUser.findUnique({ where: { id: user.staffId } });
+      createdByStaffName = staff?.name;
+    }
+
     const newInvoice = await tx.invoice.create({
       data: tenantCreateData(tenantId, {
         invoiceNumber,
@@ -101,6 +111,8 @@ export const createInvoice = async (
         totalAmount,
         status: data.status || "created",
         notes: data.notes,
+        createdByStaffId,
+        createdByStaffName,
       }) as any,
     });
 

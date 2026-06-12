@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { toast } from "@/lib/toast";
+import StaffManagementSection from "./staff-management-section";
 
 export type SettingsSectionKey =
   | "business-profile"
   | "billing-gst"
-  | "users-roles"
+  | "staff-management"
   | "inventory"
   | "notifications"
   | "integrations";
@@ -16,7 +17,7 @@ export type SettingsSectionKey =
 const sectionLabels: Record<SettingsSectionKey, string> = {
   "business-profile": "Business Profile",
   "billing-gst": "Billing & GST",
-  "users-roles": "Users & Roles",
+  "staff-management": "Staff Management",
   inventory: "Inventory",
   notifications: "Notifications",
   integrations: "Integrations",
@@ -25,7 +26,7 @@ const sectionLabels: Record<SettingsSectionKey, string> = {
 const sectionLinks: Array<{ key: SettingsSectionKey; href: string }> = [
   { key: "business-profile", href: "/settings/business-profile" },
   { key: "billing-gst", href: "/settings/billing-gst" },
-  { key: "users-roles", href: "/settings/users-roles" },
+  { key: "staff-management", href: "/settings/staff-management" },
   { key: "inventory", href: "/settings/inventory" },
   { key: "notifications", href: "/settings/notifications" },
   { key: "integrations", href: "/settings/integrations" },
@@ -84,12 +85,18 @@ export default function SettingsSectionView({
 
   // Initialize form with settings data when loaded
   useEffect(() => {
-    if (settings) {
+    if (!settings) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
       setBusinessName(settings.businessName || "");
       setGstNumber(settings.gstNumber || "");
       setInvoicePrefix(settings.invoicePrefix || "INV-");
       setLowStockThreshold(settings.lowStockThreshold || 10);
-    }
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [settings]);
 
   const handleSaveBusinessProfile = async (e: React.FormEvent) => {
@@ -424,122 +431,8 @@ export default function SettingsSectionView({
         </section>
       ) : null}
 
-      {section === "users-roles" ? (
-        <section className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
-          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 className="font-h1 text-h1">Users &amp; Roles</h3>
-            <button
-              className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all"
-              onClick={() => setIsUserModalOpen(true)}
-              type="button"
-            >
-              <span className="material-symbols-outlined text-sm">
-                person_add
-              </span>
-              <span>Add User</span>
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50/30 text-left border-b border-slate-100">
-                  <th className="px-6 py-3 text-label-caps font-label-caps text-slate-500 uppercase">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-label-caps font-label-caps text-slate-500 uppercase">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-label-caps font-label-caps text-slate-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-label-caps font-label-caps text-slate-500 uppercase text-right">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                        AR
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">Alex Rivera</p>
-                        <p className="text-xs text-slate-500">
-                          alex@metrowholesale.com
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-primary-fixed text-on-primary-fixed-variant rounded-full text-[10px] font-bold uppercase">
-                      Owner
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-xs text-emerald-700 font-medium">
-                        Active
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      className="text-slate-400 hover:text-slate-600"
-                      onClick={() => {}}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined">
-                        more_horiz
-                      </span>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">
-                        SM
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">Sarah Miller</p>
-                        <p className="text-xs text-slate-500">
-                          s.miller@metrowholesale.com
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold uppercase">
-                      Staff
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                      <span className="text-xs text-emerald-700 font-medium">
-                        Active
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      className="text-slate-400 hover:text-slate-600"
-                      onClick={() => {}}
-                      type="button"
-                    >
-                      <span className="material-symbols-outlined">
-                        more_horiz
-                      </span>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+      {section === "staff-management" ? (
+        <StaffManagementSection />
       ) : null}
 
       {section === "notifications" ? (

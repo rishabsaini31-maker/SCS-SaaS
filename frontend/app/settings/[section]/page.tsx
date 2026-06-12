@@ -6,7 +6,7 @@ import SettingsSectionView, {
 const validSections = new Set<SettingsSectionKey>([
   "business-profile",
   "billing-gst",
-  "users-roles",
+  "staff-management",
   "inventory",
   "notifications",
   "integrations",
