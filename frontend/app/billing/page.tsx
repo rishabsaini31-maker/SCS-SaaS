@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import api from "@/lib/api";
-import { formatINR } from "@/lib/currency";
+import { formatINR, formatINRForPdf } from "@/lib/currency";
 
 type Invoice = {
   id: string;
@@ -214,21 +214,21 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
 
   addKeyValue(
     "Subtotal",
-    formatINR(invoice.subtotal),
+    formatINRForPdf(invoice.subtotal),
     rightColumnX + 4,
     cursorY + 6,
     leftColumnWidth - 8,
   );
   addKeyValue(
     "GST",
-    formatINR(invoice.gstAmount),
+    formatINRForPdf(invoice.gstAmount),
     rightColumnX + 4,
     cursorY + 12,
     leftColumnWidth - 8,
   );
   addKeyValue(
     "Total",
-    formatINR(invoice.totalAmount),
+    formatINRForPdf(invoice.totalAmount),
     rightColumnX + 4,
     cursorY + 18,
     leftColumnWidth - 8,
@@ -283,8 +283,8 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
 
     doc.text(descLines, colX[0] + 2, rowY + 3);
     doc.text(String(item.quantity), colX[1] + 2, rowY + 3);
-    doc.text(formatINR(item.unitPrice), colX[2] + 2, rowY + 3);
-    doc.text(formatINR(amount), colX[3] + 2, rowY + 3);
+    doc.text(formatINRForPdf(item.unitPrice), colX[2] + 2, rowY + 3);
+    doc.text(formatINRForPdf(amount), colX[3] + 2, rowY + 3);
     cursorY += itemRowHeight + 2;
   });
 
@@ -299,14 +299,14 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
   doc.setFontSize(9);
   doc.text("Paid", totalsBoxX + 4, cursorY + 8);
   doc.text(
-    formatINR(paidAmount),
+    formatINRForPdf(paidAmount),
     totalsBoxX + totalsBoxWidth - 4,
     cursorY + 8,
     { align: "right" },
   );
   doc.text("Pending", totalsBoxX + 4, cursorY + 15);
   doc.text(
-    formatINR(Math.max(0, invoice.totalAmount - paidAmount)),
+    formatINRForPdf(Math.max(0, invoice.totalAmount - paidAmount)),
     totalsBoxX + totalsBoxWidth - 4,
     cursorY + 15,
     { align: "right" },
@@ -321,7 +321,7 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
   doc.setFontSize(11);
   doc.text("Total", totalsBoxX + 4, cursorY + 25);
   doc.text(
-    formatINR(invoice.totalAmount),
+    formatINRForPdf(invoice.totalAmount),
     totalsBoxX + totalsBoxWidth - 4,
     cursorY + 25,
     { align: "right" },
