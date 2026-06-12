@@ -46,11 +46,7 @@ export const loginRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req: Request) => {
-    // Skip rate limiting for successful requests (optional, requires custom logic)
-    // For now, we rate limit all attempts
-    return false;
-  },
+  skip: () => process.env.NODE_ENV !== "production",
   keyGenerator: (req: Request) => {
     return (
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
@@ -96,6 +92,7 @@ export const passwordResetRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== "production",
   keyGenerator: (req: Request) => {
     // Rate limit by IP for password resets
     return (
@@ -119,6 +116,7 @@ export const shopCreationRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== "production",
   keyGenerator: (req: Request) => {
     // Rate limit by admin ID if authenticated, otherwise by IP
     const adminId = (req as any).superAdmin?.id;
