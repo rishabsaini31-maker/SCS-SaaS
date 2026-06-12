@@ -27,6 +27,7 @@ type Payment = {
   id: string;
   invoiceId?: string;
   amount: number;
+  paymentMethod?: string;
 };
 
 type Customer = { id: string; name: string; email: string };
@@ -90,6 +91,12 @@ const getInvoiceStatusMeta = (status: string) => {
   };
 };
 
+const formatPaymentMethod = (value: string) =>
+  value
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
 const getInvoiceShareText = (invoice: Invoice, paidAmount: number) => {
   const lines = [
     `Invoice: ${invoice.invoiceNumber}`,
@@ -120,7 +127,7 @@ const getInvoiceShareText = (invoice: Invoice, paidAmount: number) => {
 const getInvoiceFileName = (invoiceNumber: string) =>
   `${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, "_")}.pdf`;
 
-const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
+const downloadInvoicePdf = (invoice: Invoice, paidAmount: number, paymentMethod?: string) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -188,14 +195,23 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
       align: "right",
     },
   );
-  cursorY += 30;
+  const method = paymentMethod ? formatPaymentMethod(paymentMethod) : "Pending";
+  doc.text(
+    `Payment: ${method}`,
+    rightX - 4,
+    cursorY + 20,
+    {
+      align: "right",
+    },
+  );
+  cursorY += 38;
 
   const leftColumnWidth = (usableWidth - 6) / 2;
   const rightColumnX = margin + leftColumnWidth + 6;
 
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, cursorY, leftColumnWidth, 32, 3, 3, "F");
-  doc.roundedRect(rightColumnX, cursorY, leftColumnWidth, 32, 3, 3, "F");
+  doc.roundedRect(margin, cursorY, leftColumnWidth, 46, 3, 3, "F");
+  doc.roundedRect(rightColumnX, cursorY, leftColumnWidth, 46, 3, 3, "F");
 
   addKeyValue(
     "Customer",
@@ -208,7 +224,22 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
     "Email",
     invoice.customer.email,
     margin + 4,
-    cursorY + 12,
+    cursorY + 14,
+    leftColumnWidth - 8,
+  );
+  addKeyValue(
+    "Status",
+    getInvoiceStatusMeta(invoice.status).label,
+    margin + 4,
+    cursorY + 22,
+    leftColumnWidth - 8,
+  );
+  const pendingAmount = Math.max(0, invoice.totalAmount - paidAmount);
+  addKeyValue(
+    "Pending",
+    formatINRForPdf(pendingAmount),
+    margin + 4,
+    cursorY + 30,
     leftColumnWidth - 8,
   );
 
@@ -223,14 +254,21 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
     "GST",
     formatINRForPdf(invoice.gstAmount),
     rightColumnX + 4,
-    cursorY + 12,
+    cursorY + 14,
     leftColumnWidth - 8,
   );
   addKeyValue(
     "Total",
     formatINRForPdf(invoice.totalAmount),
     rightColumnX + 4,
-    cursorY + 18,
+    cursorY + 22,
+    leftColumnWidth - 8,
+  );
+  addKeyValue(
+    "Paid",
+    formatINRForPdf(paidAmount),
+    rightColumnX + 4,
+    cursorY + 30,
     leftColumnWidth - 8,
   );
 
@@ -289,45 +327,7 @@ const downloadInvoicePdf = (invoice: Invoice, paidAmount: number) => {
   });
 
   cursorY += 4;
-  ensureSpace(30);
-  const totalsBoxWidth = 72;
-  const totalsBoxX = rightX - totalsBoxWidth;
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(totalsBoxX, cursorY, totalsBoxWidth, 28, 3, 3, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Paid", totalsBoxX + 4, cursorY + 8);
-  doc.text(
-    formatINRForPdf(paidAmount),
-    totalsBoxX + totalsBoxWidth - 4,
-    cursorY + 8,
-    { align: "right" },
-  );
-  doc.text("Pending", totalsBoxX + 4, cursorY + 15);
-  doc.text(
-    formatINRForPdf(Math.max(0, invoice.totalAmount - paidAmount)),
-    totalsBoxX + totalsBoxWidth - 4,
-    cursorY + 15,
-    { align: "right" },
-  );
-  doc.setDrawColor(148, 163, 184);
-  doc.line(
-    totalsBoxX + 4,
-    cursorY + 18.5,
-    totalsBoxX + totalsBoxWidth - 4,
-    cursorY + 18.5,
-  );
-  doc.setFontSize(11);
-  doc.text("Total", totalsBoxX + 4, cursorY + 25);
-  doc.text(
-    formatINRForPdf(invoice.totalAmount),
-    totalsBoxX + totalsBoxWidth - 4,
-    cursorY + 25,
-    { align: "right" },
-  );
-
-  cursorY += 36;
+  ensureSpace(20);
 
   if (invoice.notes) {
     addSectionTitle("Notes");
@@ -571,7 +571,9 @@ export default function BillingPage() {
 
   const handleDownloadInvoice = (invoice: Invoice) => {
     const paidAmount = getInvoicePaidAmount(invoice.id);
-    downloadInvoicePdf(invoice, paidAmount);
+    const invoicePayments = payments.filter(p => p.invoiceId === invoice.id);
+    const paymentMethod = invoicePayments.length > 0 ? invoicePayments[0].paymentMethod : undefined;
+    downloadInvoicePdf(invoice, paidAmount, paymentMethod);
   };
 
   const handleShareInvoice = async (invoice: Invoice) => {
