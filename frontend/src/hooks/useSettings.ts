@@ -5,18 +5,30 @@ export type TenantSettings = {
   id: string;
   tenantId: string;
   businessName: string | null;
+  ownerName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
   gstNumber: string | null;
   invoicePrefix: string;
   lowStockThreshold: number;
+  defaultGst: number;
+  taxCalculation: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
 export type UpdateSettingsInput = {
   businessName?: string;
+  ownerName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
   gstNumber?: string;
   invoicePrefix?: string;
   lowStockThreshold?: number;
+  defaultGst?: number;
+  taxCalculation?: boolean;
 };
 
 export const useSettings = () => {

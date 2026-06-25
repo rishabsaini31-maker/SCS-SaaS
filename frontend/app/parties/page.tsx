@@ -93,8 +93,8 @@ export default function PartiesPage() {
 
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) {
-      alert("Please fill name and email");
+    if (!formData.name || !formData.phone) {
+      alert("Please fill name and phone number");
       return;
     }
 
@@ -180,7 +180,7 @@ export default function PartiesPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Email *
+                  Email
                 </label>
                 <input
                   type="email"
@@ -193,7 +193,7 @@ export default function PartiesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
+                <label className="block text-sm font-medium mb-1">Phone *</label>
                 <input
                   type="text"
                   value={formData.phone}

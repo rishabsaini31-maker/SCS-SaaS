@@ -328,6 +328,8 @@ model TenantSetting {
   gstNumber         String?
   invoicePrefix     String   @default("INV-")
   lowStockThreshold Int      @default(10)
+  defaultGst        Int      @default(18)
+  taxCalculation    Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
 import api from "@/lib/api";
 import { formatINR, formatINRForPdf } from "@/lib/currency";
+import { useSettings } from "@/hooks/useSettings";
 
 type Invoice = {
   id: string;
@@ -374,6 +375,7 @@ export default function BillingPage() {
   ]);
   const [customerSearch, setCustomerSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const { settings } = useSettings();
   const [applyGst, setApplyGst] = useState(true);
   const [formData, setFormData] = useState({
     customerId: "",
@@ -384,6 +386,25 @@ export default function BillingPage() {
     paymentStatus: "Paid",
     paidAmount: "",
   });
+
+  useEffect(() => {
+    if (settings) {
+      setApplyGst(settings.taxCalculation ?? true);
+      setFormData((prev) => ({
+        ...prev,
+        gst: settings.defaultGst ?? 18,
+      }));
+    }
+  }, [settings]);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    gstin: "",
+  });
+  const [submittingCustomer, setSubmittingCustomer] = useState(false);
 
   const {
     data: invoices = [],
@@ -792,6 +813,32 @@ export default function BillingPage() {
     }
   };
 
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomerForm.name || !newCustomerForm.phone) {
+      alert("Please fill name and phone number");
+      return;
+    }
+
+    setSubmittingCustomer(true);
+    try {
+      const res = await api.post("/customers", {
+        ...newCustomerForm,
+        status: "active",
+      });
+      setShowAddCustomerModal(false);
+      setNewCustomerForm({ name: "", email: "", phone: "", address: "", gstin: "" });
+      await queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setFormData(prev => ({ ...prev, customerId: res.data.id }));
+      setCustomerSearch("");
+    } catch (error) {
+      console.error("Error adding customer:", error);
+      alert("Failed to add customer. Email might already exist.");
+    } finally {
+      setSubmittingCustomer(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-slate-500">Loading billing...</div>;
   }
@@ -887,9 +934,18 @@ export default function BillingPage() {
           <form onSubmit={handleCreateInvoice} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Customer *
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium">
+                    Customer *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddCustomerModal(true)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    + Add Customer
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={customerSearch}
@@ -1601,9 +1657,9 @@ export default function BillingPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
                   >
-                    {submitting ? "Saving..." : "Save Changes"}
+                    {submitting ? "Saving..." : "Save Status"}
                   </button>
                   <button
                     type="button"
@@ -1618,6 +1674,84 @@ export default function BillingPage() {
           </div>
         </div>
       </div>
+
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Add New Customer</h2>
+            <form onSubmit={handleAddCustomer} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.name}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="Enter name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newCustomerForm.email}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone *</label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.phone}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="+91-XXXXXXXXXX"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">GSTIN</label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.gstin}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, gstin: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="27AABCU9603R1Z0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Address</label>
+                <textarea
+                  value={newCustomerForm.address}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  placeholder="Enter address"
+                  rows={3}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomerModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCustomer}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {submittingCustomer ? "Adding..." : "Add Customer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

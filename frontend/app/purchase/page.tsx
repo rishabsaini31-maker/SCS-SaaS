@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
+import { useSettings } from "@/hooks/useSettings";
 
 const getPurchaseStatusMeta = (status: string) => {
   const normalized = status.trim().toLowerCase();
@@ -115,6 +116,7 @@ export default function PurchasePage() {
   ]);
   const [supplierSearch, setSupplierSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const { settings } = useSettings();
   const [applyGst, setApplyGst] = useState(true);
   const [formData, setFormData] = useState({
     supplierId: "",
@@ -125,6 +127,16 @@ export default function PurchasePage() {
     paymentStatus: "Paid",
     paidAmount: "",
   });
+
+  useEffect(() => {
+    if (settings) {
+      setApplyGst(settings.taxCalculation ?? true);
+      setFormData((prev) => ({
+        ...prev,
+        gst: settings.defaultGst ?? 18,
+      }));
+    }
+  }, [settings]);
 
   const {
     data: categories = [],

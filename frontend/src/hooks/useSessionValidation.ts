@@ -23,10 +23,10 @@ export function useSessionValidation(enabled = true) {
     // Initial validation on mount
     validateSession();
 
-    // Set up periodic validation every 5 minutes (300,000ms)
-    const validationInterval = setInterval(validateSession, 5 * 60 * 1000);
-
-    return () => clearInterval(validationInterval);
+    // Removed the aggressive 5-minute periodic validation 
+    // as it caused frustrating auto-logouts during inactivity or network hiccups.
+    // The user will remain logged in until they explicitly logout 
+    // or their next actual action returns a 401 Unauthorized.
   }, [enabled]);
 
   async function validateSession() {
@@ -36,7 +36,7 @@ export function useSessionValidation(enabled = true) {
     } catch (err: any) {
       // Session invalid or expired
       if (err.response?.status === 401 || err.response?.status === 403) {
-        // Redirect to login (backend will also handle this via error interceptor)
+        // Redirect to login
         router.push("/login");
       }
     }

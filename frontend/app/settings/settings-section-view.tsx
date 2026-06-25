@@ -64,6 +64,7 @@ export default function SettingsSectionView({
 }) {
   const { settings, isLoading, updateSettings, isUpdating } = useSettings();
   const [taxCalculation, setTaxCalculation] = useState(true);
+  const [defaultGst, setDefaultGst] = useState(18);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [barcodeSystem, setBarcodeSystem] = useState(false);
   const [paymentReminders, setPaymentReminders] = useState(true);
@@ -91,9 +92,15 @@ export default function SettingsSectionView({
 
     const timeoutId = setTimeout(() => {
       setBusinessName(settings.businessName || "");
+      setOwnerName(settings.ownerName || "");
+      setPhone(settings.phone || "");
+      setEmail(settings.email || "");
+      setAddress(settings.address || "");
       setGstNumber(settings.gstNumber || "");
       setInvoicePrefix(settings.invoicePrefix || "INV-");
       setLowStockThreshold(settings.lowStockThreshold || 10);
+      setTaxCalculation(settings.taxCalculation ?? true);
+      setDefaultGst(settings.defaultGst ?? 18);
     }, 0);
 
     return () => clearTimeout(timeoutId);
@@ -104,6 +111,10 @@ export default function SettingsSectionView({
     try {
       await updateSettings({
         businessName: businessName.trim() || undefined,
+        ownerName: ownerName.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        address: address.trim() || undefined,
         gstNumber: gstNumber.trim() || undefined,
       });
       toast.success("Business profile saved successfully");
@@ -118,6 +129,8 @@ export default function SettingsSectionView({
       await updateSettings({
         invoicePrefix: invoicePrefix.trim() || "INV-",
         gstNumber: gstNumber.trim() || undefined,
+        defaultGst,
+        taxCalculation,
       });
       toast.success("Billing settings saved successfully");
     } catch {
@@ -312,11 +325,16 @@ export default function SettingsSectionView({
                     <label className="text-label-caps font-label-caps text-on-surface-variant uppercase">
                       Default GST %
                     </label>
-                    <select className="w-full px-4 py-2.5 rounded-lg border border-[#E2E8F0] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-body-md bg-white">
-                      <option>18% Standard</option>
-                      <option>12% Reduced</option>
-                      <option>28% Luxury</option>
-                      <option>5% Essential</option>
+                    <select 
+                      className="w-full px-4 py-2.5 rounded-lg border border-[#E2E8F0] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-body-md bg-white"
+                      value={defaultGst}
+                      onChange={(e) => setDefaultGst(Number(e.target.value))}
+                    >
+                      <option value={18}>18% Standard</option>
+                      <option value={12}>12% Reduced</option>
+                      <option value={28}>28% Luxury</option>
+                      <option value={5}>5% Essential</option>
+                      <option value={0}>0% None</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
