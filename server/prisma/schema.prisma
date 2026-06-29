@@ -262,6 +262,8 @@ model User {
   tenantId     String   @unique
   email        String   @unique
   passwordHash String
+  failedLoginAttempts Int @default(0)
+  lockedUntil         DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -282,6 +284,8 @@ model StaffUser {
   passwordHash String
   role         StaffRole @default(SALESMAN)
   isActive     Boolean   @default(true)
+  failedLoginAttempts Int @default(0)
+  lockedUntil         DateTime?
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -296,6 +300,8 @@ model SuperAdmin {
   passwordHash String
   adminType    String     @default("ROOT")
   status       String     @default("ACTIVE")
+  failedLoginAttempts Int @default(0)
+  lockedUntil         DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   auditLogs    AuditLog[]
@@ -330,6 +336,7 @@ model TenantSetting {
   lowStockThreshold Int      @default(10)
   defaultGst        Int      @default(18)
   taxCalculation    Boolean  @default(true)
+  encryptedSecrets  String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)

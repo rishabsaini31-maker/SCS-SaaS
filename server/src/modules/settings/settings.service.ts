@@ -3,6 +3,7 @@ import { CustomError } from "../../common/errors/CustomError";
 import { tenantCreateData } from "../../common/tenant/tenant.utils";
 import type { z } from "zod";
 import { updateTenantSettingsSchema } from "./settings.schema";
+import { encrypt, decrypt } from "../../common/utils/encryption";
 
 type UpdateTenantSettingsInput = z.infer<typeof updateTenantSettingsSchema>;
 
@@ -21,6 +22,7 @@ export const getTenantSettings = async (tenantId?: string) => {
       phone: settings.tenant.phone,
       email: settings.tenant.email,
       address: settings.tenant.address,
+      secrets: settings.encryptedSecrets ? decrypt(settings.encryptedSecrets) : undefined,
     };
   }
 
@@ -77,6 +79,7 @@ export const updateTenantSettings = async (
       lowStockThreshold: data.lowStockThreshold,
       defaultGst: data.defaultGst,
       taxCalculation: data.taxCalculation,
+      ...(data.secrets !== undefined && { encryptedSecrets: encrypt(data.secrets) }),
     },
     create: tenantCreateData(tenantId, {
       businessName: data.businessName ?? null,
@@ -85,6 +88,7 @@ export const updateTenantSettings = async (
       lowStockThreshold: data.lowStockThreshold ?? 10,
       defaultGst: data.defaultGst ?? 18,
       taxCalculation: data.taxCalculation ?? true,
+      encryptedSecrets: data.secrets ? encrypt(data.secrets) : undefined,
     }) as any,
   });
 

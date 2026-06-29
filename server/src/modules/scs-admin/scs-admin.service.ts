@@ -180,3 +180,46 @@ export async function getDashboardMetrics() {
     last24hLogins,
   };
 }
+
+export async function getMySessions(superAdminId: string) {
+  const sessions = await prisma.authSession.findMany({
+    where: {
+      superAdminId,
+      status: "ACTIVE",
+    },
+    orderBy: { lastSeenAt: "desc" },
+    select: {
+      id: true,
+      tokenId: true,
+      status: true,
+      lastSeenAt: true,
+      createdAt: true,
+      expiresAt: true,
+    },
+  });
+
+  return { sessions };
+}
+
+export async function revokeSession(superAdminId: string, sessionId: string) {
+  const session = await prisma.authSession.findFirst({
+    where: {
+      id: sessionId,
+      superAdminId,
+    },
+  });
+
+  if (!session) {
+    throw new CustomError("Session not found", 404);
+  }
+
+  await prisma.authSession.update({
+    where: { id: sessionId },
+    data: {
+      status: "REVOKED",
+      revokedAt: new Date(),
+    },
+  });
+
+  return { success: true, message: "Session revoked successfully." };
+}

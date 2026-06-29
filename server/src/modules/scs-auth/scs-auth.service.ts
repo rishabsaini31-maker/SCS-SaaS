@@ -22,6 +22,8 @@ export async function loginSuperAdmin(data: ScsAdminLoginInput) {
     select: {
       ...superAdminSelect,
       passwordHash: true,
+      failedLoginAttempts: true,
+      lockedUntil: true,
     },
   });
 
@@ -33,12 +35,39 @@ export async function loginSuperAdmin(data: ScsAdminLoginInput) {
     throw new CustomError("Super admin account is suspended", 403);
   }
 
+  // Check if account is locked
+  if (superAdmin.lockedUntil && superAdmin.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((superAdmin.lockedUntil.getTime() - Date.now()) / 60000);
+    throw new CustomError(`Account temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`, 403);
+  }
+
   const passwordMatches = await verifyPassword(
     data.password,
     superAdmin.passwordHash,
   );
   if (!passwordMatches) {
+    const failedAttempts = superAdmin.failedLoginAttempts + 1;
+    const updates: any = { failedLoginAttempts: failedAttempts };
+    
+    if (failedAttempts >= 5) {
+      // Lock for 15 minutes
+      updates.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+    }
+    
+    await prisma.superAdmin.update({
+      where: { id: superAdmin.id },
+      data: updates,
+    });
+
     throw new CustomError("Invalid email or password", 401);
+  }
+
+  // Reset failed attempts on successful login
+  if (superAdmin.failedLoginAttempts > 0 || superAdmin.lockedUntil) {
+    await prisma.superAdmin.update({
+      where: { id: superAdmin.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
   }
 
   const sessionId = randomUUID();

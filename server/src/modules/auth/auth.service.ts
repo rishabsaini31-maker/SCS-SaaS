@@ -13,6 +13,8 @@ const ownerSelect = {
   id: true,
   email: true,
   tenantId: true,
+  failedLoginAttempts: true,
+  lockedUntil: true,
   tenant: {
     select: {
       id: true,
@@ -75,12 +77,47 @@ export async function loginOwner(data: LoginInput) {
     throw new CustomError("Your account has been disabled", 403);
   }
 
+  // Check if account is locked
+  if (account.lockedUntil && account.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((account.lockedUntil.getTime() - Date.now()) / 60000);
+    throw new CustomError(`Account temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`, 403);
+  }
+
   const passwordMatches = await verifyPassword(
     data.password,
     account.passwordHash,
   );
   if (!passwordMatches) {
+    const failedAttempts = account.failedLoginAttempts + 1;
+    const updates: any = { failedLoginAttempts: failedAttempts };
+    
+    if (failedAttempts >= 5) {
+      // Lock for 15 minutes
+      updates.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+    }
+    
+    if (staffUser) {
+      await prisma.staffUser.update({ where: { id: staffUser.id }, data: updates });
+    } else {
+      await prisma.user.update({ where: { id: account.id }, data: updates });
+    }
+
     throw new CustomError("Invalid email or password", 401);
+  }
+
+  // Reset failed attempts on successful login
+  if (account.failedLoginAttempts > 0 || account.lockedUntil) {
+    if (staffUser) {
+      await prisma.staffUser.update({
+        where: { id: staffUser.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
+    } else {
+      await prisma.user.update({
+        where: { id: account.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
+    }
   }
 
   const sessionId = randomUUID();

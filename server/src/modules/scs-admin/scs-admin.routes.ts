@@ -20,6 +20,10 @@ router.use(authenticateSuperAdmin, requireSuperAdmin);
 router.get("/dashboard", controller.dashboard);
 router.get("/tenants", controller.list);
 
+// SECURITY: Active Sessions Dashboard
+router.get("/sessions", controller.getMySessions);
+router.delete("/sessions/:sessionId", controller.revokeSession);
+
 // SECURITY: Rate limiting for shop creation (10 per hour)
 router.post("/shops", shopCreationRateLimiter, controller.createShop);
 

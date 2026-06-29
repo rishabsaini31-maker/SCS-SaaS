@@ -11,4 +11,5 @@ export const updateTenantSettingsSchema = z.object({
   lowStockThreshold: z.number().int().nonnegative().optional(),
   defaultGst: z.number().nonnegative().optional(),
   taxCalculation: z.boolean().optional(),
+  secrets: z.string().optional(),
 });

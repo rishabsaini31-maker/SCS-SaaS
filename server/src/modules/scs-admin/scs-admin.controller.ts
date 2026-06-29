@@ -137,3 +137,24 @@ export async function resetOwnerPassword(
     next(error);
   }
 }
+
+export async function getMySessions(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = (req as any).superAdmin.id;
+    const result = await service.getMySessions(adminId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function revokeSession(req: Request, res: Response, next: NextFunction) {
+  try {
+    const adminId = (req as any).superAdmin.id;
+    const { sessionId } = req.params;
+    const result = await service.revokeSession(adminId, sessionId);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
