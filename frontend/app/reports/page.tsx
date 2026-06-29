@@ -72,7 +72,15 @@ type ReportRow = {
   amount: number;
   status: string;
   partyName: string;
-  tone: "emerald" | "amber" | "red" | "blue" | "orange";
+  tone: "emerald" | "amber" | "red" | "blue" | "orange" | "slate";
+};
+
+type SalesTeamMember = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  totalBills: number;
+  totalSalesAmount: number;
 };
 
 const formatShortDate = (value: string) =>
@@ -204,7 +212,7 @@ const getTopCategories = (products: Product[]) => {
 
 export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<
-    "Sales Report" | "Purchase Report" | "Stock Report"
+    "Sales Report" | "Purchase Report" | "Stock Report" | "Sales Team"
   >("Sales Report");
   const [activeRange, setActiveRange] = useState("This Month");
   const [customRangeStart, setCustomRangeStart] = useState("");
@@ -258,13 +266,33 @@ export default function ReportsPage() {
     },
   });
 
+  const { data: salesTeam = [], isLoading: salesTeamLoading } = useQuery({
+    queryKey: ["reports-sales-team", customRangeStart, customRangeEnd, activeRange],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (activeRange === "Custom Range") {
+        if (customRangeStart) params.append("startDate", customRangeStart);
+        if (customRangeEnd) params.append("endDate", customRangeEnd);
+      } else {
+        const start = getPresetRangeStart(activeRange);
+        if (start) {
+          params.append("startDate", start.toISOString());
+        }
+      }
+      const res = await api.get<SalesTeamMember[]>(`/reports/sales-team?${params.toString()}`);
+      return res.data;
+    },
+    enabled: activeReport === "Sales Team",
+  });
+
   const loading =
     invoicesLoading ||
     purchasesLoading ||
     productsLoading ||
     paymentsLoading ||
     customersLoading ||
-    suppliersLoading;
+    suppliersLoading ||
+    (activeReport === "Sales Team" && salesTeamLoading);
 
   const visibleInvoices = useMemo(
     () =>
@@ -510,11 +538,17 @@ export default function ReportsPage() {
               `Paid: ${formatINR(purchaseData.totalPaid)}`,
               `Pending: ${formatINR(purchaseData.totalPending)}`,
             ]
-          : [
-              `Inventory Value: ${formatINR(stockData.inventoryValue)}`,
-              `Units: ${stockData.totalUnits}`,
-              `Low Stock Items: ${stockData.lowStockCount}`,
-            ];
+          : activeReport === "Sales Team"
+            ? [
+                `Total Team Members: ${salesTeam.length}`,
+                `Active Members: ${salesTeam.filter((m) => m.isActive).length}`,
+                `Total Sales: ${formatINR(salesTeam.reduce((sum, m) => sum + m.totalSalesAmount, 0))}`,
+              ]
+            : [
+                `Inventory Value: ${formatINR(stockData.inventoryValue)}`,
+                `Units: ${stockData.totalUnits}`,
+                `Low Stock Items: ${stockData.lowStockCount}`,
+              ];
 
     const content = [
       activeReport,
@@ -594,6 +628,33 @@ export default function ReportsPage() {
               icon: "payments",
             },
           ]
+        : activeReport === "Sales Team"
+          ? [
+              {
+                label: "Total Sales",
+                value: formatINR(salesTeam.reduce((sum, m) => sum + m.totalSalesAmount, 0)),
+                tone: "blue",
+                icon: "trending_up",
+              },
+              {
+                label: "Total Bills",
+                value: String(salesTeam.reduce((sum, m) => sum + m.totalBills, 0)),
+                tone: "emerald",
+                icon: "receipt_long",
+              },
+              {
+                label: "Active Members",
+                value: String(salesTeam.filter((m) => m.isActive).length),
+                tone: "emerald",
+                icon: "group",
+              },
+              {
+                label: "Top Performer",
+                value: salesTeam.length > 0 && salesTeam[0].totalSalesAmount > 0 ? salesTeam[0].name : "N/A",
+                tone: "amber",
+                icon: "star",
+              },
+            ]
         : [
             {
               label: "Total SKUs",
@@ -626,31 +687,51 @@ export default function ReportsPage() {
       ? salesData.chart
       : activeReport === "Purchase Report"
         ? purchaseData.chart
-        : stockData.chart.map((item) => ({
-            label: item.category,
-            value: item.value,
-          }));
+        : activeReport === "Sales Team"
+          ? salesTeam.slice(0, 5).map((item) => ({
+              label: item.name.split(" ")[0], // First name only
+              value: item.totalSalesAmount,
+            }))
+          : stockData.chart.map((item) => ({
+              label: item.category,
+              value: item.value,
+            }));
 
   const rows =
     activeReport === "Sales Report"
       ? salesData.rows
       : activeReport === "Purchase Report"
         ? purchaseData.rows
-        : stockData.rows;
+        : activeReport === "Sales Team"
+          ? salesTeam.map<ReportRow>((member) => ({
+              id: member.id,
+              label: member.name,
+              date: "",
+              itemCount: `${member.totalBills} bills`,
+              amount: member.totalSalesAmount,
+              status: member.isActive ? "Active" : "Disabled",
+              partyName: "Salesman",
+              tone: member.isActive ? "emerald" : "slate",
+            }))
+          : stockData.rows;
 
   const mainTitle =
     activeReport === "Sales Report"
       ? "Revenue Analysis"
       : activeReport === "Purchase Report"
         ? "Purchase Spend Analysis"
-        : "Inventory Value Analysis";
+        : activeReport === "Sales Team"
+          ? "Sales Team Performance"
+          : "Inventory Value Analysis";
 
   const sideTitle =
     activeReport === "Sales Report"
       ? "Top Customers"
       : activeReport === "Purchase Report"
         ? "Top Suppliers"
-        : "Top Categories";
+        : activeReport === "Sales Team"
+          ? "Top Salesmen"
+          : "Top Categories";
 
   const sideRows =
     activeReport === "Sales Report"
@@ -671,10 +752,17 @@ export default function ReportsPage() {
               name: supplier.name,
               value: supplier.payableBalance,
             }))
-        : getTopCategories(products).map((entry) => ({
-            name: entry.category,
-            value: entry.value,
-          }));
+        : activeReport === "Sales Team"
+          ? salesTeam
+              .slice(0, 5)
+              .map((member) => ({
+                name: member.name,
+                value: member.totalSalesAmount,
+              }))
+          : getTopCategories(products).map((entry) => ({
+              name: entry.category,
+              value: entry.value,
+            }));
 
   const rangeSummary =
     activeRange === "Custom Range" && (customRangeStart || customRangeEnd)
@@ -686,7 +774,9 @@ export default function ReportsPage() {
       ? `${salesData.orderCount} invoices`
       : activeReport === "Purchase Report"
         ? `${purchaseData.orderCount} purchases`
-        : `${stockData.totalSkus} products`;
+        : activeReport === "Sales Team"
+          ? `${salesTeam.length} members`
+          : `${stockData.totalSkus} products`;
 
   if (loading) {
     return <div className="text-slate-500">Loading reports...</div>;
@@ -705,7 +795,7 @@ export default function ReportsPage() {
             </p>
           </div>
           <div className="inline-flex flex-wrap items-center bg-surface-container-low p-1 rounded-xl gap-1 w-fit">
-            {(["Sales Report", "Purchase Report", "Stock Report"] as const).map(
+            {(["Sales Report", "Purchase Report", "Stock Report", "Sales Team"] as const).map(
               (report) => (
                 <button
                   key={report}
@@ -944,10 +1034,12 @@ export default function ReportsPage() {
                 ? "Invoices"
                 : activeReport === "Purchase Report"
                   ? "Purchases"
-                  : "Products"}
+                  : activeReport === "Sales Team"
+                    ? "Team Members"
+                    : "Products"}
             </h4>
             <span className="text-xs text-slate-500 font-medium">
-              Showing last 10 entries
+              {activeReport === "Sales Team" ? "All active and inactive staff" : "Showing last 10 entries"}
             </span>
           </div>
 
@@ -960,19 +1052,21 @@ export default function ReportsPage() {
                       ? "Product"
                       : activeReport === "Purchase Report"
                         ? "Purchase #"
-                        : "Invoice #"}
+                        : activeReport === "Sales Team"
+                          ? "Salesman"
+                          : "Invoice #"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
-                    Party
+                    {activeReport === "Sales Team" ? "Role" : "Party"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
-                    Date
+                    {activeReport === "Sales Team" ? "—" : "Date"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
-                    Items / Stock
+                    {activeReport === "Sales Team" ? "Total Bills" : "Items / Stock"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase text-right">
-                    Amount
+                    {activeReport === "Sales Team" ? "Total Sales" : "Amount"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase text-center">
                     Status
@@ -1011,7 +1105,9 @@ export default function ReportsPage() {
                                 ? "bg-red-50 text-red-700 border-red-100"
                                 : row.tone === "orange"
                                   ? "bg-orange-50 text-orange-700 border-orange-100"
-                                  : "bg-blue-50 text-blue-700 border-blue-100"
+                                  : row.tone === "slate"
+                                    ? "bg-slate-50 text-slate-700 border-slate-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-100"
                         }`}
                       >
                         {row.status.toUpperCase()}

@@ -47,3 +47,20 @@ export const stock = async (
     next(err);
   }
 };
+
+export const salesTeam = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await service.getSalesTeamReport(
+      req.tenantId,
+      req.query.startDate as string | undefined,
+      req.query.endDate as string | undefined,
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
