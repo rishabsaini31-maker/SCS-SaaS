@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import type { AuthTokenPayload } from "../utils/jwt";
 import { getActiveSession } from "../services/authSession";
+import { touchSession } from "../services/authSession";
 import { extractBearerToken, verifyJwtToken } from "../utils/jwtAuth";
 
 export interface AuthPayload {
@@ -9,6 +10,25 @@ export interface AuthPayload {
   role?: string;
   staffId?: string;
   [key: string]: any;
+}
+
+/**
+ * SLIDING WINDOW THROTTLE: In-memory cache to avoid touching the DB
+ * on every single request. We only update lastSeenAt/expiresAt once per hour.
+ */
+const sessionTouchCache = new Map<string, number>();
+const TOUCH_THROTTLE_MS = 60 * 60 * 1000; // 1 hour
+
+function shouldTouchSession(sessionId: string): boolean {
+  const lastTouch = sessionTouchCache.get(sessionId);
+  const now = Date.now();
+
+  if (!lastTouch || now - lastTouch > TOUCH_THROTTLE_MS) {
+    sessionTouchCache.set(sessionId, now);
+    return true;
+  }
+
+  return false;
 }
 
 export async function authenticateJWT(
@@ -44,6 +64,15 @@ export async function authenticateJWT(
     ) {
       return next();
     }
+
+    // SLIDING WINDOW: Refresh session expiry on activity (throttled to once/hour)
+    if (shouldTouchSession(payload.sessionId)) {
+      // Fire-and-forget — don't block the request on this DB write
+      touchSession(payload.sessionId).catch(() => {
+        // If touch fails, remove from cache so it retries next time
+        sessionTouchCache.delete(payload.sessionId!);
+      });
+    }
   }
 
   req.user = {
@@ -56,3 +85,4 @@ export async function authenticateJWT(
 
   return next();
 }
+

@@ -2,32 +2,39 @@ import prisma from "../../common/db/prisma";
 import { tenantWhere } from "../../common/tenant/tenant.utils";
 
 export const getDashboardMetrics = async (tenantId?: string) => {
-  const [invoices, purchases, products, payments] = await Promise.all([
-    prisma.invoice.findMany({ where: tenantWhere(tenantId) }),
-    prisma.purchase.findMany({ where: tenantWhere(tenantId) }),
-    prisma.product.findMany({ where: tenantWhere(tenantId) }),
-    prisma.payment.findMany({ where: tenantWhere(tenantId) }),
+  const where = tenantWhere(tenantId);
+
+  const [salesAgg, purchasesAgg, productCount, lowStockCount, stockAgg, paymentAgg] = await Promise.all([
+    prisma.invoice.aggregate({
+      where,
+      _sum: { totalAmount: true },
+      _count: true,
+    }),
+    prisma.purchase.aggregate({
+      where,
+      _sum: { totalAmount: true },
+    }),
+    prisma.product.count({ where }),
+    prisma.product.count({
+      where: { ...where, stock: { lt: 10 } },
+    }),
+    prisma.product.aggregate({
+      where,
+      _sum: { stock: true },
+    }),
+    prisma.payment.aggregate({
+      where,
+      _sum: { amount: true },
+    }),
   ]);
 
-  const totalSales = invoices.reduce(
-    (sum, invoice) => sum + invoice.totalAmount,
-    0,
-  );
-  const totalPurchases = purchases.reduce(
-    (sum, purchase) => sum + purchase.totalAmount,
-    0,
-  );
-  const outstanding = payments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0,
-  );
-  const lowStockCount = products.filter((product) => product.stock < 10).length;
-
   return {
-    totalSales,
-    totalPurchases,
-    outstanding,
-    stockCount: products.reduce((sum, product) => sum + product.stock, 0),
+    totalSales: salesAgg._sum.totalAmount ?? 0,
+    totalPurchases: purchasesAgg._sum.totalAmount ?? 0,
+    outstanding: paymentAgg._sum.amount ?? 0,
+    stockCount: stockAgg._sum.stock ?? 0,
     lowStockCount,
+    invoiceCount: salesAgg._count,
+    productCount,
   };
 };

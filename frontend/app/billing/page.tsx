@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import api from "@/lib/api";
 import { formatINR, formatINRForPdf } from "@/lib/currency";
 import { useSettings } from "@/hooks/useSettings";
@@ -128,229 +129,232 @@ const getInvoiceShareText = (invoice: Invoice, paidAmount: number) => {
 const getInvoiceFileName = (invoiceNumber: string) =>
   `${invoiceNumber.replace(/[^a-zA-Z0-9-_]/g, "_")}.pdf`;
 
-const downloadInvoicePdf = (invoice: Invoice, paidAmount: number, paymentMethod?: string) => {
+const numberToWords = (num: number): string => {
+  if (num === 0) return "Zero";
+  const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const convert = (n: number): string => {
+    if (n < 20) return a[n];
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + a[n % 10] : "");
+    if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " and " + convert(n % 100) : "");
+    if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
+    if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + convert(n % 100000) : "");
+    return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + convert(n % 10000000) : "");
+  };
+  return convert(Math.round(num)) + " Rupees Only";
+};
+
+const downloadInvoicePdf = (invoice: Invoice, paidAmount: number, paymentMethod?: string, settings?: any) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 14;
-  const usableWidth = pageWidth - margin * 2;
-  const rightX = pageWidth - margin;
-  let cursorY = 18;
-
-  const ensureSpace = (neededHeight: number) => {
-    if (cursorY + neededHeight > pageHeight - 18) {
-      doc.addPage();
-      cursorY = 18;
-    }
-  };
-
-  const addSectionTitle = (title: string) => {
-    ensureSpace(10);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text(title, margin, cursorY);
-    cursorY += 4;
-  };
-
-  const addKeyValue = (
-    label: string,
-    value: string,
-    x: number,
-    y: number,
-    width: number,
-  ) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(label, x, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    const wrapped = doc.splitTextToSize(value, width);
-    doc.text(wrapped, x, y + 4);
-    return y + 4 + wrapped.length * 4;
-  };
-
-  doc.setFillColor(15, 23, 42);
-  doc.roundedRect(margin, cursorY, usableWidth, 22, 3, 3, "F");
-  doc.setTextColor(255, 255, 255);
+  const margin = 10;
+  
+  // Tax Invoice Header
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("INVOICE", margin + 4, cursorY + 8);
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Invoice No: ${invoice.invoiceNumber}`, margin + 4, cursorY + 14);
-  doc.text(
-    `Status: ${getInvoiceStatusMeta(invoice.status).label}`,
-    rightX - 4,
-    cursorY + 8,
-    {
-      align: "right",
-    },
-  );
-  doc.text(
-    `Date: ${formatShortDate(invoice.invoiceDate)}`,
-    rightX - 4,
-    cursorY + 14,
-    {
-      align: "right",
-    },
-  );
-  const method = paymentMethod ? formatPaymentMethod(paymentMethod) : "Pending";
-  doc.text(
-    `Payment: ${method}`,
-    rightX - 4,
-    cursorY + 20,
-    {
-      align: "right",
-    },
-  );
-  cursorY += 38;
-
-  const leftColumnWidth = (usableWidth - 6) / 2;
-  const rightColumnX = margin + leftColumnWidth + 6;
-
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, cursorY, leftColumnWidth, 46, 3, 3, "F");
-  doc.roundedRect(rightColumnX, cursorY, leftColumnWidth, 46, 3, 3, "F");
-
-  addKeyValue(
-    "Customer",
-    invoice.customer.name,
-    margin + 4,
-    cursorY + 6,
-    leftColumnWidth - 8,
-  );
-  addKeyValue(
-    "Email",
-    invoice.customer.email,
-    margin + 4,
-    cursorY + 14,
-    leftColumnWidth - 8,
-  );
-  addKeyValue(
-    "Status",
-    getInvoiceStatusMeta(invoice.status).label,
-    margin + 4,
-    cursorY + 22,
-    leftColumnWidth - 8,
-  );
-  const pendingAmount = Math.max(0, invoice.totalAmount - paidAmount);
-  addKeyValue(
-    "Pending",
-    formatINRForPdf(pendingAmount),
-    margin + 4,
-    cursorY + 30,
-    leftColumnWidth - 8,
-  );
-
-  addKeyValue(
-    "Subtotal",
-    formatINRForPdf(invoice.subtotal),
-    rightColumnX + 4,
-    cursorY + 6,
-    leftColumnWidth - 8,
-  );
-  addKeyValue(
-    "GST",
-    formatINRForPdf(invoice.gstAmount),
-    rightColumnX + 4,
-    cursorY + 14,
-    leftColumnWidth - 8,
-  );
-  addKeyValue(
-    "Total",
-    formatINRForPdf(invoice.totalAmount),
-    rightColumnX + 4,
-    cursorY + 22,
-    leftColumnWidth - 8,
-  );
-  addKeyValue(
-    "Paid",
-    formatINRForPdf(paidAmount),
-    rightColumnX + 4,
-    cursorY + 30,
-    leftColumnWidth - 8,
-  );
-
-  cursorY += 40;
-
-  addSectionTitle("Line Items");
-  cursorY += 2;
-
-  const tableHeaderY = cursorY;
-  const colWidths = [
-    usableWidth * 0.5,
-    usableWidth * 0.12,
-    usableWidth * 0.18,
-    usableWidth * 0.2,
-  ];
-  const colX = [
-    margin,
-    margin + colWidths[0],
-    margin + colWidths[0] + colWidths[1],
-    margin + colWidths[0] + colWidths[1] + colWidths[2],
-  ];
-  const rowHeight = 8;
-
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(margin, tableHeaderY, usableWidth, rowHeight + 2, 2, 2, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(51, 65, 85);
-  doc.text("Description", colX[0] + 2, tableHeaderY + 6.5);
-  doc.text("Qty", colX[1] + 2, tableHeaderY + 6.5);
-  doc.text("Rate", colX[2] + 2, tableHeaderY + 6.5);
-  doc.text("Amount", colX[3] + 2, tableHeaderY + 6.5);
-
-  cursorY = tableHeaderY + rowHeight + 4;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(15, 23, 42);
-
-  invoice.lineItems.forEach((item, index) => {
-    const amount = item.quantity * item.unitPrice;
-    const descLines = doc.splitTextToSize(item.product.name, colWidths[0] - 6);
-    const itemRowHeight = Math.max(8, descLines.length * 4 + 2);
-    ensureSpace(itemRowHeight + 5);
-
-    const rowY = cursorY;
-    if (index % 2 === 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, rowY - 2, usableWidth, itemRowHeight + 2, "F");
-    }
-
-    doc.text(descLines, colX[0] + 2, rowY + 3);
-    doc.text(String(item.quantity), colX[1] + 2, rowY + 3);
-    doc.text(formatINRForPdf(item.unitPrice), colX[2] + 2, rowY + 3);
-    doc.text(formatINRForPdf(amount), colX[3] + 2, rowY + 3);
-    cursorY += itemRowHeight + 2;
-  });
-
-  cursorY += 4;
-  ensureSpace(20);
-
-  if (invoice.notes) {
-    addSectionTitle("Notes");
-    const notesLines = doc.splitTextToSize(invoice.notes, usableWidth);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text(notesLines, margin, cursorY);
-    cursorY += notesLines.length * 4 + 4;
-  }
-
-  ensureSpace(12);
-  doc.setDrawColor(226, 232, 240);
-  doc.line(margin, pageHeight - 18, rightX, pageHeight - 18);
+  doc.text("TAX INVOICE", margin, margin + 4);
+  
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Generated from SCS Inventory SaaS", margin, pageHeight - 11);
-  doc.text("Thank you for your business", rightX, pageHeight - 11, {
-    align: "right",
+  doc.setTextColor(100, 100, 100);
+  doc.setDrawColor(150, 150, 150);
+  doc.rect(margin + 25, margin, 40, 5);
+  doc.text("ORIGINAL FOR RECIPIENT", margin + 27, margin + 3.5);
+  
+  // Top boxes layout
+  doc.setDrawColor(0, 0, 0);
+  
+  // Box 1 (Shop Details) & Box 2 (Invoice Details)
+  const topBoxY = margin + 8;
+  const topBoxHeight = 25;
+  const midDividerX = pageWidth / 2;
+  
+  doc.rect(margin, topBoxY, pageWidth - 2 * margin, topBoxHeight); // Outer box
+  doc.line(midDividerX, topBoxY, midDividerX, topBoxY + topBoxHeight); // Vertical divider
+  
+  // Shop details
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  const shopName = settings?.businessName || "SMV ENTERPRIZES";
+  doc.text(shopName, margin + 2, topBoxY + 5);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  const addressText = settings?.address || "HPJC+8F8, Phase 1, Hinjawadi Rajiv Gandhi Infotech Park,\nHinjawadi, Pimpri-Chinchwad, Maharashtra, 411057";
+  const addressLines = doc.splitTextToSize(addressText, midDividerX - margin - 4);
+  doc.text(addressLines, margin + 2, topBoxY + 10);
+  
+  const afterAddressY = topBoxY + 10 + (addressLines.length * 4);
+  doc.setFont("helvetica", "bold");
+  doc.text(`GSTIN: ${settings?.gstNumber || "N/A"}`, margin + 2, afterAddressY);
+  
+  // Invoice details
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text("Invoice No.", midDividerX + 10, topBoxY + 8);
+  doc.setFont("helvetica", "normal");
+  doc.text(invoice.invoiceNumber, midDividerX + 10, topBoxY + 12);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("Invoice Date", midDividerX + 50, topBoxY + 8);
+  doc.setFont("helvetica", "normal");
+  doc.text(formatShortDate(invoice.invoiceDate), midDividerX + 50, topBoxY + 12);
+  
+  // Box 3 (Bill To) & Box 4 (Ship To)
+  const billBoxY = topBoxY + topBoxHeight;
+  const billBoxHeight = 20;
+  doc.rect(margin, billBoxY, pageWidth - 2 * margin, billBoxHeight);
+  doc.line(midDividerX, billBoxY, midDividerX, billBoxY + billBoxHeight);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("BILL TO", margin + 2, billBoxY + 4);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(invoice.customer.name.toUpperCase(), margin + 2, billBoxY + 9);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(`Place of Supply: Maharashtra`, margin + 2, billBoxY + 14); // Hardcoded or dynamic
+  
+  doc.text("SHIP TO", midDividerX + 2, billBoxY + 4);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text(invoice.customer.name.toUpperCase(), midDividerX + 2, billBoxY + 9);
+  
+  // Table
+  const tableStartY = billBoxY + billBoxHeight;
+  
+  const tableData = invoice.lineItems.map((item, index) => [
+    index + 1,
+    item.product.name,
+    String(item.quantity),
+    formatINRForPdf(item.unitPrice).replace("Rs. ", "").replace("₹", ""),
+    formatINRForPdf(item.quantity * item.unitPrice).replace("Rs. ", "").replace("₹", "")
+  ]);
+  
+  autoTable(doc, {
+    startY: tableStartY,
+    head: [['S.NO.', 'ITEMS', 'QTY.', 'RATE', 'AMOUNT']],
+    body: tableData,
+    theme: 'grid',
+    styles: { fontSize: 8, textColor: 0, font: "helvetica", lineWidth: 0.1, lineColor: 0 },
+    headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold', halign: 'center' },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 15 },
+      1: { halign: 'left', cellWidth: 'auto' },
+      2: { halign: 'right', cellWidth: 25 },
+      3: { halign: 'right', cellWidth: 25 },
+      4: { halign: 'right', cellWidth: 25 },
+    },
+    margin: { left: margin, right: margin }
   });
+  
+  let finalY = (doc as any).lastAutoTable.finalY;
+  
+  // Totals rows manually below table
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.1);
+  const rowHeight = 6;
+  const col4X = pageWidth - margin - 25;
+  const col3X = pageWidth - margin - 50;
+  
+  // TOTAL
+  doc.rect(margin, finalY, pageWidth - 2 * margin, rowHeight);
+  doc.line(col3X, finalY, col3X, finalY + rowHeight);
+  doc.line(col4X, finalY, col4X, finalY + rowHeight);
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("TOTAL", col3X - 5, finalY + 4, { align: "right" });
+  doc.text(invoice.lineItems.reduce((acc, it) => acc + it.quantity, 0).toString(), col4X - 2, finalY + 4, { align: "right" });
+  doc.text(formatINRForPdf(invoice.subtotal).replace("Rs. ", "").replace("₹", ""), pageWidth - margin - 2, finalY + 4, { align: "right" });
+  finalY += rowHeight;
+  
 
+  
+  // CURRENT BALANCE
+  doc.rect(margin, finalY, pageWidth - 2 * margin, rowHeight);
+  doc.line(col4X, finalY, col4X, finalY + rowHeight);
+  doc.setFont("helvetica", "bold");
+  doc.text("CURRENT BALANCE", col4X - 5, finalY + 4, { align: "right" });
+  doc.text(formatINRForPdf(invoice.totalAmount).replace("Rs. ", "").replace("₹", ""), pageWidth - margin - 2, finalY + 4, { align: "right" });
+  finalY += rowHeight;
+  
+  // Tax Breakdown Table
+  // Assuming 18% GST default, split into 9% CGST and 9% SGST
+  const taxRate = 9;
+  const cgstAmount = invoice.gstAmount / 2;
+  const sgstAmount = invoice.gstAmount / 2;
+  
+  autoTable(doc, {
+    startY: finalY + 2,
+    head: [
+      [
+        { content: 'HSN/SAC', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Taxable Value', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'CGST', colSpan: 2, styles: { halign: 'center' } },
+        { content: 'SGST', colSpan: 2, styles: { halign: 'center' } },
+        { content: 'Total Tax Amount', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+      ],
+      [
+        { content: 'Rate', styles: { halign: 'center' } },
+        { content: 'Amount', styles: { halign: 'center' } },
+        { content: 'Rate', styles: { halign: 'center' } },
+        { content: 'Amount', styles: { halign: 'center' } }
+      ]
+    ],
+    body: [
+      [
+        '2201', 
+        formatINRForPdf(invoice.subtotal).replace("Rs. ", "").replace("₹", ""),
+        `${taxRate}%`,
+        formatINRForPdf(cgstAmount).replace("Rs. ", "").replace("₹", ""),
+        `${taxRate}%`,
+        formatINRForPdf(sgstAmount).replace("Rs. ", "").replace("₹", ""),
+        formatINRForPdf(invoice.gstAmount).replace("Rs. ", "").replace("₹", "")
+      ],
+      [
+        { content: 'Total', styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: formatINRForPdf(invoice.subtotal).replace("Rs. ", "").replace("₹", ""), styles: { fontStyle: 'bold', halign: 'right' } },
+        '',
+        { content: formatINRForPdf(cgstAmount).replace("Rs. ", "").replace("₹", ""), styles: { fontStyle: 'bold', halign: 'right' } },
+        '',
+        { content: formatINRForPdf(sgstAmount).replace("Rs. ", "").replace("₹", ""), styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: formatINRForPdf(invoice.gstAmount).replace("Rs. ", "").replace("₹", ""), styles: { fontStyle: 'bold', halign: 'right' } }
+      ]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 8, textColor: 0, font: "helvetica", lineWidth: 0.1, lineColor: 0 },
+    headStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
+    margin: { left: margin, right: margin }
+  });
+  
+  finalY = (doc as any).lastAutoTable.finalY;
+  
+  // Total Amount (in words)
+  doc.rect(margin, finalY, pageWidth - 2 * margin, 10);
+  doc.setFont("helvetica", "normal");
+  doc.text("Total Amount (in words)", margin + 2, finalY + 4);
+  doc.setFont("helvetica", "bold");
+  doc.text(numberToWords(invoice.totalAmount), margin + 2, finalY + 8);
+  finalY += 10;
+  
+  // Footer: Terms and Conditions & Authorized Signatory
+  doc.rect(margin, finalY, pageWidth - 2 * margin, 20);
+  doc.line(pageWidth / 2, finalY, pageWidth / 2, finalY + 20);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Terms and Conditions", margin + 2, finalY + 4);
+  doc.text("1. Goods once sold will not be taken back or exchanged", margin + 2, finalY + 8);
+  doc.text("2. All disputes are subject to [CITY] jurisdiction", margin + 2, finalY + 12);
+  doc.text("only", margin + 2, finalY + 16);
+  
+  doc.text("Authorised Signatory For", pageWidth - margin - 2, finalY + 14, { align: "right" });
+  doc.setFont("helvetica", "bold");
+  doc.text(shopName, pageWidth - margin - 2, finalY + 18, { align: "right" });
+  
   doc.save(getInvoiceFileName(invoice.invoiceNumber));
 };
 
@@ -594,7 +598,7 @@ export default function BillingPage() {
     const paidAmount = getInvoicePaidAmount(invoice.id);
     const invoicePayments = payments.filter(p => p.invoiceId === invoice.id);
     const paymentMethod = invoicePayments.length > 0 ? invoicePayments[0].paymentMethod : undefined;
-    downloadInvoicePdf(invoice, paidAmount, paymentMethod);
+    downloadInvoicePdf(invoice, paidAmount, paymentMethod, settings);
   };
 
   const handleShareInvoice = async (invoice: Invoice) => {

@@ -2,6 +2,7 @@ import express from "express";
 import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import routes from "./routes";
 import { authenticateJWT } from "./common/middlewares/auth";
@@ -33,6 +34,9 @@ app.get("/health", (_req, res) => {
 
 // SECURITY: Helmet middleware for security headers
 app.use(helmet());
+
+// PERFORMANCE: Gzip/Brotli compress all responses
+app.use(compression());
 
 // SECURITY: Additional security headers
 app.use(securityHeaders);

@@ -7,12 +7,25 @@ import { Topbar } from "@/components/Topbar";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { AuthGate } from "@/components/AuthGate";
 
-const publicRoutes = new Set(["/", "/login", "/landing", "/pricing", "/about", "/contact"]);
+const publicRoutes = new Set([
+  "/",
+  "/login",
+  "/register",
+  "/landing",
+  "/pricing",
+  "/about",
+  "/contact",
+]);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  if (publicRoutes.has(pathname) || pathname.startsWith("/mobile")) {
+  if (
+    publicRoutes.has(pathname) ||
+    pathname.startsWith("/mobile") ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register")
+  ) {
     return <>{children}</>;
   }
 

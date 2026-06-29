@@ -5,7 +5,7 @@ import { ReactNode } from "react";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,
+      staleTime: 2 * 60 * 1000, // 2 minutes — prevents refetch on fast navigation
       gcTime: 30 * 60 * 1000,
       refetchOnMount: true,
       refetchOnWindowFocus: false,

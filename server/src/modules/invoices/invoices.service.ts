@@ -189,9 +189,31 @@ export const getInvoices = async (
         },
       }),
     },
-    include: {
-      customer: true,
-      lineItems: { include: { product: true } },
+    select: {
+      id: true,
+      invoiceNumber: true,
+      invoiceDate: true,
+      subtotal: true,
+      gstAmount: true,
+      totalAmount: true,
+      status: true,
+      notes: true,
+      createdByStaffName: true,
+      createdAt: true,
+      customer: {
+        select: { id: true, name: true },
+      },
+      lineItems: {
+        select: {
+          id: true,
+          quantity: true,
+          unitPrice: true,
+          totalPrice: true,
+          product: {
+            select: { id: true, name: true, barcode: true },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });

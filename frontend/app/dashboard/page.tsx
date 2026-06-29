@@ -21,6 +21,16 @@ type Product = {
   sellingPrice: number;
 };
 
+type DashboardMetrics = {
+  totalSales: number;
+  totalPurchases: number;
+  outstanding: number;
+  stockCount: number;
+  lowStockCount: number;
+  invoiceCount: number;
+  productCount: number;
+};
+
 const formatShortDate = (value: string) =>
   new Date(value).toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -72,6 +82,20 @@ export default function DashboardPage() {
     };
   }, [period, selectedDate, selectedMonth, selectedYear]);
 
+  // PERFORMANCE: Server-side aggregate metrics (no full record fetch)
+  const {
+    data: metrics,
+    isLoading: metricsLoading,
+    isError: metricsError,
+  } = useQuery({
+    queryKey: ["dashboard-metrics"],
+    queryFn: async () => {
+      const res = await api.get<DashboardMetrics>("/dashboard/metrics");
+      return res.data;
+    },
+  });
+
+  // Only fetch invoices for the table (filtered by date period)
   const {
     data: invoices = [],
     isLoading: invoicesLoading,
@@ -86,43 +110,22 @@ export default function DashboardPage() {
     },
   });
 
+  // Only fetch top 5 products for the sidebar widget
   const {
     data: products = [],
     isLoading: productsLoading,
     isError: productsError,
   } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products-top5"],
     queryFn: async () => {
       const res = await api.get<Product[]>("/products");
       return res.data;
     },
+    select: (data) => data.slice(0, 5),
   });
 
-  const loading = invoicesLoading || productsLoading;
-  const hasError = invoicesError || productsError;
-
-  const metrics = useMemo(() => {
-    const totalSales = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const pendingInvoices = invoices.filter(
-      (inv) => inv.status !== "created",
-    ).length;
-    const pendingAmount = invoices
-      .filter((inv) => inv.status !== "created")
-      .reduce((sum, inv) => sum + inv.totalAmount, 0);
-    const totalStockValue = products.reduce(
-      (sum, p) => sum + p.stock * p.sellingPrice,
-      0,
-    );
-    const lowStockItems = products.filter((p) => p.stock < 10).length;
-
-    return {
-      totalSales,
-      pendingInvoices,
-      pendingAmount,
-      totalStockValue,
-      lowStockItems,
-    };
-  }, [invoices, products]);
+  const loading = metricsLoading || invoicesLoading || productsLoading;
+  const hasError = metricsError || invoicesError || productsError;
 
   const visibleInvoices = showAllInvoices ? invoices : invoices.slice(0, 5);
 
@@ -222,10 +225,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <h2 className="text-2xl font-bold">
-            {formatINR(metrics.totalSales)}
+            {formatINR(metrics?.totalSales ?? 0)}
           </h2>
           <p className="text-xs text-emerald-600 mt-2">
-            {invoices.length} invoices
+            {metrics?.invoiceCount ?? 0} invoices
           </p>
         </div>
 
@@ -241,10 +244,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <h2 className="text-2xl font-bold">
-            {formatINR(metrics.pendingAmount)}
+            {formatINR(metrics?.outstanding ?? 0)}
           </h2>
           <p className="text-xs text-slate-500 mt-2">
-            {metrics.pendingInvoices} pending
+            Total payments received
           </p>
         </div>
 
@@ -260,10 +263,10 @@ export default function DashboardPage() {
             </div>
           </div>
           <h2 className="text-2xl font-bold">
-            {formatINR(metrics.totalStockValue)}
+            {formatINR(metrics?.stockCount ?? 0)}
           </h2>
           <p className="text-xs text-slate-500 mt-2">
-            {products.length} {products.length === 1 ? "SKU" : "SKUs"} tracked
+            {metrics?.productCount ?? 0} {(metrics?.productCount ?? 0) === 1 ? "SKU" : "SKUs"} tracked
           </p>
         </div>
 
@@ -276,7 +279,7 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-lg">warning</span>
             </div>
           </div>
-          <h2 className="text-2xl font-bold">{metrics.lowStockItems}</h2>
+          <h2 className="text-2xl font-bold">{metrics?.lowStockCount ?? 0}</h2>
           <p className="text-xs text-red-600 mt-2">Items need restocking</p>
         </div>
       </div>
@@ -357,7 +360,7 @@ export default function DashboardPage() {
           <div className="bg-white border border-slate-200 rounded-xl p-6">
             <h3 className="text-lg font-bold mb-4">Top Products</h3>
             <div className="space-y-3">
-              {products.slice(0, 5).map((product) => (
+              {products.map((product) => (
                 <div
                   key={product.id}
                   className="flex justify-between items-start p-3 border border-slate-100 rounded-lg"
@@ -385,3 +388,4 @@ export default function DashboardPage() {
     </>
   );
 }
+

@@ -112,7 +112,7 @@ function scopeTenantArgs(operation: string, args: any, tenantId: string) {
 
 const pool = new Pool({
   connectionString: getRuntimeDatabaseUrl(),
-  max: 1,
+  max: 10,
   ssl: config.databaseUrl.includes("pooler.supabase.com")
     ? { rejectUnauthorized: false }
     : undefined,

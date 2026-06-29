@@ -11,7 +11,7 @@ export type AuthTokenPayload = {
 
 export function signAuthToken(
   payload: AuthTokenPayload,
-  expiresIn: string = "7d",
+  expiresIn: string = "30d",
 ) {
   return (jwt as any).sign(payload, config.jwtSecret, { expiresIn });
 }
