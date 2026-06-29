@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "rootDir": "src",
     "outDir": "dist",
     "module": "commonjs",
@@ -20,7 +19,7 @@
     "noUncheckedIndexedAccess": true,
 
     "allowSyntheticDefaultImports": true,
-    "moduleResolution": "node"
+    "moduleResolution": "bundler"
   },
   "include": ["src/**/*"],
   "exclude": [
