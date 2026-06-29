@@ -26,7 +26,7 @@ export default function SuperAdminLogin() {
 
     try {
       await login.mutateAsync({ email, password });
-      router.replace("/");
+      window.location.href = "/";
     } catch (error: any) {
       setErrorMessage(
         error?.response?.status === 401 || error?.response?.status === 403

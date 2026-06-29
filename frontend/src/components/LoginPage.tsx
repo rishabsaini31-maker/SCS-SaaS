@@ -93,8 +93,9 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
       toast.success("Logged in successfully");
       const userRole = res.data?.user?.role;
       const finalRedirect = userRole === "SALESMAN" ? "/mobile/dashboard" : redirectTarget;
-      router.replace(finalRedirect);
-      router.refresh();
+      
+      // Force a full browser reload to clear any Next.js router cache and ensure all auth providers update
+      window.location.href = finalRedirect;
     } catch {
       setErrorMessage("Invalid email or password");
       toast.error("Invalid email or password");
