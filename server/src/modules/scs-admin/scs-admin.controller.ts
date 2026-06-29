@@ -151,7 +151,7 @@ export async function getMySessions(req: Request, res: Response, next: NextFunct
 export async function revokeSession(req: Request, res: Response, next: NextFunction) {
   try {
     const adminId = (req as any).superAdmin.id;
-    const { sessionId } = req.params;
+    const sessionId = req.params.sessionId as string;
     const result = await service.revokeSession(adminId, sessionId);
     res.json(result);
   } catch (error) {
