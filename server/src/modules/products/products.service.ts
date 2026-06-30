@@ -11,9 +11,16 @@ export const createProduct = async (
   data: CreateProductInput,
   tenantId?: string,
 ) => {
+  const dataToSave = { ...data };
+  if (dataToSave.expiryDate) {
+    (dataToSave as any).expiryDate = new Date(dataToSave.expiryDate);
+  } else {
+    (dataToSave as any).expiryDate = null;
+  }
+
   return prisma.product.create({
     data: tenantCreateData(tenantId, {
-      ...(data as any),
+      ...(dataToSave as any),
       status: "active",
     }) as any,
   });
@@ -57,9 +64,16 @@ export const updateProduct = async (
   tenantId?: string,
 ) => {
   await getProduct(id, tenantId); // Verify exists and tenant
+  const dataToSave = { ...data };
+  if (dataToSave.expiryDate) {
+    (dataToSave as any).expiryDate = new Date(dataToSave.expiryDate);
+  } else if (dataToSave.expiryDate === null) {
+    (dataToSave as any).expiryDate = null;
+  }
+
   const result = await prisma.product.updateMany({
     where: tenantWhere(tenantId, { id }),
-    data,
+    data: dataToSave,
   });
   if (result.count !== 1) throw new CustomError("Product not found", 404);
   return getProduct(id, tenantId);

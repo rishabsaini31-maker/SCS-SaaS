@@ -63,6 +63,12 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          clearStoredToken();
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+        }
         // Let callers handle auth errors so super-admin actions like shop creation
         // can show a local error instead of forcing navigation.
         return Promise.reject(error);

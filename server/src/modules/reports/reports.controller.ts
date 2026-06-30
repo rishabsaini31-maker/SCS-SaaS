@@ -64,3 +64,36 @@ export const salesTeam = async (
     next(err);
   }
 };
+
+export const detailedSales = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await service.getDetailedSalesReport(
+      req.tenantId,
+      req.query.startDate as string | undefined,
+      req.query.endDate as string | undefined,
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const dailyBusinessSummary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await service.getDailyBusinessSummary(
+      req.tenantId,
+      req.query.date as string | undefined,
+    );
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};

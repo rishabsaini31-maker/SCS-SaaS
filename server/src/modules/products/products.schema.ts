@@ -8,6 +8,7 @@ export const createProductSchema = z.object({
   gst: z.number().min(0).max(100).default(18),
   stock: z.number().int().nonnegative().default(0),
   image: z.string().optional(),
+  expiryDate: z.string().optional().nullable(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

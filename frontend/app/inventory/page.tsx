@@ -14,6 +14,7 @@ type Product = {
   sellingPrice: number;
   gst: number;
   status: string;
+  expiryDate?: string | null;
 };
 
 export default function InventoryPage() {
@@ -39,6 +40,7 @@ export default function InventoryPage() {
     purchasePrice: "",
     sellingPrice: "",
     gst: "18",
+    expiryDate: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const { setPendingProducts } = useNotifications();
@@ -177,6 +179,7 @@ export default function InventoryPage() {
       purchasePrice: String(product.purchasePrice),
       sellingPrice: String(product.sellingPrice),
       gst: String(product.gst),
+      expiryDate: product.expiryDate ? new Date(product.expiryDate).toISOString().split('T')[0] : "",
     });
     setShowForm(true);
   };
@@ -198,6 +201,7 @@ export default function InventoryPage() {
         sellingPrice: parseFloat(formData.sellingPrice),
         gst: parseFloat(formData.gst),
         status: "active",
+        expiryDate: formData.expiryDate || null,
       };
 
       if (editingProductId) {
@@ -214,6 +218,7 @@ export default function InventoryPage() {
         purchasePrice: "",
         sellingPrice: "",
         gst: "18",
+        expiryDate: "",
       });
       void fetchProducts();
     } catch (error) {
@@ -279,6 +284,7 @@ export default function InventoryPage() {
                 purchasePrice: "",
                 sellingPrice: "",
                 gst: "18",
+                expiryDate: "",
               });
               setShowForm(!showForm);
             }}
@@ -512,6 +518,17 @@ export default function InventoryPage() {
                   placeholder="18"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Expiry Date (Optional)</label>
+                <input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expiryDate: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -614,6 +631,9 @@ export default function InventoryPage() {
                 Selling Price
               </th>
               <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
+                Expiry Date
+              </th>
+              <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                 Status
               </th>
               <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
@@ -640,6 +660,25 @@ export default function InventoryPage() {
                 </td>
                 <td className="px-6 py-4 font-bold">
                   {formatINR(product.sellingPrice)}
+                </td>
+                <td className="px-6 py-4">
+                  {product.expiryDate ? (
+                    <span
+                      className={`text-sm ${
+                        new Date(product.expiryDate) < new Date()
+                          ? "text-red-600 font-bold"
+                          : "text-slate-600"
+                      }`}
+                    >
+                      {new Date(product.expiryDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <span

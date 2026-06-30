@@ -111,6 +111,7 @@ export function useAdminProfile(enabled = true) {
     queryFn: () => apiClient.getMe(),
     staleTime: Infinity,
     enabled,
+    retry: false,
   });
 }
 

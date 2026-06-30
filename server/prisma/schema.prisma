@@ -18,6 +18,7 @@ model Product {
   stock         Int                @default(0)
   barcode       String?
   image         String?
+  expiryDate    DateTime?
   status        String             @default("active")
   tenantId      String?
   createdAt     DateTime           @default(now())
