@@ -10,6 +10,7 @@ import type {
   CreateShopInput,
   ResetOwnerPasswordInput,
   TenantStatusInput,
+  UpdateShopInput,
 } from "./scs-admin.schema";
 
 const tenantSelect = {
@@ -108,6 +109,33 @@ export async function updateTenantStatus(
     await revokeSessionsByTenant(tenantId);
     await revokeSessionsByUser(tenant.owner.id);
   }
+
+  return { tenant };
+}
+
+export async function updateTenant(tenantId: string, data: UpdateShopInput) {
+  const tenant = await prisma.$transaction(async (tx) => {
+    // Update main tenant
+    const updated = await tx.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(data.businessName !== undefined && { businessName: data.businessName }),
+        ...(data.ownerName !== undefined && { ownerName: data.ownerName }),
+        ...(data.phone !== undefined && { phone: data.phone || null }),
+      },
+      select: tenantSelect,
+    });
+
+    // Update businessName in tenant settings as well, since they should match
+    if (data.businessName !== undefined) {
+      await tx.tenantSetting.updateMany({
+        where: { tenantId },
+        data: { businessName: data.businessName },
+      });
+    }
+
+    return updated;
+  });
 
   return { tenant };
 }

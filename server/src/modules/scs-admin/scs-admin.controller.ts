@@ -5,6 +5,7 @@ import {
   resetOwnerPasswordSchema,
   tenantIdParamSchema,
   tenantStatusSchema,
+  updateShopSchema,
 } from "./scs-admin.schema";
 import {
   logAuditEvent,
@@ -61,6 +62,37 @@ export async function createShop(
     }
 
     res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateShop(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const { tenantId } = tenantIdParamSchema.parse(req.params);
+    const data = updateShopSchema.parse(req.body);
+    const result = await service.updateTenant(tenantId, data);
+
+    // AUDIT LOG: Tenant updated
+    if ((req as any).superAdmin?.id && result.tenant?.id) {
+      await logAuditEvent({
+        adminId: (req as any).superAdmin.id,
+        action: AuditAction.TENANT_UPDATED,
+        targetType: AuditTargetType.TENANT,
+        targetId: result.tenant.id,
+        metadata: {
+          updatedFields: Object.keys(data),
+        },
+        ipAddress: req.auditContext?.ipAddress,
+        userAgent: req.auditContext?.userAgent,
+      });
+    }
+
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -125,6 +125,18 @@ class ApiClient {
     return response.data;
   }
 
+  async updateTenant(tenantId: string, data: {
+    businessName?: string;
+    ownerName?: string;
+    phone?: string;
+  }) {
+    const response = await this.client.patch(
+      `/scs-admin/tenants/${tenantId}`,
+      data,
+    );
+    return response.data;
+  }
+
   async resetOwnerPassword(tenantId: string, password: string) {
     const response = await this.client.post(
       `/scs-admin/tenants/${tenantId}/reset-owner-password`,

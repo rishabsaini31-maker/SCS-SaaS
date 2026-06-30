@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useTenants, useUpdateTenantStatus, useLogout } from "@/lib/hooks";
 import { useRouter } from "next/navigation";
+import EditTenantModal from "./EditTenantModal";
 
 export default function TenantManagement() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function TenantManagement() {
   const logout = useLogout();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [editingTenant, setEditingTenant] = useState<any>(null);
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -285,8 +287,11 @@ export default function TenantManagement() {
                                 >
                                   Activate
                                 </button>
-                              )}
-                              <button className="px-3 py-1 text-primary hover:bg-primary-container/20 rounded text-body-sm font-medium transition-colors">
+                                )}
+                              <button
+                                onClick={() => setEditingTenant(tenant)}
+                                className="px-3 py-1 text-primary hover:bg-primary-container/20 rounded text-body-sm font-medium transition-colors"
+                              >
                                 Edit
                               </button>
                             </div>
@@ -332,6 +337,13 @@ export default function TenantManagement() {
           </div>
         </div>
       </main>
+
+      {editingTenant && (
+        <EditTenantModal
+          tenant={editingTenant}
+          onClose={() => setEditingTenant(null)}
+        />
+      )}
     </div>
   );
 }

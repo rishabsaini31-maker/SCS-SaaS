@@ -53,6 +53,22 @@ export function useUpdateTenantStatus() {
   });
 }
 
+export function useUpdateTenant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      tenantId: string;
+      businessName?: string;
+      ownerName?: string;
+      phone?: string;
+    }) => apiClient.updateTenant(data.tenantId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+    },
+  });
+}
+
 export function useResetOwnerPassword() {
   const queryClient = useQueryClient();
 

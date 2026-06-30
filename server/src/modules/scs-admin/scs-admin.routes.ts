@@ -27,6 +27,7 @@ router.delete("/sessions/:sessionId", controller.revokeSession);
 // SECURITY: Rate limiting for shop creation (10 per hour)
 router.post("/shops", shopCreationRateLimiter, controller.createShop);
 
+router.patch("/tenants/:tenantId", controller.updateShop);
 router.patch("/tenants/:tenantId/status", controller.updateStatus);
 
 // SECURITY: Rate limiting for password reset (3 per hour)
