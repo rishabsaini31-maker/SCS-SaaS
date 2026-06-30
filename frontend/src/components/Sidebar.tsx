@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import { useBusinessProfile } from "@/hooks/useSettings";
 import api from "@/lib/api";
+import PoweredByBadge from "@/components/PoweredByBadge";
 
 export function Sidebar() {
   const router = useRouter();
@@ -102,6 +103,7 @@ export function Sidebar() {
             <p className="text-xs font-semibold text-slate-900">{shopName}</p>
           </div>
         </div>
+        <PoweredByBadge />
       </div>
     </aside>
   );

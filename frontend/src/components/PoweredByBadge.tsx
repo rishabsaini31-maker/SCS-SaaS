@@ -2,10 +2,9 @@
 
 export default function PoweredByBadge() {
   return (
-    <div className="fixed bottom-6 right-6 z-40 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm">
-      <p className="text-sm font-semibold leading-none">
-        <span className="text-slate-900">Powered by </span>
-        <span className="text-blue-600">SCS Technologies</span>
+    <div className="rounded-xl border border-slate-200 bg-slate-100/50 px-3 py-2 text-center mt-4">
+      <p className="text-[11px] font-semibold tracking-wide text-slate-500 uppercase">
+        Powered by <span className="text-blue-600 font-bold">SCS Technologies</span>
       </p>
     </div>
   );
