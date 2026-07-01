@@ -10,6 +10,7 @@ const validSections = new Set<SettingsSectionKey>([
   "inventory",
   "notifications",
   "integrations",
+  "security",
 ]);
 
 export default async function SettingsSectionPage({

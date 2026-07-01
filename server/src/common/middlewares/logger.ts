@@ -26,12 +26,14 @@ export function logger(req: Request, res: Response, next: NextFunction) {
     const logLevel =
       status >= 400 ? "ERROR" : isSensitiveOperation ? "WARN" : "DEBUG";
 
-    // Construct log message
+    const sanitizedUrl = req.originalUrl.replace(/([?&])(token|password|secret|authorization)=([^&]+)/gi, "$1$2=[REDACTED]");
+
     const logContext = {
       requestId,
       timestamp: new Date().toISOString(),
       method: req.method,
-      url: req.url,
+      path: req.path,
+      url: sanitizedUrl,
       status,
       duration: `${duration}ms`,
       tenantId: tenantId !== "system" ? tenantId : undefined,

@@ -11,6 +11,7 @@ import { errorHandler } from "./common/middlewares/errorHandler";
 import { logger } from "./common/middlewares/logger";
 import { globalRateLimiter } from "./common/middlewares/rateLimiter";
 import {
+  sanitizeBody,
   sanitizeHeaders,
   securityHeaders,
   validateJsonPayload,
@@ -57,7 +58,9 @@ app.use(
 app.use(cookieParser());
 
 // SECURITY: Validate and sanitize JSON payloads
-app.use(express.json());
+app.use(express.json({ limit: "10mb", strict: true }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+app.use(sanitizeBody);
 app.use(validateJsonPayload);
 
 app.use(morgan("dev"));

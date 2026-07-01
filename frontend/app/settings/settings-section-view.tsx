@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSettings } from "@/hooks/useSettings";
 import { toast } from "@/lib/toast";
 import StaffManagementSection from "./staff-management-section";
+import SecurityLogs from "@/components/SecurityLogs";
 
 export type SettingsSectionKey =
   | "business-profile"
@@ -12,7 +13,9 @@ export type SettingsSectionKey =
   | "staff-management"
   | "inventory"
   | "notifications"
-  | "integrations";
+  | "integrations"
+  | "security";
+
 
 const sectionLabels: Record<SettingsSectionKey, string> = {
   "business-profile": "Business Profile",
@@ -21,6 +24,7 @@ const sectionLabels: Record<SettingsSectionKey, string> = {
   inventory: "Inventory",
   notifications: "Notifications",
   integrations: "Integrations",
+  security: "Security Log",
 };
 
 const sectionLinks: Array<{ key: SettingsSectionKey; href: string }> = [
@@ -30,6 +34,7 @@ const sectionLinks: Array<{ key: SettingsSectionKey; href: string }> = [
   { key: "inventory", href: "/settings/inventory" },
   { key: "notifications", href: "/settings/notifications" },
   { key: "integrations", href: "/settings/integrations" },
+  { key: "security", href: "/settings/security" },
 ];
 
 function SectionNav({ activeSection }: { activeSection: SettingsSectionKey }) {
@@ -358,6 +363,17 @@ export default function SettingsSectionView({
                 </div>
               </>
             )}
+          </div>
+        </section>
+      ) : null}
+
+      {section === "security" ? (
+        <section className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h3 className="font-h1 text-h1">Security Log</h3>
+          </div>
+          <div className="p-6">
+            <SecurityLogs />
           </div>
         </section>
       ) : null}

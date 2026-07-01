@@ -390,6 +390,33 @@ model EmailVerificationToken {
   @@index([tokenHash])
 }
 
+/// Authentication Audit Log
+/// Tracks authentication and security events per tenant/user
+model AuthenticationAuditLog {
+  id             String   @id @default(cuid())
+  tenantId       String?
+  ownerId        String?
+  staffId        String?
+  eventType      String
+  status         String
+  description    String?
+  ipAddress      String?
+  userAgent      String?
+  browser        String?
+  operatingSystem String?
+  deviceType     String?
+  country        String?
+  city           String?
+  sessionId      String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([staffId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
 model TenantSetting {
   id                String   @id @default(cuid())
   tenantId          String   @unique

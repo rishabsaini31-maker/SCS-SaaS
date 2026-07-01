@@ -10,6 +10,58 @@ import type { Request, Response, NextFunction } from "express";
  * - Path traversal attempts
  */
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function sanitizeString(value: string): string {
+  return value.replace(/\u0000/g, "").replace(/[\u0000-\u001f\u007f]/g, "");
+}
+
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return sanitizeString(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [sanitizeString(key), sanitizeValue(item)]),
+    );
+  }
+
+  return value;
+}
+
+function containsSuspiciousKeys(value: unknown): boolean {
+  if (isPlainObject(value)) {
+    for (const [key, nested] of Object.entries(value)) {
+      if (
+        typeof key === "string" &&
+        (key.includes("..") ||
+          key.includes("/") ||
+          key.includes("\\") ||
+          key.startsWith("_"))
+      ) {
+        return true;
+      }
+
+      if (containsSuspiciousKeys(nested)) {
+        return true;
+      }
+    }
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => containsSuspiciousKeys(item));
+  }
+
+  return false;
+}
+
 /**
  * Sanitize request headers to remove potentially dangerous values
  */
@@ -18,12 +70,12 @@ export function sanitizeHeaders(
   res: Response,
   next: NextFunction,
 ) {
-  // Remove potentially dangerous headers
   const dangerousHeaders = [
     "x-original-url",
     "x-rewrite-url",
     "x-access-token",
     "x-secret-token",
+    "x-forwarded-host",
   ];
 
   dangerousHeaders.forEach((header) => {
@@ -43,37 +95,42 @@ export function securityHeaders(
   res: Response,
   next: NextFunction,
 ) {
-  // Prevent MIME type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
-
-  // Prevent clickjacking attacks
   res.setHeader("X-Frame-Options", "DENY");
-
-  // Enable XSS protection
   res.setHeader("X-XSS-Protection", "1; mode=block");
-
-  // Prevent cache of sensitive data
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   res.setHeader(
     "Cache-Control",
     "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
   );
   res.setHeader("Pragma", "no-cache");
   res.setHeader("Expires", "0");
-
-  // Content Security Policy - strict for API
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';",
+    "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self';",
   );
-
-  // Referrer Policy
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Feature Policy / Permissions Policy
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   res.setHeader(
     "Permissions-Policy",
     "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
   );
+
+  next();
+}
+
+/**
+ * Sanitize request body to remove control characters and null bytes.
+ */
+export function sanitizeBody(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  if (isPlainObject(req.body)) {
+    req.body = sanitizeValue(req.body) as Record<string, unknown>;
+  }
 
   next();
 }
@@ -87,7 +144,6 @@ export function validateJsonPayload(
   next: NextFunction,
 ) {
   if (req.is("application/json") && req.body && typeof req.body === "object") {
-    // Check for null bytes in stringified body (path traversal prevention)
     const bodyStr = JSON.stringify(req.body);
     if (bodyStr.includes("\0")) {
       return res.status(400).json({
@@ -95,28 +151,7 @@ export function validateJsonPayload(
       });
     }
 
-    // Check for suspicious patterns in object keys
-    const hasPathTraversal = (obj: Record<string, any>): boolean => {
-      for (const key in obj) {
-        if (
-          typeof key === "string" &&
-          (key.includes("..") ||
-            key.includes("/") ||
-            key.includes("\\") ||
-            key.startsWith("_"))
-        ) {
-          return true;
-        }
-        if (typeof obj[key] === "object" && obj[key] !== null) {
-          if (hasPathTraversal(obj[key])) {
-            return true;
-          }
-        }
-      }
-      return false;
-    };
-
-    if (hasPathTraversal(req.body)) {
+    if (containsSuspiciousKeys(req.body)) {
       return res.status(400).json({
         error: "Invalid request payload",
       });

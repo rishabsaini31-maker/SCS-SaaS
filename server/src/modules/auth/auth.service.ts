@@ -28,6 +28,7 @@ import type {
   VerifyEmailInput,
 } from "./auth.schema";
 import { randomUUID } from "crypto";
+import { logAuthEvent } from "../../common/services/authAuditLog";
 
 type AuthContext = {
   ipAddress?: string;
@@ -141,6 +142,21 @@ export async function loginOwner(data: LoginInput, context?: AuthContext) {
     if (failedAttempts >= 5) {
       updates.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
       await sendSuspiciousLoginEmail(account.email, failedAttempts);
+      // Audit: Account locked / suspicious activity
+      try {
+        await logAuthEvent({
+          tenantId: account.tenantId,
+          ownerId: user ? user.id : undefined,
+          staffId: staffUser ? staffUser.id : undefined,
+          eventType: "ACCOUNT_LOCKED",
+          status: "WARNING",
+          description: `Account locked after ${failedAttempts} failed attempts`,
+          ipAddress: context?.ipAddress,
+          userAgent: context?.userAgent,
+          browser: context?.browser,
+          operatingSystem: context?.operatingSystem,
+        });
+      } catch {}
     }
 
     if (staffUser) {
@@ -227,6 +243,37 @@ export async function loginOwner(data: LoginInput, context?: AuthContext) {
     time: new Date().toISOString(),
   });
 
+  // Audit: Successful login and session creation
+  try {
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: user ? user.id : account.id,
+      staffId: staffUser ? staffUser.id : undefined,
+      eventType: staffUser ? "STAFF_LOGIN" : "LOGIN_SUCCESS",
+      status: "SUCCESS",
+      description: "User logged in successfully",
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      browser: context?.browser,
+      operatingSystem: context?.operatingSystem,
+      sessionId,
+    });
+
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: user ? user.id : account.id,
+      staffId: staffUser ? staffUser.id : undefined,
+      eventType: "SESSION_CREATED",
+      status: "SUCCESS",
+      description: "New session created",
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      browser: context?.browser,
+      operatingSystem: context?.operatingSystem,
+      sessionId,
+    });
+  } catch {}
+
   return {
     accessToken,
     refreshToken: refreshTokenPlain,
@@ -247,6 +294,18 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
   const record = await getActiveRefreshToken(refreshTokenHash);
 
   if (!record) {
+    // Audit: failed refresh token use
+    try {
+      await logAuthEvent({
+        tenantId: undefined,
+        ownerId: undefined,
+        staffId: undefined,
+        eventType: "REFRESH_TOKEN_USED",
+        status: "FAILED",
+        description: "Invalid or expired refresh token attempted",
+      });
+    } catch {}
+
     throw new CustomError("Invalid or expired refresh token", 401);
   }
 
@@ -320,6 +379,31 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
       sessionId,
     };
   });
+
+  // Audit: refresh token used and session created
+  try {
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      eventType: "REFRESH_TOKEN_USED",
+      status: "SUCCESS",
+      description: "Refresh token rotated and new session created",
+      ipAddress: context?.ipAddress,
+      userAgent: context?.userAgent,
+      browser: context?.browser,
+      operatingSystem: context?.operatingSystem,
+      sessionId: result.sessionId,
+    });
+
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      eventType: "SESSION_CREATED",
+      status: "SUCCESS",
+      description: "Session created via refresh token",
+      sessionId: result.sessionId,
+    });
+  } catch {}
 
   return result;
 }
@@ -395,6 +479,18 @@ export async function logoutOwner(userId: string, refreshToken?: string, session
     await revokeSessionsByUser(userId);
   }
 
+  // Audit: logout
+  try {
+    await logAuthEvent({
+      tenantId: undefined,
+      ownerId: userId,
+      eventType: "LOGOUT",
+      status: "SUCCESS",
+      description: sessionId ? `Logout session ${sessionId}` : "Logout",
+      sessionId,
+    });
+  } catch {}
+
   return {
     success: true,
     message: "Logged out successfully.",
@@ -404,6 +500,17 @@ export async function logoutOwner(userId: string, refreshToken?: string, session
 export async function logoutAllOwnerSessions(userId: string) {
   await revokeSessionsByUser(userId);
   await revokeAllRefreshTokensForUser(userId);
+
+  // Audit: logout all devices
+  try {
+    await logAuthEvent({
+      tenantId: undefined,
+      ownerId: userId,
+      eventType: "LOGOUT_ALL_DEVICES",
+      status: "SUCCESS",
+      description: "User logged out from all devices",
+    });
+  } catch {}
 
   return {
     success: true,
@@ -429,6 +536,19 @@ export async function forgotPassword(data: ForgotPasswordInput, frontendUrl?: st
     });
 
     await sendPasswordResetEmail(account.email, token, frontendUrl || getFrontendUrl());
+    // Audit: password reset requested
+    try {
+      await logAuthEvent({
+        tenantId: account.tenantId,
+        ownerId: account.id,
+        staffId: (account as any).role ? undefined : undefined,
+        eventType: "PASSWORD_RESET_REQUEST",
+        status: "INFO",
+        description: "Password reset requested",
+        ipAddress: undefined,
+        userAgent: undefined,
+      });
+    } catch {}
   }
 
   return {
@@ -448,6 +568,17 @@ export async function resetPassword(data: ResetPasswordInput) {
   });
 
   if (!resetToken) {
+    // Audit: invalid reset token attempt
+    try {
+      await logAuthEvent({
+        tenantId: undefined,
+        ownerId: undefined,
+        eventType: "PASSWORD_RESET_SUCCESS",
+        status: "FAILED",
+        description: "Invalid or expired password reset token attempted",
+      });
+    } catch {}
+
     throw new CustomError("Reset token is invalid or has expired", 401);
   }
 
@@ -494,6 +625,25 @@ export async function resetPassword(data: ResetPasswordInput) {
 
   await sendPasswordChangedEmail(account.email);
 
+  // Audit: password reset success
+  try {
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      eventType: "PASSWORD_RESET_SUCCESS",
+      status: "SUCCESS",
+      description: "Password reset and sessions revoked",
+    });
+
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      eventType: "PASSWORD_CHANGED",
+      status: "SUCCESS",
+      description: "Password changed via reset flow",
+    });
+  } catch {}
+
   return {
     success: true,
     message: "Password updated successfully. Please sign in again.",
@@ -532,6 +682,17 @@ export async function sendVerification(data: { email: string }, frontendUrl?: st
 
   await sendVerificationEmail(account.email, token, frontendUrl || getFrontendUrl());
 
+  // Audit: verification email sent
+  try {
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      eventType: "EMAIL_VERIFICATION_SENT",
+      status: "INFO",
+      description: "Email verification link sent",
+    });
+  } catch {}
+
   return {
     success: true,
     message: "Verification email sent.",
@@ -549,6 +710,17 @@ export async function verifyEmail(data: VerifyEmailInput) {
   });
 
   if (!tokenRecord) {
+    // Audit: invalid verification token
+    try {
+      await logAuthEvent({
+        tenantId: undefined,
+        ownerId: undefined,
+        eventType: "EMAIL_VERIFIED",
+        status: "FAILED",
+        description: "Invalid or expired email verification token attempted",
+      });
+    } catch {}
+
     throw new CustomError("Verification token is invalid or has expired", 401);
   }
 
@@ -578,6 +750,17 @@ export async function verifyEmail(data: VerifyEmailInput) {
       data: { verifiedAt: new Date() },
     });
   });
+  // Audit: email verified
+  try {
+    await logAuthEvent({
+      tenantId: account.tenantId,
+      ownerId: account.id,
+      staffId: staffUser ? staffUser.id : undefined,
+      eventType: "EMAIL_VERIFIED",
+      status: "SUCCESS",
+      description: "Email address verified",
+    });
+  } catch {}
 
   return {
     success: true,
@@ -594,6 +777,16 @@ export async function listActiveSessions(userId: string) {
 
 export async function revokeSession(userId: string, sessionId: string) {
   await revokeSessionById(sessionId, userId);
+  try {
+    await logAuthEvent({
+      ownerId: userId,
+      eventType: "SESSION_REVOKED",
+      status: "SUCCESS",
+      description: `Session ${sessionId} revoked by user`,
+      sessionId,
+    });
+  } catch {}
+
   return {
     success: true,
     message: "Session revoked.",
@@ -662,6 +855,27 @@ export async function loginDemoOwner() {
       },
     });
   });
+
+  // Audit: demo login and session created
+  try {
+    await logAuthEvent({
+      tenantId: owner.tenantId,
+      ownerId: owner.id,
+      eventType: "LOGIN_SUCCESS",
+      status: "SUCCESS",
+      description: "Demo owner login",
+      sessionId,
+    });
+
+    await logAuthEvent({
+      tenantId: owner.tenantId,
+      ownerId: owner.id,
+      eventType: "SESSION_CREATED",
+      status: "SUCCESS",
+      description: "Demo session created",
+      sessionId,
+    });
+  } catch {}
 
   return {
     accessToken,
