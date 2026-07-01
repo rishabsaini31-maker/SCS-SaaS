@@ -55,7 +55,7 @@ export async function authenticateJWT(
     return next();
   }
 
-  if (payload.sessionId && (!payload.role || payload.role === "OWNER")) {
+  if (payload.sessionId) {
     const session = await getActiveSession(payload.sessionId);
     if (
       !session ||
@@ -65,11 +65,8 @@ export async function authenticateJWT(
       return next();
     }
 
-    // SLIDING WINDOW: Refresh session expiry on activity (throttled to once/hour)
     if (shouldTouchSession(payload.sessionId)) {
-      // Fire-and-forget — don't block the request on this DB write
       touchSession(payload.sessionId).catch(() => {
-        // If touch fails, remove from cache so it retries next time
         sessionTouchCache.delete(payload.sessionId!);
       });
     }

@@ -17,6 +17,10 @@ export async function createTenantOwnerSession(params: {
   userId: string;
   tenantId: string;
   tokenId: string;
+  ipAddress?: string;
+  userAgent?: string;
+  browser?: string;
+  operatingSystem?: string;
 }) {
   return prisma.authSession.create({
     data: {
@@ -24,6 +28,11 @@ export async function createTenantOwnerSession(params: {
       userId: params.userId,
       tenantId: params.tenantId,
       tokenId: params.tokenId,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+      browser: params.browser,
+      operatingSystem: params.operatingSystem,
+      lastActivity: new Date(),
       expiresAt: addDays(TENANT_OWNER_SESSION_EXPIRY_DAYS),
     },
   });
@@ -74,6 +83,7 @@ export async function touchSession(tokenId: string) {
     },
     data: {
       lastSeenAt: now,
+      lastActivity: now,
       expiresAt: addDays(INACTIVITY_EXPIRY_DAYS),
     },
   });
@@ -131,3 +141,78 @@ export async function countActiveSessions() {
   });
 }
 
+// ─── Refresh Token Management ────────────────────────────────────────────────
+
+export async function createRefreshToken(params: {
+  userId: string;
+  tenantId?: string;
+  tokenHash: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  return prisma.refreshToken.create({
+    data: {
+      userId: params.userId,
+      tenantId: params.tenantId,
+      tokenHash: params.tokenHash,
+      expiresAt: addDays(30),
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    },
+  });
+}
+
+export async function getActiveRefreshToken(tokenHash: string) {
+  return prisma.refreshToken.findFirst({
+    where: {
+      tokenHash,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+  });
+}
+
+export async function revokeRefreshToken(id: string) {
+  return prisma.refreshToken.update({
+    where: { id },
+    data: { revokedAt: new Date() },
+  });
+}
+
+export async function revokeAllRefreshTokensForUser(userId: string) {
+  return prisma.refreshToken.updateMany({
+    where: { userId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}
+
+// ─── Active Sessions API ─────────────────────────────────────────────────────
+
+export async function getActiveSessionsForUser(userId: string) {
+  return prisma.authSession.findMany({
+    where: {
+      userId,
+      status: "ACTIVE",
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { lastSeenAt: "desc" },
+    select: {
+      id: true,
+      tokenId: true,
+      ipAddress: true,
+      browser: true,
+      operatingSystem: true,
+      lastSeenAt: true,
+      lastActivity: true,
+      createdAt: true,
+    },
+  });
+}
+
+export async function revokeSessionById(id: string, userId: string) {
+  return prisma.authSession.updateMany({
+    where: { id, userId },
+    data: { status: "REVOKED", revokedAt: new Date() },
+  });
+}

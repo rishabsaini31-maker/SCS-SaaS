@@ -2,16 +2,23 @@ import { Router } from "express";
 import * as controller from "./auth.controller";
 import { authenticateJWT } from "../../common/middlewares/auth";
 import requireTenant from "../../common/middlewares/requireTenant";
-import { loginRateLimiter } from "../../common/middlewares/rateLimiter";
+import { loginRateLimiter, passwordResetRateLimiter } from "../../common/middlewares/rateLimiter";
 
 const router = Router();
 
-// SECURITY: Strict rate limiting for login (5 attempts per 15 minutes)
 router.post("/login", loginRateLimiter, controller.login);
+router.post("/refresh", controller.refresh);
 router.post("/demo-login", controller.demoLogin);
 
-// SECURITY: Logout with server-side session revocation
+router.post("/forgot-password", passwordResetRateLimiter, controller.forgotPassword);
+router.post("/reset-password", passwordResetRateLimiter, controller.resetPassword);
+router.post("/send-verification", passwordResetRateLimiter, controller.sendVerification);
+router.post("/verify-email", controller.verifyEmail);
+
 router.post("/logout", authenticateJWT, controller.logout);
+router.post("/logout-all", authenticateJWT, controller.logoutAll);
+router.get("/sessions", authenticateJWT, controller.listSessions);
+router.delete("/sessions/:sessionId", authenticateJWT, controller.revokeSession);
 
 router.get("/me", authenticateJWT, requireTenant, controller.me);
 

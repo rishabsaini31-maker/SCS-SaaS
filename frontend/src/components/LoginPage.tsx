@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/lib/api";
 import { toast } from "@/lib/toast";
@@ -183,6 +184,14 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
           >
             {isSubmitting ? "Signing in..." : "Sign in"}
           </button>
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-700">
+              Forgot password?
+            </Link>
+            <Link href="/verify-email" className="font-medium text-blue-600 hover:text-blue-700">
+              Verify email
+            </Link>
+          </div>
         </form>
       </div>
     </div>
