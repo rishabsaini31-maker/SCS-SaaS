@@ -9,6 +9,19 @@ export const createShopSchema = z.object({
   gstNumber: z.string().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  businessType: z.enum([
+    "WHOLESALE_DISTRIBUTOR",
+    "GROCERY",
+    "CLOTHING",
+    "ELECTRONICS",
+    "MEDICAL",
+    "HARDWARE",
+    "STATIONERY",
+    "MOBILE",
+    "COSMETICS",
+    "RESTAURANT",
+    "GENERAL_RETAIL",
+  ]).optional().default("GENERAL_RETAIL"),
 });
 
 export const tenantStatusSchema = z.object({

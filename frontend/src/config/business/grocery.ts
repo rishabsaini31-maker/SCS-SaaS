@@ -1,0 +1,48 @@
+import type { BusinessConfig } from "./types";
+
+export const groceryConfig: BusinessConfig = {
+  key: "GROCERY",
+  label: "Grocery & Kirana",
+  dashboardCards: [
+    { key: "inventoryValue", title: "Inventory Value", description: "Stock valuation" },
+    { key: "todaysSales", title: "Today's Sales", description: "Sales from today" },
+    { key: "todaysPurchase", title: "Today's Purchase", description: "Purchases from today" },
+    { key: "expiringSoon", title: "Expiring Soon", description: "Items near expiry" },
+    { key: "lowStock", title: "Low Stock", description: "Items needing restock" },
+  ],
+  tableColumns: [
+    { key: "image", label: "Image" },
+    { key: "product", label: "Product" },
+    { key: "batch", label: "Batch" },
+    { key: "expiry", label: "Expiry" },
+    { key: "supplier", label: "Supplier" },
+    { key: "stock", label: "Current Stock" },
+    { key: "price", label: "Price" },
+    { key: "barcode", label: "Barcode" },
+  ],
+  filters: [
+    { key: "category", label: "Category" },
+    { key: "supplier", label: "Supplier" },
+    { key: "expiry", label: "Expiry" },
+    { key: "brand", label: "Brand" },
+    { key: "batch", label: "Batch" },
+  ],
+  productFields: [
+    { key: "name", label: "Product Name", type: "text" },
+    { key: "category", label: "Category", type: "text" },
+    { key: "brand", label: "Brand", type: "text" },
+    { key: "batchNumber", label: "Batch Number", type: "text" },
+    { key: "expiryDate", label: "Expiry Date", type: "date" },
+    { key: "manufacturingDate", label: "Manufacturing Date", type: "date" },
+    { key: "weight", label: "Weight", type: "text" },
+    { key: "packSize", label: "Pack Size", type: "text" },
+    { key: "gst", label: "GST", type: "number" },
+    { key: "purchasePrice", label: "Purchase Price", type: "number" },
+    { key: "sellingPrice", label: "Selling Price", type: "number" },
+    { key: "mrp", label: "MRP", type: "number" },
+    { key: "stock", label: "Opening Stock", type: "number" },
+    { key: "supplier", label: "Supplier", type: "text" },
+  ],
+  reports: ["Expiry Report", "Batch Report", "Supplier Report"],
+  quickActions: ["Expiry Alert", "Batch Update", "Reorder List"],
+};

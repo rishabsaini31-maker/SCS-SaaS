@@ -17,6 +17,7 @@ export default function OnboardShop() {
     phone: "",
     gstNumber: "",
     address: "",
+    businessType: "GENERAL_RETAIL",
   });
   const [error, setError] = useState("");
 
@@ -26,7 +27,7 @@ export default function OnboardShop() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     setFormData({
       ...formData,
@@ -279,6 +280,31 @@ export default function OnboardShop() {
                       className="w-full px-4 py-3 bg-surface-container-low border border-outline rounded-lg text-body-sm focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="e.g., 27AABCT1234H1Z0"
                     />
+                  </div>
+
+                  {/* Business Type */}
+                  <div>
+                    <label className="block text-body-sm text-on-surface mb-2 font-medium">
+                      Business Type
+                    </label>
+                    <select
+                      name="businessType"
+                      value={formData.businessType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 bg-surface-container-low border border-outline rounded-lg text-body-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="WHOLESALE_DISTRIBUTOR">Wholesale Distributor</option>
+                      <option value="GROCERY">Grocery & Kirana</option>
+                      <option value="CLOTHING">Clothing & Fashion</option>
+                      <option value="ELECTRONICS">Electronics</option>
+                      <option value="MEDICAL">Medical Store</option>
+                      <option value="HARDWARE">Hardware</option>
+                      <option value="STATIONERY">Stationery</option>
+                      <option value="MOBILE">Mobile Shop</option>
+                      <option value="COSMETICS">Cosmetics</option>
+                      <option value="RESTAURANT">Restaurant</option>
+                      <option value="GENERAL_RETAIL">General Retail</option>
+                    </select>
                   </div>
 
                   {/* Address */}

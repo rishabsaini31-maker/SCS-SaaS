@@ -1,0 +1,45 @@
+import type { BusinessConfig } from "./types";
+
+export const clothingConfig: BusinessConfig = {
+  key: "CLOTHING",
+  label: "Clothing & Fashion",
+  dashboardCards: [
+    { key: "inventoryValue", title: "Inventory Value", description: "Stock value" },
+    { key: "variants", title: "Variants", description: "Color and size combinations" },
+    { key: "lowStock", title: "Low Stock", description: "Size-wise restock needs" },
+    { key: "topBrands", title: "Top Brands", description: "Popular brands" },
+    { key: "todaysSales", title: "Today's Sales", description: "Sales completed today" },
+  ],
+  tableColumns: [
+    { key: "image", label: "Image" },
+    { key: "product", label: "Product" },
+    { key: "color", label: "Color" },
+    { key: "size", label: "Size" },
+    { key: "brand", label: "Brand" },
+    { key: "stock", label: "Stock" },
+    { key: "price", label: "Price" },
+  ],
+  filters: [
+    { key: "color", label: "Color" },
+    { key: "size", label: "Size" },
+    { key: "brand", label: "Brand" },
+    { key: "season", label: "Season" },
+  ],
+  productFields: [
+    { key: "name", label: "Product Name", type: "text" },
+    { key: "brand", label: "Brand", type: "text" },
+    { key: "category", label: "Category", type: "text" },
+    { key: "color", label: "Color", type: "text" },
+    { key: "size", label: "Size", type: "text" },
+    { key: "material", label: "Material", type: "text" },
+    { key: "pattern", label: "Pattern", type: "text" },
+    { key: "gender", label: "Gender", type: "text" },
+    { key: "season", label: "Season", type: "text" },
+    { key: "purchasePrice", label: "Purchase Price", type: "number" },
+    { key: "sellingPrice", label: "Selling Price", type: "number" },
+    { key: "mrp", label: "MRP", type: "number" },
+    { key: "stock", label: "Opening Stock", type: "number" },
+  ],
+  reports: ["Brand Report", "Color Report", "Size Report"],
+  quickActions: ["Variant Bulk Edit", "Season Offer", "Stock Transfer"],
+};

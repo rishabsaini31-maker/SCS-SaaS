@@ -65,6 +65,14 @@ export default function LandingFooter() {
             <ul className="space-y-4 font-body-sm text-on-surface-variant">
               <li>
                 <Link
+                  className="hover:text-primary hover:underline underline-offset-4 decoration-primary transition-colors font-bold"
+                  href="/trust"
+                >
+                  Trust Center
+                </Link>
+              </li>
+              <li>
+                <Link
                   className="hover:text-primary hover:underline underline-offset-4 decoration-primary transition-colors"
                   href="/security"
                 >

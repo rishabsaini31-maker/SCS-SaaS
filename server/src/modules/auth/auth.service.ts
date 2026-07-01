@@ -25,6 +25,7 @@ const ownerSelect = {
       gstNumber: true,
       address: true,
       status: true,
+      businessType: true,
     },
   },
 } as const;
@@ -54,6 +55,7 @@ export async function loginOwner(data: LoginInput) {
             gstNumber: true,
             address: true,
             status: true,
+            businessType: true,
           },
         },
       },
@@ -171,6 +173,7 @@ export async function getCurrentSession(userId: string, tenantId: string, role: 
             gstNumber: true,
             address: true,
             status: true,
+            businessType: true,
           },
         },
       },

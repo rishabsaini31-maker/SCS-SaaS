@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
 import { toast } from "@/lib/toast";
-import { waitForAuthenticatedSession } from "@/lib/session";
 import LandingNavbar from "./LandingNavbar";
 import LandingFooter from "./LandingFooter";
 import PricingSection from "./PricingSection";
@@ -13,27 +11,11 @@ import AboutSection from "./AboutSection";
 import ContactSection from "./ContactSection";
 
 export default function LandingPage() {
-  const [isDemoLoggingIn, setIsDemoLoggingIn] = useState(false);
   const router = useRouter();
 
   const handleSeeDemo = async () => {
-    if (isDemoLoggingIn) return;
-    setIsDemoLoggingIn(true);
-    toast.info("Entering demo environment...");
-    try {
-      await api.post("/auth/demo-login");
-      const authenticated = await waitForAuthenticatedSession();
-      if (!authenticated) {
-        throw new Error("Demo session not established");
-      }
-      toast.success("Welcome to the SCS Flow Demo!");
-      router.replace("/dashboard");
-      router.refresh();
-    } catch (error) {
-      toast.error("Failed to enter demo environment.");
-    } finally {
-      setIsDemoLoggingIn(false);
-    }
+    toast.info("To book demo contact SCS Team");
+    router.push("/contact?source=demo");
   };
 
   return (
@@ -61,10 +43,9 @@ export default function LandingPage() {
               </Link>
               <button
                 onClick={handleSeeDemo}
-                disabled={isDemoLoggingIn}
-                className="w-full sm:w-auto px-8 py-4 bg-white border border-outline-variant text-on-surface rounded-xl font-bold text-lg hover:bg-surface-container-low active:scale-95 transition-all linear-shadow cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto px-8 py-4 bg-white border border-outline-variant text-on-surface rounded-xl font-bold text-lg hover:bg-surface-container-low active:scale-95 transition-all linear-shadow cursor-pointer"
               >
-                {isDemoLoggingIn ? "Loading Demo..." : "See Demo"}
+                Book Demo
               </button>
             </div>
             <div className="relative max-w-5xl mx-auto rounded-2xl overflow-hidden shadow-2xl border border-outline-variant bg-white p-2">

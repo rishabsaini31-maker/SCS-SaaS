@@ -5,8 +5,8 @@ const plans = [
   {
     name: 'Basic',
     description: 'Essential features for small shops looking to get started.',
-    monthlyPrice: 699,
-    annualPrice: 7500,
+    monthlyPrice: 899,
+    annualPrice: 8500,
     features: [
       'Unlimited invoices',
       '1 user account',
@@ -18,8 +18,8 @@ const plans = [
   {
     name: 'Pro',
     description: 'Advanced features and priority support for growing teams.',
-    monthlyPrice: 1599,
-    annualPrice: 15000,
+    monthlyPrice: 1899,
+    annualPrice: 18000,
     features: [
       'Unlimited invoices',
       '7 user accounts',

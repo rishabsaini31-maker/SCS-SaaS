@@ -22,6 +22,7 @@ const tenantSelect = {
   gstNumber: true,
   address: true,
   status: true,
+  businessType: true,
   createdAt: true,
   updatedAt: true,
   owner: {
@@ -56,6 +57,7 @@ export async function createShop(data: CreateShopInput) {
         gstNumber,
         address: data.address ?? null,
         status: "ACTIVE",
+        businessType: data.businessType || "GENERAL_RETAIL",
       },
     });
 

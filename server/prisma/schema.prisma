@@ -8,6 +8,20 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum BusinessType {
+  WHOLESALE_DISTRIBUTOR
+  GROCERY
+  CLOTHING
+  ELECTRONICS
+  MEDICAL
+  HARDWARE
+  STATIONERY
+  MOBILE
+  COSMETICS
+  RESTAURANT
+  GENERAL_RETAIL
+}
+
 model Product {
   id            String             @id @default(cuid())
   name          String
@@ -19,6 +33,7 @@ model Product {
   barcode       String?
   image         String?
   expiryDate    DateTime?
+  customFields  Json?
   status        String             @default("active")
   tenantId      String?
   createdAt     DateTime           @default(now())
@@ -237,6 +252,7 @@ model Tenant {
   gstNumber     String?
   address       String?
   status        String             @default("ACTIVE")
+  businessType  BusinessType       @default(GENERAL_RETAIL)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   categories    Category[]

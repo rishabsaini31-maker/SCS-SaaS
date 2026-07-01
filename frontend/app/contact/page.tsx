@@ -1,12 +1,16 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import LandingNavbar from '@/components/LandingNavbar';
 import LandingFooter from '@/components/LandingFooter';
 
-const ContactPage = () => {
+const ContactPageContent = () => {
+  const searchParams = useSearchParams();
+  const demoSource = searchParams.get('source') === 'demo';
+
   useEffect(() => {
     document.title = "Contact | SCS";
-    
+
     const observerOptions = { threshold: 0.1 };
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -45,7 +49,7 @@ const ContactPage = () => {
     return () => {
         observer.disconnect();
     };
-  }, []);
+  }, [searchParams]);
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen flex flex-col">
@@ -57,8 +61,14 @@ const ContactPage = () => {
 <div className="absolute -top-20 -left-20 w-96 h-96 bg-secondary/10 rounded-full blur-[120px] pointer-events-none"></div>
 <div className="max-w-3xl">
 <span className="font-label-sm text-label-sm text-secondary uppercase tracking-[0.2em] mb-4 block">Intelligence in Motion</span>
-<h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-surface-container-highest mb-6">Let's build the <span className="text-secondary">future</span> together.</h1>
-<p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">Connecting visionary enterprise leaders with technical excellence. Whether you're scaling a startup or optimizing a legacy infrastructure, we're here to lead the way.</p>
+<h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-surface-container-highest mb-6">Let&apos;s build the <span className="text-secondary">future</span> together.</h1>
+<p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">Connecting visionary enterprise leaders with technical excellence. Whether you&apos;re scaling a startup or optimizing a legacy infrastructure, we&apos;re here to lead the way.</p>
+{demoSource && (
+  <div className="mt-8 rounded-3xl border border-secondary/20 bg-secondary/10 p-6 text-secondary shadow-lg">
+    <p className="text-lg font-semibold">Thanks for your interest!</p>
+    <p className="mt-2 text-sm text-on-surface-variant">To book a demo, please fill out the form below and our SCS Team will reach out shortly.</p>
+  </div>
+)}
 </div>
 </section>
 {/* Bento Contact Layout */}
@@ -225,6 +235,14 @@ const ContactPage = () => {
       </main>
       <LandingFooter />
     </div>
+  );
+};
+
+const ContactPage = () => {
+  return (
+    <Suspense fallback={null}>
+      <ContactPageContent />
+    </Suspense>
   );
 };
 

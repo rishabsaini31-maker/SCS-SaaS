@@ -32,6 +32,7 @@ export function useCreateTenant() {
       phone?: string;
       gstNumber?: string;
       address?: string;
+      businessType?: string;
     }) => apiClient.createTenant(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });

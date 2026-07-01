@@ -118,6 +118,7 @@ class ApiClient {
     phone?: string;
     gstNumber?: string;
     address?: string;
+    businessType?: string;
   }) {
     const response = await this.client.post("/scs-admin/shops", data);
     return response.data;

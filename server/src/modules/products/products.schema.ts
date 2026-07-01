@@ -9,6 +9,7 @@ export const createProductSchema = z.object({
   stock: z.number().int().nonnegative().default(0),
   image: z.string().optional(),
   expiryDate: z.string().optional().nullable(),
+  customFields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();

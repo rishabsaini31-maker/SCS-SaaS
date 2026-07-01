@@ -14,6 +14,10 @@ const publicRoutes = new Set([
   "/pricing",
   "/about",
   "/contact",
+  "/security",
+  "/privacy",
+  "/terms",
+  "/trust",
 ]);
 
 export function AppShell({ children }: { children: ReactNode }) {
