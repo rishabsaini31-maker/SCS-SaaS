@@ -20,18 +20,18 @@ export async function authenticateSuperAdmin(
 
   const payload = verifyJwtToken<SuperAdminTokenPayload>(token);
   if (!payload?.adminId || !payload?.adminType) {
-    return next();
+    return res.status(401).json({ error: "Invalid JWT" });
   }
 
   // In production require sessionId for server-side revocation support
   if (process.env.NODE_ENV === "production" && !payload.sessionId) {
-    return next();
+    return res.status(401).json({ error: "Invalid JWT" });
   }
 
   if (payload.sessionId) {
     const session = await getActiveSession(payload.sessionId);
     if (!session || session.superAdminId !== payload.adminId) {
-      return next();
+      return res.status(401).json({ error: "Expired or revoked session" });
     }
   }
 
@@ -50,7 +50,7 @@ export async function authenticateSuperAdmin(
   });
 
   if (!superAdmin) {
-    return next();
+    return res.status(401).json({ error: "Invalid JWT" });
   }
 
   req.superAdmin = superAdmin;

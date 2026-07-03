@@ -4,7 +4,7 @@ import {
   authenticateSuperAdmin,
   requireSuperAdmin,
 } from "../../common/middlewares/superAdminAuth";
-import { superAdminLoginRateLimiter } from "../../common/middlewares/rateLimiter";
+import { superAdminLoginRateLimiter, adminSearchRateLimiter } from "../../common/middlewares/rateLimiter";
 
 const router = Router();
 
@@ -14,11 +14,12 @@ router.post("/login", superAdminLoginRateLimiter, controller.login);
 // SECURITY: Logout with server-side session revocation
 router.post(
   "/logout",
+  adminSearchRateLimiter,
   authenticateSuperAdmin,
   requireSuperAdmin,
   controller.logout,
 );
 
-router.get("/me", authenticateSuperAdmin, requireSuperAdmin, controller.me);
+router.get("/me", adminSearchRateLimiter, authenticateSuperAdmin, requireSuperAdmin, controller.me);
 
 export default router;

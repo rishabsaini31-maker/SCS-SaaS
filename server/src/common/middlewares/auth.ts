@@ -3,6 +3,7 @@ import type { AuthTokenPayload } from "../utils/jwt";
 import { getActiveSession } from "../services/authSession";
 import { touchSession } from "../services/authSession";
 import { extractBearerToken, verifyJwtToken } from "../utils/jwtAuth";
+import prisma from "../db/prisma";
 
 export interface AuthPayload {
   userId?: string;
@@ -47,12 +48,12 @@ export async function authenticateJWT(
 
   const payload = verifyJwtToken<AuthTokenPayload>(token);
   if (!payload?.userId || !payload.tenantId) {
-    return next();
+    return res.status(401).json({ error: "Invalid JWT" });
   }
 
   // In production enforce presence of sessionId to enable server-side revocation
   if (process.env.NODE_ENV === "production" && !payload.sessionId) {
-    return next();
+    return res.status(401).json({ error: "Invalid JWT" });
   }
 
   if (payload.sessionId) {
@@ -62,7 +63,7 @@ export async function authenticateJWT(
       session.userId !== payload.userId ||
       session.tenantId !== payload.tenantId
     ) {
-      return next();
+      return res.status(401).json({ error: "Expired or revoked session" });
     }
 
     if (shouldTouchSession(payload.sessionId)) {
@@ -70,6 +71,19 @@ export async function authenticateJWT(
         sessionTouchCache.delete(payload.sessionId!);
       });
     }
+  }
+
+  const tenant = await prisma.tenant.findFirst({
+    where: { id: payload.tenantId },
+    select: { id: true, status: true },
+  });
+
+  if (!tenant) {
+    return res.status(401).json({ error: "Invalid JWT" });
+  }
+
+  if (tenant.status === "SUSPENDED") {
+    return res.status(403).json({ error: "Tenant is suspended" });
   }
 
   req.user = {

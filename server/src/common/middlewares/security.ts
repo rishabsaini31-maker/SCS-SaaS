@@ -15,7 +15,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function sanitizeString(value: string): string {
-  return value.replace(/\u0000/g, "").replace(/[\u0000-\u001f\u007f]/g, "");
+  return value
+    .replace(/\u0000/g, "")
+    .replace(/[\u0001-\u001f\u007f]/g, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/on[a-z]+\s*=\s*/gi, "")
+    .trim();
 }
 
 function sanitizeValue(value: unknown): unknown {
@@ -87,6 +96,27 @@ export function sanitizeHeaders(
   next();
 }
 
+function sanitizeRequestTarget<T>(value: T): T {
+  if (typeof value === "string") {
+    return sanitizeString(value) as T;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeRequestTarget(item)) as T;
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        sanitizeRequestTarget(item),
+      ]),
+    ) as T;
+  }
+
+  return value;
+}
+
 /**
  * Set strict security headers in responses
  */
@@ -129,10 +159,44 @@ export function sanitizeBody(
   next: NextFunction,
 ) {
   if (isPlainObject(req.body)) {
-    req.body = sanitizeValue(req.body) as Record<string, unknown>;
+    req.body = sanitizeRequestTarget(req.body) as Record<string, unknown>;
   }
 
   next();
+}
+
+export function sanitizeQuery(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  if (isPlainObject(req.query)) {
+    req.query = sanitizeRequestTarget(req.query) as Request["query"];
+  }
+
+  next();
+}
+
+export function sanitizeParams(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  if (isPlainObject(req.params)) {
+    (req as any).params = sanitizeRequestTarget(req.params);
+  }
+
+  next();
+}
+
+export function sanitizeRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  sanitizeParams(req, res, () => undefined);
+  sanitizeQuery(req, res, () => undefined);
+  sanitizeBody(req, res, next);
 }
 
 /**
