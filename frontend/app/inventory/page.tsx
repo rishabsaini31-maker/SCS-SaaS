@@ -23,6 +23,7 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -138,9 +139,11 @@ export default function InventoryPage() {
     ]),
   ).sort((a, b) => a.localeCompare(b));
 
-  const visibleProducts = selectedCategory
-    ? products.filter((product) => product.category === selectedCategory)
-    : products;
+  const visibleProducts = products.filter((product) => {
+    const matchesCategory = selectedCategory ? product.category === selectedCategory : true;
+    const matchesSearch = searchQuery ? product.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+    return matchesCategory && matchesSearch;
+  });
 
   const activatingProduct = products.find(
     (product) => product.id === activatingProductId,
@@ -162,6 +165,19 @@ export default function InventoryPage() {
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleAddCategory = async () => {
+    const categoryName = window.prompt("Enter new category name:");
+    if (!categoryName || !categoryName.trim()) return;
+
+    try {
+      await api.post("/categories", { name: categoryName.trim() });
+      void fetchProducts();
+    } catch (error) {
+      console.error("Error adding category:", error);
+      alert("Failed to add category");
+    }
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
@@ -275,6 +291,9 @@ export default function InventoryPage() {
       editingProductId={editingProductId}
       selectedCategory={selectedCategory}
       onCategoryChange={setSelectedCategory}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      onAddCategory={handleAddCategory}
     />
   );
 }

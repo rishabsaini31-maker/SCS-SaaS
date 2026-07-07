@@ -35,6 +35,9 @@ type InventoryShellProps = {
   editingProductId: string | null;
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  onAddCategory: () => void;
 };
 
 export function InventoryShell({
@@ -53,6 +56,9 @@ export function InventoryShell({
   editingProductId,
   selectedCategory,
   onCategoryChange,
+  searchQuery,
+  onSearchChange,
+  onAddCategory,
 }: InventoryShellProps) {
   const config = useMemo(() => getBusinessConfig(tenantBusinessType), [tenantBusinessType]);
 
@@ -64,21 +70,32 @@ export function InventoryShell({
           <h1 className="text-3xl font-bold text-slate-900">Inventory</h1>
           <p className="mt-1 text-sm text-slate-500">Business configuration is loaded from the tenant profile.</p>
         </div>
-        <button
-          type="button"
-          onClick={onToggleForm}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          + Add Product
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onAddCategory}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            + Add Category
+          </button>
+          <button
+            type="button"
+            onClick={onToggleForm}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            + Add Product
+          </button>
+        </div>
       </div>
 
-      <InventoryCards config={config} />
+      <InventoryCards config={config} products={products} />
       <InventoryFilters
         config={config}
         selectedCategory={selectedCategory}
         onCategoryChange={onCategoryChange}
         availableCategories={availableCategories}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
       />
 
       {showForm ? (
@@ -97,7 +114,7 @@ export function InventoryShell({
       <div className="grid gap-6 xl:grid-cols-[1.7fr_0.7fr]">
         <InventoryTable config={config} products={products} onEdit={onEdit} onActivate={onActivate} />
         <div className="space-y-6">
-          <QuickActions config={config} />
+          <QuickActions config={config} onToggleForm={onToggleForm} />
           <BusinessReports config={config} />
         </div>
       </div>
