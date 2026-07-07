@@ -1,0 +1,3 @@
+# Vercel Serverless Rules
+
+- **Modifying Request Properties**: When modifying `req.query`, `req.body`, or `req.params` in Express middlewares (or any Vercel serverless functions), do NOT use direct assignment (e.g., `req.query = newQuery`). In the Vercel environment, these properties are defined as getters on the `IncomingMessage` object. Direct assignment will cause a `Cannot set property query of #<IncomingMessage> which has only a getter` error. Instead, ALWAYS use `Object.defineProperty` to bypass the getter. Example: `Object.defineProperty(req, 'query', { value: newQuery, writable: true, enumerable: true, configurable: true });`
