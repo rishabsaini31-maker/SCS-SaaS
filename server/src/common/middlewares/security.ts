@@ -159,7 +159,7 @@ export function sanitizeBody(
   next: NextFunction,
 ) {
   if (isPlainObject(req.body)) {
-    req.body = sanitizeRequestTarget(req.body) as Record<string, unknown>;
+    Object.defineProperty(req, 'body', { value: sanitizeRequestTarget(req.body), writable: true, enumerable: true, configurable: true });
   }
 
   next();
@@ -171,7 +171,7 @@ export function sanitizeQuery(
   next: NextFunction,
 ) {
   if (isPlainObject(req.query)) {
-    req.query = sanitizeRequestTarget(req.query) as Request["query"];
+    Object.defineProperty(req, 'query', { value: sanitizeRequestTarget(req.query), writable: true, enumerable: true, configurable: true });
   }
 
   next();
@@ -183,7 +183,7 @@ export function sanitizeParams(
   next: NextFunction,
 ) {
   if (isPlainObject(req.params)) {
-    (req as any).params = sanitizeRequestTarget(req.params);
+    Object.defineProperty(req, 'params', { value: sanitizeRequestTarget(req.params), writable: true, enumerable: true, configurable: true });
   }
 
   next();

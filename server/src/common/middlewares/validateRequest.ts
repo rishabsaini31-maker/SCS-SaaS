@@ -25,10 +25,18 @@ function toValidationError(error: ZodError) {
 export function validateRequest(schemas: RequestSchemas) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (schemas.body) req.body = schemas.body.parse(req.body);
-      if (schemas.params) (req as any).params = schemas.params.parse(req.params);
-      if (schemas.query) req.query = schemas.query.parse(req.query) as any;
-      if (schemas.headers) req.headers = schemas.headers.parse(req.headers) as any;
+      if (schemas.body) {
+        Object.defineProperty(req, 'body', { value: schemas.body.parse(req.body), writable: true, enumerable: true, configurable: true });
+      }
+      if (schemas.params) {
+        Object.defineProperty(req, 'params', { value: schemas.params.parse(req.params), writable: true, enumerable: true, configurable: true });
+      }
+      if (schemas.query) {
+        Object.defineProperty(req, 'query', { value: schemas.query.parse(req.query), writable: true, enumerable: true, configurable: true });
+      }
+      if (schemas.headers) {
+        Object.defineProperty(req, 'headers', { value: schemas.headers.parse(req.headers), writable: true, enumerable: true, configurable: true });
+      }
       next();
     } catch (error) {
       if (error instanceof ZodError) {
