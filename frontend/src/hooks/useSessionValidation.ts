@@ -20,25 +20,16 @@ export function useSessionValidation(enabled = true) {
       return;
     }
 
-    // Initial validation on mount
-    validateSession();
-
-    // Removed the aggressive 5-minute periodic validation 
-    // as it caused frustrating auto-logouts during inactivity or network hiccups.
-    // The user will remain logged in until they explicitly logout 
-    // or their next actual action returns a 401 Unauthorized.
-  }, [enabled]);
-
-  async function validateSession() {
-    try {
-      await api.get("/auth/me");
-      // Session is valid, continue
-    } catch (err: any) {
-      // Session invalid or expired
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        // Redirect to login
-        router.push("/login");
+    async function validateSession() {
+      try {
+        await api.get("/auth/me");
+      } catch (err: any) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push("/login");
+        }
       }
     }
-  }
+
+    validateSession();
+  }, [enabled, router]);
 }

@@ -27,20 +27,20 @@ export default function SecurityLogs() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    async function loadLogs() {
+      setIsLoading(true);
+      try {
+        const res = await fetcher(`/auth/logs?page=${page}&perPage=25`);
+        setLogs(res.logs || []);
+      } catch (err) {
+        // ignore
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     loadLogs();
   }, [page]);
-
-  async function loadLogs() {
-    setIsLoading(true);
-    try {
-      const res = await fetcher(`/auth/logs?page=${page}&perPage=25`);
-      setLogs(res.logs || []);
-    } catch (err) {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   function handleExportCsv() {
     const url = `/api/v1/auth/logs/export`;
