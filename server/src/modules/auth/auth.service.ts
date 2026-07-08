@@ -440,6 +440,7 @@ export async function getCurrentSession(userId: string, tenantId: string, role: 
         tenantId: staff.tenantId,
         role: staff.role,
         name: staff.name,
+        canOverridePrice: staff.canOverridePrice,
       },
       tenant: staff.tenant,
     };

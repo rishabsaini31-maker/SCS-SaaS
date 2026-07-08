@@ -59,13 +59,51 @@ export const createInvoice = async (
       productId: string;
       quantity: number;
       unitPrice: number;
+      originalPrice: number;
+      discountAmount: number;
       totalPrice: number;
+    }> = [];
+
+    let canOverride = false;
+    if (user?.role === "OWNER") {
+      canOverride = true;
+    } else if (user?.staffId) {
+      const staff = await tx.staffUser.findUnique({ where: { id: user.staffId } });
+      if (staff?.canOverridePrice) {
+        canOverride = true;
+      }
+    }
+
+    const priceOverridesToLog: Array<{
+      productId: string;
+      originalPrice: number;
+      soldPrice: number;
+      discount: number;
     }> = [];
     for (const item of data.lineItems) {
       const product = await tx.product.findFirst({
         where: tenantWhere(tenantId, { id: item.productId }),
       });
       if (!product) throw new CustomError(`Product not found`, 404);
+
+      let unitPrice = product.sellingPrice;
+      const originalPrice = product.sellingPrice;
+      let discountAmount = 0;
+
+      if (item.unitPrice !== undefined && item.unitPrice !== product.sellingPrice) {
+        if (!canOverride) {
+          throw new CustomError("Unauthorized to override product price", 403);
+        }
+        unitPrice = item.unitPrice;
+        discountAmount = (originalPrice - unitPrice) * item.quantity;
+        
+        priceOverridesToLog.push({
+          productId: product.id,
+          originalPrice,
+          soldPrice: unitPrice,
+          discount: discountAmount
+        });
+      }
 
       const stockReservation = await tx.product.updateMany({
         where: tenantWhere(tenantId, {
@@ -79,12 +117,14 @@ export const createInvoice = async (
         throw new CustomError(`Insufficient stock for ${product.name}`, 400);
       }
 
-      const totalPrice = product.sellingPrice * item.quantity;
+      const totalPrice = unitPrice * item.quantity;
       subtotal += totalPrice;
       lineItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: product.sellingPrice,
+        unitPrice,
+        originalPrice,
+        discountAmount,
         totalPrice,
       });
     }
@@ -123,7 +163,23 @@ export const createInvoice = async (
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          originalPrice: item.originalPrice,
+          discountAmount: item.discountAmount,
           totalPrice: item.totalPrice,
+        }) as any,
+      });
+    }
+
+    for (const override of priceOverridesToLog) {
+      await tx.priceOverrideLog.create({
+        data: tenantCreateData(tenantId, {
+          invoiceId: newInvoice.id,
+          productId: override.productId,
+          originalPrice: override.originalPrice,
+          soldPrice: override.soldPrice,
+          discount: override.discount,
+          userId: user?.staffId || undefined,
+          userName: createdByStaffName || "Owner",
         }) as any,
       });
     }
@@ -208,6 +264,8 @@ export const getInvoices = async (
           id: true,
           quantity: true,
           unitPrice: true,
+          originalPrice: true,
+          discountAmount: true,
           totalPrice: true,
           product: {
             select: { id: true, name: true, barcode: true },

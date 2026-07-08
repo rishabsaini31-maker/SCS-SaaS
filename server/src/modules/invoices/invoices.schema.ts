@@ -7,6 +7,7 @@ export const createInvoiceSchema = z.object({
       z.object({
         productId: z.string().min(1, "Product ID is required"),
         quantity: z.number().int().positive("Quantity must be positive"),
+        unitPrice: z.number().nonnegative().optional(),
       }),
     )
     .min(1, "At least one line item is required"),

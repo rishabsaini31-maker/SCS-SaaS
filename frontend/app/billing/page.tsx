@@ -7,6 +7,7 @@ import autoTable from "jspdf-autotable";
 import api from "@/lib/api";
 import { formatINR, formatINRForPdf } from "@/lib/currency";
 import { useSettings } from "@/hooks/useSettings";
+import { waitForAuthenticatedSession } from "@/lib/session";
 
 type Invoice = {
   id: string;
@@ -381,6 +382,7 @@ export default function BillingPage() {
   const [productSearch, setProductSearch] = useState("");
   const { settings } = useSettings();
   const [applyGst, setApplyGst] = useState(true);
+  const [canOverridePrice, setCanOverridePrice] = useState(false);
   const [formData, setFormData] = useState({
     customerId: "",
     notes: "",
@@ -400,6 +402,18 @@ export default function BillingPage() {
       }));
     }
   }, [settings]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const session = await waitForAuthenticatedSession();
+      if (session?.user) {
+        if (session.user.role === "OWNER" || session.user.canOverridePrice) {
+          setCanOverridePrice(true);
+        }
+      }
+    };
+    void loadSession();
+  }, []);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
@@ -1135,15 +1149,18 @@ export default function BillingPage() {
                     <input
                       type="number"
                       step="0.01"
-                      value={item.unitPrice}
-                      onChange={(e) =>
-                        updateLineItem(
-                          idx,
-                          "unitPrice",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"
+                      value={item.unitPrice === 0 ? "" : item.unitPrice}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        if (raw === "") {
+                          updateLineItem(idx, "unitPrice", 0);
+                        } else {
+                          updateLineItem(idx, "unitPrice", parseFloat(raw));
+                        }
+                      }}
+                      onFocus={(e) => e.target.select()}
+                      disabled={!canOverridePrice}
+                      className="w-20 px-2 py-1 border border-slate-300 rounded text-sm disabled:opacity-50"
                       placeholder="Price"
                       title="Unit Price"
                     />

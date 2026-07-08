@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { useSettings } from "@/hooks/useSettings";
+import { waitForAuthenticatedSession } from "@/lib/session";
 
 type Invoice = {
   id: string;
@@ -86,6 +87,7 @@ export default function MobileBillingPage() {
   const [productSearch, setProductSearch] = useState("");
   const { settings } = useSettings();
   const [applyGst, setApplyGst] = useState(true);
+  const [canOverridePrice, setCanOverridePrice] = useState(false);
   const [formData, setFormData] = useState({
     customerId: "",
     notes: "",
@@ -105,6 +107,18 @@ export default function MobileBillingPage() {
       }));
     }
   }, [settings]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const session = await waitForAuthenticatedSession();
+      if (session?.user) {
+        if (session.user.role === "OWNER" || session.user.canOverridePrice) {
+          setCanOverridePrice(true);
+        }
+      }
+    };
+    void loadSession();
+  }, []);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
@@ -644,15 +658,18 @@ export default function MobileBillingPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          updateLineItem(
-                            idx,
-                            "unitPrice",
-                            parseFloat(e.target.value),
-                          )
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                        value={item.unitPrice === 0 ? "" : item.unitPrice}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            updateLineItem(idx, "unitPrice", 0);
+                          } else {
+                            updateLineItem(idx, "unitPrice", parseFloat(raw));
+                          }
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        disabled={!canOverridePrice}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                         placeholder="Price"
                       />
                     </div>

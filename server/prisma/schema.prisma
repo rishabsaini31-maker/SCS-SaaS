@@ -41,6 +41,7 @@ model Product {
   invoiceItems  InvoiceLineItem[]
   tenant        Tenant?            @relation(fields: [tenantId], references: [id])
   purchaseItems PurchaseLineItem[]
+  priceOverrides PriceOverrideLog[]
 
   @@unique([barcode, tenantId])
   @@index([tenantId])
@@ -122,6 +123,7 @@ model Invoice {
   lineItems     InvoiceLineItem[]
   ledger        LedgerEntry?
   payments      Payment[]
+  priceOverrides PriceOverrideLog[]
 
   @@unique([invoiceNumber, tenantId])
   @@index([customerId])
@@ -133,9 +135,11 @@ model InvoiceLineItem {
   tenantId   String?
   invoiceId  String
   productId  String
-  quantity   Int
-  unitPrice  Float
-  totalPrice Float
+  quantity        Int
+  originalPrice   Float?
+  unitPrice       Float
+  discountAmount  Float?   @default(0)
+  totalPrice      Float
   createdAt  DateTime @default(now())
   invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   product    Product  @relation(fields: [productId], references: [id])
@@ -272,6 +276,7 @@ model Tenant {
   cashTransactions  CashTransaction[]
   cashBookAuditLogs CashBookAuditLog[]
   staffUsers        StaffUser[]
+  priceOverrides    PriceOverrideLog[]
 }
 
 model User {
@@ -301,6 +306,7 @@ model StaffUser {
   email        String    @unique
   passwordHash String
   role         StaffRole @default(SALESMAN)
+  canOverridePrice Boolean @default(false)
   isActive     Boolean   @default(true)
   failedLoginAttempts Int @default(0)
   lockedUntil         DateTime?
@@ -569,4 +575,25 @@ model CashBookAuditLog {
 
   @@index([tenantId])
   @@index([cashBookId])
+}
+
+model PriceOverrideLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  invoiceId     String
+  productId     String
+  originalPrice Float
+  soldPrice     Float
+  discount      Float
+  userId        String?
+  userName      String?
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([productId])
 }
