@@ -42,6 +42,7 @@ export default function StaffManagementSection() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"OWNER" | "SALESMAN">("SALESMAN");
   const [canOverridePrice, setCanOverridePrice] = useState(false);
+  const [canManageExpenses, setCanManageExpenses] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const openAddModal = () => {
@@ -53,6 +54,7 @@ export default function StaffManagementSection() {
     setConfirmPassword("");
     setRole("SALESMAN");
     setCanOverridePrice(false);
+    setCanManageExpenses(false);
     setShowPassword(false);
     setIsModalOpen(true);
   };
@@ -64,6 +66,7 @@ export default function StaffManagementSection() {
     setEmail(s.email);
     setRole(s.role);
     setCanOverridePrice(s.canOverridePrice || false);
+    setCanManageExpenses(s.canManageExpenses || false);
     setIsModalOpen(true);
   };
 
@@ -85,10 +88,10 @@ export default function StaffManagementSection() {
           toast.error("Passwords do not match");
           return;
         }
-        await createStaff({ name, email, password, role, canOverridePrice });
+        await createStaff({ name, email, password, role, canOverridePrice, canManageExpenses });
         toast.success("Staff added successfully");
       } else if (modalMode === "EDIT" && selectedStaff) {
-        await updateStaff({ id: selectedStaff.id, data: { name, email, role, canOverridePrice } });
+        await updateStaff({ id: selectedStaff.id, data: { name, email, role, canOverridePrice, canManageExpenses } });
         toast.success("Staff updated successfully");
       } else if (modalMode === "RESET" && selectedStaff) {
         if (password !== confirmPassword) {
@@ -282,6 +285,15 @@ export default function StaffManagementSection() {
                       className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span className="text-sm font-medium text-slate-700">Allow modifying product prices in billing</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer mt-2">
+                    <input
+                      type="checkbox"
+                      checked={canManageExpenses}
+                      onChange={(e) => setCanManageExpenses(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Allow managing expenses in Pota Baki</span>
                   </label>
                 </div>
               </>

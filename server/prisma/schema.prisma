@@ -277,6 +277,8 @@ model Tenant {
   cashBookAuditLogs CashBookAuditLog[]
   staffUsers        StaffUser[]
   priceOverrides    PriceOverrideLog[]
+  expenses          Expense[]
+  paymentAccounts   PaymentAccount[]
 }
 
 model User {
@@ -307,6 +309,7 @@ model StaffUser {
   passwordHash String
   role         StaffRole @default(SALESMAN)
   canOverridePrice Boolean @default(false)
+  canManageExpenses Boolean @default(false)
   isActive     Boolean   @default(true)
   failedLoginAttempts Int @default(0)
   lockedUntil         DateTime?
@@ -554,10 +557,12 @@ model CashTransaction {
   mobile             String?
   purpose            String?
   expectedReturnDate DateTime?
+  expenseId          String?             @unique
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   tenant             Tenant              @relation(fields: [tenantId], references: [id])
   cashBook           CashBook            @relation(fields: [cashBookId], references: [id])
+  expense            Expense?            @relation(fields: [expenseId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([cashBookId])
@@ -596,4 +601,37 @@ model PriceOverrideLog {
   @@index([tenantId])
   @@index([invoiceId])
   @@index([productId])
+}
+
+model PaymentAccount {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  type      String   // BANK, UPI, CARD
+  balance   Float    @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Expense {
+  id             String   @id @default(cuid())
+  tenantId       String
+  category       String
+  customCategory String?
+  amount         Float
+  reason         String
+  notes          String?
+  paymentMode    String   // CASH, BANK, UPI, CARD, CHEQUE
+  paymentAccount String?  // Name or ID of the account
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  cashTransaction CashTransaction?
+
+  @@index([tenantId])
 }

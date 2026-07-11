@@ -463,6 +463,7 @@ export const getMonthlyReport = async (
   let totalStaffCashTaken = new Prisma.Decimal(0);
   let totalOwnerWithdrawals = new Prisma.Decimal(0);
   let totalAngadiyaPayments = new Prisma.Decimal(0);
+  let totalExpenses = new Prisma.Decimal(0);
 
   let highestClosingBalance = new Prisma.Decimal(0);
   let lowestClosingBalance = cashBooks[0]?.closingBalance ?? new Prisma.Decimal(0);
@@ -488,6 +489,8 @@ export const getMonthlyReport = async (
         totalOwnerWithdrawals = totalOwnerWithdrawals.add(tx.amount);
       } else if (tx.type === "ANGADIYA_PAYMENT") {
         totalAngadiyaPayments = totalAngadiyaPayments.add(tx.amount);
+      } else if (tx.type === "EXPENSE" || tx.cashOutId != null) {
+        totalExpenses = totalExpenses.add(tx.amount);
       }
     }
   }
@@ -502,6 +505,7 @@ export const getMonthlyReport = async (
     totalStaffCashTaken,
     totalOwnerWithdrawals,
     totalAngadiyaPayments,
+    totalExpenses,
     highestClosingBalance,
     lowestClosingBalance,
     averageDailyCash,

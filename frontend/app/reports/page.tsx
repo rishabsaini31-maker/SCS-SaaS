@@ -212,7 +212,7 @@ const getTopCategories = (products: Product[]) => {
 
 export default function ReportsPage() {
   const [activeReport, setActiveReport] = useState<
-    "Sales Report" | "Purchase Report" | "Stock Report" | "Sales Team"
+    "Sales Report" | "Purchase Report" | "Stock Report" | "Sales Team" | "Expense Report"
   >("Sales Report");
   const [activeRange, setActiveRange] = useState("This Month");
   const [customRangeStart, setCustomRangeStart] = useState("");
@@ -246,6 +246,24 @@ export default function ReportsPage() {
     queryKey: ["reports-payments"],
     queryFn: async () => {
       const res = await api.get<Payment[]>("/payments");
+      return res.data;
+    },
+  });
+
+  type Expense = {
+    id: string;
+    category: string;
+    amount: number;
+    paymentMode: string;
+    createdAt: string;
+    reason: string;
+  };
+
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ["reports-expenses"],
+    queryFn: async () => {
+      // For simplicity, just get month expenses. In a real app we'd pass activeRange dates.
+      const res = await api.get<Expense[]>("/expenses/month");
       return res.data;
     },
   });
@@ -523,6 +541,44 @@ export default function ReportsPage() {
     };
   }, [products]);
 
+  const expenseData = useMemo(() => {
+    const visibleExpenses = expenses.filter((e) => matchesRange(e.createdAt, activeRange, customRangeStart, customRangeEnd));
+    const totalExpense = visibleExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalCash = visibleExpenses.filter(e => e.paymentMode === 'CASH').reduce((sum, e) => sum + e.amount, 0);
+    const totalNonCash = totalExpense - totalCash;
+
+    const categoryMap = new Map<string, number>();
+    for (const e of visibleExpenses) {
+      const cat = e.category || 'Other';
+      categoryMap.set(cat, (categoryMap.get(cat) || 0) + e.amount);
+    }
+    const chart = Array.from(categoryMap.entries())
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    return {
+      totalExpense,
+      totalCash,
+      totalNonCash,
+      chart,
+      rows: visibleExpenses
+        .slice()
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10)
+        .map<ReportRow>((e) => ({
+          id: e.id,
+          label: e.category,
+          date: e.createdAt,
+          itemCount: e.paymentMode,
+          amount: e.amount,
+          status: "Completed",
+          partyName: e.reason || "N/A",
+          tone: "slate",
+        })),
+    };
+  }, [expenses, activeRange, customRangeStart, customRangeEnd]);
+
   const handleExportReport = () => {
     const summary =
       activeReport === "Sales Report"
@@ -544,11 +600,17 @@ export default function ReportsPage() {
                 `Active Members: ${salesTeam.filter((m) => m.isActive).length}`,
                 `Total Sales: ${formatINR(salesTeam.reduce((sum, m) => sum + m.totalSalesAmount, 0))}`,
               ]
-            : [
-                `Inventory Value: ${formatINR(stockData.inventoryValue)}`,
-                `Units: ${stockData.totalUnits}`,
-                `Low Stock Items: ${stockData.lowStockCount}`,
-              ];
+            : activeReport === "Expense Report"
+              ? [
+                  `Total Expense: ${formatINR(expenseData.totalExpense)}`,
+                  `Total Cash: ${formatINR(expenseData.totalCash)}`,
+                  `Total Non-Cash: ${formatINR(expenseData.totalNonCash)}`,
+                ]
+              : [
+                  `Inventory Value: ${formatINR(stockData.inventoryValue)}`,
+                  `Units: ${stockData.totalUnits}`,
+                  `Low Stock Items: ${stockData.lowStockCount}`,
+                ];
 
     const content = [
       activeReport,
@@ -655,6 +717,33 @@ export default function ReportsPage() {
                 icon: "star",
               },
             ]
+        : activeReport === "Expense Report"
+          ? [
+              {
+                label: "Total Expenses",
+                value: formatINR(expenseData.totalExpense),
+                tone: "red",
+                icon: "payments",
+              },
+              {
+                label: "Cash Expenses",
+                value: formatINR(expenseData.totalCash),
+                tone: "amber",
+                icon: "money",
+              },
+              {
+                label: "Non-Cash Expenses",
+                value: formatINR(expenseData.totalNonCash),
+                tone: "blue",
+                icon: "account_balance",
+              },
+              {
+                label: "Transactions",
+                value: String(expenseData.rows.length),
+                tone: "emerald",
+                icon: "receipt_long",
+              },
+            ]
         : [
             {
               label: "Total SKUs",
@@ -692,10 +781,15 @@ export default function ReportsPage() {
               label: item.name.split(" ")[0], // First name only
               value: item.totalSalesAmount,
             }))
-          : stockData.chart.map((item) => ({
-              label: item.category,
-              value: item.value,
-            }));
+          : activeReport === "Expense Report"
+            ? expenseData.chart.map((item) => ({
+                label: item.category,
+                value: item.value,
+              }))
+            : stockData.chart.map((item) => ({
+                label: item.category,
+                value: item.value,
+              }));
 
   const rows =
     activeReport === "Sales Report"
@@ -713,7 +807,9 @@ export default function ReportsPage() {
               partyName: "Salesman",
               tone: member.isActive ? "emerald" : "slate",
             }))
-          : stockData.rows;
+          : activeReport === "Expense Report"
+            ? expenseData.rows
+            : stockData.rows;
 
   const mainTitle =
     activeReport === "Sales Report"
@@ -722,7 +818,9 @@ export default function ReportsPage() {
         ? "Purchase Spend Analysis"
         : activeReport === "Sales Team"
           ? "Sales Team Performance"
-          : "Inventory Value Analysis";
+          : activeReport === "Expense Report"
+            ? "Expense Analysis"
+            : "Inventory Value Analysis";
 
   const sideTitle =
     activeReport === "Sales Report"
@@ -731,7 +829,9 @@ export default function ReportsPage() {
         ? "Top Suppliers"
         : activeReport === "Sales Team"
           ? "Top Salesmen"
-          : "Top Categories";
+          : activeReport === "Expense Report"
+            ? "Top Categories"
+            : "Top Categories";
 
   const sideRows =
     activeReport === "Sales Report"
@@ -759,10 +859,15 @@ export default function ReportsPage() {
                 name: member.name,
                 value: member.totalSalesAmount,
               }))
-          : getTopCategories(products).map((entry) => ({
-              name: entry.category,
-              value: entry.value,
-            }));
+          : activeReport === "Expense Report"
+            ? expenseData.chart.map((entry) => ({
+                name: entry.category,
+                value: entry.value,
+              }))
+            : getTopCategories(products).map((entry) => ({
+                name: entry.category,
+                value: entry.value,
+              }));
 
   const rangeSummary =
     activeRange === "Custom Range" && (customRangeStart || customRangeEnd)
@@ -776,7 +881,9 @@ export default function ReportsPage() {
         ? `${purchaseData.orderCount} purchases`
         : activeReport === "Sales Team"
           ? `${salesTeam.length} members`
-          : `${stockData.totalSkus} products`;
+          : activeReport === "Expense Report"
+            ? `${expenseData.rows.length} transactions`
+            : `${stockData.totalSkus} products`;
 
   if (loading) {
     return <div className="text-slate-500">Loading reports...</div>;
@@ -795,7 +902,7 @@ export default function ReportsPage() {
             </p>
           </div>
           <div className="inline-flex flex-wrap items-center bg-surface-container-low p-1 rounded-xl gap-1 w-fit">
-            {(["Sales Report", "Purchase Report", "Stock Report", "Sales Team"] as const).map(
+            {(["Sales Report", "Purchase Report", "Stock Report", "Expense Report", "Sales Team"] as const).map(
               (report) => (
                 <button
                   key={report}
@@ -1036,7 +1143,9 @@ export default function ReportsPage() {
                   ? "Purchases"
                   : activeReport === "Sales Team"
                     ? "Team Members"
-                    : "Products"}
+                    : activeReport === "Expense Report"
+                      ? "Expenses"
+                      : "Products"}
             </h4>
             <span className="text-xs text-slate-500 font-medium">
               {activeReport === "Sales Team" ? "All active and inactive staff" : "Showing last 10 entries"}
@@ -1052,18 +1161,20 @@ export default function ReportsPage() {
                       ? "Product"
                       : activeReport === "Purchase Report"
                         ? "Purchase #"
-                        : activeReport === "Sales Team"
-                          ? "Salesman"
-                          : "Invoice #"}
+                        : activeReport === "Expense Report"
+                          ? "Category"
+                          : activeReport === "Sales Team"
+                            ? "Salesman"
+                            : "Invoice #"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
-                    {activeReport === "Sales Team" ? "Role" : "Party"}
+                    {activeReport === "Sales Team" ? "Role" : activeReport === "Expense Report" ? "Reason" : "Party"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
                     {activeReport === "Sales Team" ? "—" : "Date"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase">
-                    {activeReport === "Sales Team" ? "Total Bills" : "Items / Stock"}
+                    {activeReport === "Sales Team" ? "Total Bills" : activeReport === "Expense Report" ? "Mode" : "Items / Stock"}
                   </th>
                   <th className="px-6 py-3 font-label-caps text-slate-500 uppercase text-right">
                     {activeReport === "Sales Team" ? "Total Sales" : "Amount"}

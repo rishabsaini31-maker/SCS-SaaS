@@ -6,7 +6,8 @@ export interface StaffUser {
   name: string;
   email: string;
   role: "OWNER" | "SALESMAN";
-  canOverridePrice: boolean;
+  canOverridePrice?: boolean;
+  canManageExpenses?: boolean;
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -33,6 +34,7 @@ type CreateStaffInput = {
   password: string;
   role: "OWNER" | "SALESMAN";
   canOverridePrice?: boolean;
+  canPerformCashOut?: boolean;
 };
 
 type UpdateStaffInput = {
@@ -40,6 +42,7 @@ type UpdateStaffInput = {
   email: string;
   role: "OWNER" | "SALESMAN";
   canOverridePrice?: boolean;
+  canPerformCashOut?: boolean;
 };
 
 type ResetPasswordInput = {

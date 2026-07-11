@@ -119,8 +119,19 @@ export default function PotaBakiPage() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [cashBook, setCashBook] = useState<any>(null);
   const [monthlyReport, setMonthlyReport] = useState<any>(null);
+  
+  // Expense Form State
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("Office Expense");
+  const [expenseCustomCategory, setExpenseCustomCategory] = useState("");
+  const [expenseReason, setExpenseReason] = useState("");
+  const [expenseNotes, setExpenseNotes] = useState("");
+  const [expensePaymentMode, setExpensePaymentMode] = useState("CASH");
+  const [expensePaymentAccount, setExpensePaymentAccount] = useState("");
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   // Form State
   const [txType, setTxType] = useState("staff");
@@ -183,32 +194,32 @@ export default function PotaBakiPage() {
 
   const totals = useMemo(() => {
     let cashIn = 0;
-    let cashOut = 0;
+    let expense = 0;
     transactions.forEach((tx) => {
       if (tx.direction === "IN") {
         cashIn += tx.amount;
       } else {
-        cashOut += tx.amount;
+        expense += tx.amount;
       }
     });
     return {
       cashIn,
-      cashOut,
-      closing: openingBalance + cashIn - cashOut,
+      expense,
+      closing: openingBalance + cashIn - expense,
     };
   }, [transactions, openingBalance]);
 
   // Visual percentages
   const inflowRatio = useMemo(() => {
-    const total = totals.cashIn + totals.cashOut;
+    const total = totals.cashIn + totals.expense;
     if (total === 0) return 50;
     return Math.round((totals.cashIn / total) * 100);
   }, [totals]);
 
   const outflowRatio = useMemo(() => {
-    const total = totals.cashIn + totals.cashOut;
+    const total = totals.cashIn + totals.expense;
     if (total === 0) return 50;
-    return Math.round((totals.cashOut / total) * 100);
+    return Math.round((totals.expense / total) * 100);
   }, [totals]);
 
   // Monthly stats summary
@@ -218,12 +229,14 @@ export default function PotaBakiPage() {
         staffAdvances: 0,
         ownerWithdrawals: 0,
         angadiyaSettled: 0,
+        expenses: 0,
       };
     }
     return {
       staffAdvances: monthlyReport.totalStaffCashTaken,
       ownerWithdrawals: monthlyReport.totalOwnerWithdrawals,
       angadiyaSettled: monthlyReport.totalAngadiyaPayments,
+      expenses: monthlyReport.totalExpenses || 0,
     };
   }, [monthlyReport]);
 
@@ -243,6 +256,51 @@ export default function PotaBakiPage() {
       }
     } else {
       toast.error("Please enter a valid amount");
+    }
+  };
+
+  const handleExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(expenseAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount greater than 0");
+      return;
+    }
+    const finalCategory = expenseCategory === "Other" ? expenseCustomCategory : expenseCategory;
+    if (!finalCategory.trim()) {
+      toast.error("Please provide an expense category");
+      return;
+    }
+    if (!expenseReason.trim()) {
+      toast.error("Please provide a reason/description for the expense");
+      return;
+    }
+
+    setIsSubmittingExpense(true);
+    try {
+      await api.post("/expenses", {
+        amount,
+        category: finalCategory,
+        reason: expenseReason,
+        notes: expenseNotes,
+        paymentMode: expensePaymentMode,
+        paymentAccount: expensePaymentAccount,
+      });
+      toast.success("Expense added successfully!");
+      setIsExpenseModalOpen(false);
+      setExpenseAmount("");
+      setExpenseCategory("Office Expense");
+      setExpenseCustomCategory("");
+      setExpenseReason("");
+      setExpenseNotes("");
+      setExpensePaymentMode("CASH");
+      setExpensePaymentAccount("");
+      await loadTodayData();
+      await loadMonthlyReport();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to add expense");
+    } finally {
+      setIsSubmittingExpense(false);
     }
   };
 
@@ -404,6 +462,15 @@ export default function PotaBakiPage() {
             <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
             Export Statement
           </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setIsExpenseModalOpen(true)}
+              className="flex-1 sm:flex-initial bg-rose-50 border border-rose-200 text-rose-700 font-semibold px-4 py-2 rounded-lg text-sm hover:bg-rose-100 transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">payments</span>
+              Expense
+            </button>
+          )}
           {isReadOnly ? (
             <button
               onClick={handleReopenDay}
@@ -548,7 +615,7 @@ export default function PotaBakiPage() {
             Total Cash Out
           </p>
           <h3 className="text-2xl font-bold text-red-600 mt-1">
-            {formatINR(totals.cashOut)}
+            {formatINR(totals.expense)}
           </h3>
           <div className="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
             <div
@@ -603,7 +670,7 @@ export default function PotaBakiPage() {
           <div>
             <p className="text-slate-500 text-xs mb-1 font-medium">Cash Outflows</p>
             <p className="text-lg font-bold font-mono text-red-600">
-              -{formatINR(totals.cashOut)}
+              -{formatINR(totals.expense)}
             </p>
           </div>
           <div className="text-slate-300 font-bold text-xl">
@@ -1013,6 +1080,143 @@ export default function PotaBakiPage() {
           </div>
         </div>
       )}
+      {/* Expense Modal */}
+      {isExpenseModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 print:hidden">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center">
+                  <span className="material-symbols-outlined">payments</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Expense</h3>
+                  <p className="text-xs text-slate-500">Record a business expense</p>
+                </div>
+              </div>
+              <button
+                className="text-slate-400 hover:text-slate-600"
+                onClick={() => setIsExpenseModalOpen(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleExpenseSubmit}>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Amount</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                    placeholder="Enter amount"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Category</label>
+                  <select
+                    value={expenseCategory}
+                    onChange={(e) => setExpenseCategory(e.target.value)}
+                    className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none bg-white"
+                  >
+                    <option value="Fuel">Fuel</option>
+                    <option value="Tea & Snacks">Tea & Snacks</option>
+                    <option value="Office Expense">Office Expense</option>
+                    <option value="Electricity">Electricity</option>
+                    <option value="Internet">Internet</option>
+                    <option value="Rent">Rent</option>
+                    <option value="Salary Advance">Salary Advance</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Bank Deposit">Bank Deposit</option>
+                    <option value="Personal Withdrawal">Personal Withdrawal</option>
+                    <option value="Other">Other (Custom)</option>
+                  </select>
+                </div>
+                {expenseCategory === "Other" && (
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Custom Category</label>
+                    <input
+                      type="text"
+                      required
+                      value={expenseCustomCategory}
+                      onChange={(e) => setExpenseCustomCategory(e.target.value)}
+                      className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                      placeholder="Specify category"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Reason / Description</label>
+                  <input
+                    type="text"
+                    required
+                    value={expenseReason}
+                    onChange={(e) => setExpenseReason(e.target.value)}
+                    className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                    placeholder="Why was this expense made?"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Payment Mode</label>
+                    <select
+                      value={expensePaymentMode}
+                      onChange={(e) => setExpensePaymentMode(e.target.value)}
+                      className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none bg-white"
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="BANK">Bank</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CARD">Card</option>
+                      <option value="CHEQUE">Cheque</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Payment Account</label>
+                    <input
+                      type="text"
+                      value={expensePaymentAccount}
+                      onChange={(e) => setExpensePaymentAccount(e.target.value)}
+                      className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none"
+                      placeholder="e.g. ICICI Current (Opt)"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Notes (Optional)</label>
+                  <textarea
+                    value={expenseNotes}
+                    onChange={(e) => setExpenseNotes(e.target.value)}
+                    className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none resize-none h-20"
+                    placeholder="Any additional details"
+                  ></textarea>
+                </div>
+              </div>
+              <div className="p-6 bg-slate-50 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="flex-1 py-2.5 px-4 border border-slate-300 text-slate-700 bg-white rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors"
+                  onClick={() => setIsExpenseModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingExpense}
+                  className="flex-1 py-2.5 px-4 bg-rose-600 text-white rounded-lg text-sm font-bold shadow-sm hover:bg-rose-500 transition-all disabled:opacity-50"
+                >
+                  {isSubmittingExpense ? "Processing..." : "Add Expense"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

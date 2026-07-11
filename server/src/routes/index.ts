@@ -15,6 +15,7 @@ import settingsRouter from "../modules/settings/settings.routes";
 import backupRouter from "../modules/backup/backup.routes";
 import potaBakiRouter from "../modules/pota-baki/pota-baki.routes";
 import staffRouter from "../modules/staff/staff.routes";
+import expenseRouter from "../modules/expenses/expense.routes";
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use("/settings", settingsRouter);
 router.use("/backups", backupRouter);
 router.use("/pota-baki", potaBakiRouter);
 router.use("/staff", staffRouter);
+router.use("/expenses", expenseRouter);
 
 export default router;

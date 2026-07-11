@@ -94,7 +94,7 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
 export const me = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
-    const tenantId = req.tenantId;
+    const tenantId = req.user?.tenantId;
     const role = req.user?.role;
     const staffId = req.user?.staffId;
 

@@ -7,6 +7,7 @@ export const createStaffSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.nativeEnum(StaffRole).default(StaffRole.SALESMAN),
   canOverridePrice: z.boolean().optional(),
+  canManageExpenses: z.boolean().optional(),
 });
 
 export const updateStaffSchema = z.object({
@@ -14,6 +15,7 @@ export const updateStaffSchema = z.object({
   email: z.string().email("Invalid email format").optional(),
   role: z.nativeEnum(StaffRole).optional(),
   canOverridePrice: z.boolean().optional(),
+  canManageExpenses: z.boolean().optional(),
 });
 
 export const resetPasswordSchema = z.object({

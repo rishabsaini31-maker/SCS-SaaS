@@ -309,7 +309,8 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
     throw new CustomError("Invalid or expired refresh token", 401);
   }
 
-  const account = await prisma.user.findUnique({
+  // Look up in User (owner) table first, then fall back to StaffUser
+  const ownerAccount = await prisma.user.findUnique({
     where: { id: record.userId },
     select: {
       ...ownerSelect,
@@ -317,9 +318,35 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
     },
   });
 
+  const staffAccount = !ownerAccount
+    ? await prisma.staffUser.findUnique({
+        where: { id: record.userId },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              businessName: true,
+              ownerName: true,
+              email: true,
+              phone: true,
+              gstNumber: true,
+              address: true,
+              status: true,
+              businessType: true,
+            },
+          },
+        },
+      })
+    : null;
+
+  const account = ownerAccount || staffAccount;
+
   if (!account) {
     throw new CustomError("Invalid or expired refresh token", 401);
   }
+
+  const isStaff = !!staffAccount;
+  const role = isStaff ? staffAccount!.role : "OWNER";
 
   const sessionId = randomUUID();
   const newRefreshTokenPlain = createSecureToken();
@@ -363,7 +390,8 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
           userId: account.id,
           tenantId: account.tenantId,
           sessionId,
-          role: "OWNER",
+          role,
+          ...(isStaff && { staffId: staffAccount!.id }),
         },
         "15m",
       ),
@@ -372,8 +400,8 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
         id: account.id,
         email: account.email,
         tenantId: account.tenantId,
-        role: "OWNER",
-        name: account.tenant?.ownerName,
+        role,
+        name: isStaff ? staffAccount!.name : (ownerAccount as any)?.tenant?.ownerName,
       },
       tenant: account.tenant,
       sessionId,
@@ -384,7 +412,8 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
   try {
     await logAuthEvent({
       tenantId: account.tenantId,
-      ownerId: account.id,
+      ownerId: isStaff ? undefined : account.id,
+      staffId: isStaff ? account.id : undefined,
       eventType: "REFRESH_TOKEN_USED",
       status: "SUCCESS",
       description: "Refresh token rotated and new session created",
@@ -397,7 +426,8 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
 
     await logAuthEvent({
       tenantId: account.tenantId,
-      ownerId: account.id,
+      ownerId: isStaff ? undefined : account.id,
+      staffId: isStaff ? account.id : undefined,
       eventType: "SESSION_CREATED",
       status: "SUCCESS",
       description: "Session created via refresh token",

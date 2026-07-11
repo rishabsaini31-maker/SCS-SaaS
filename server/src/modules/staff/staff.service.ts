@@ -30,6 +30,7 @@ export async function createStaff(tenantId: string, data: CreateStaffInput, admi
       passwordHash,
       role: data.role,
       canOverridePrice: data.canOverridePrice || false,
+      canManageExpenses: data.canManageExpenses || false,
     },
     select: {
       id: true,
@@ -56,6 +57,7 @@ export async function getStaffList(tenantId: string) {
       email: true,
       role: true,
       canOverridePrice: true,
+      canManageExpenses: true,
       isActive: true,
       lastLoginAt: true,
       createdAt: true,
@@ -148,8 +150,12 @@ export async function updateStaff(tenantId: string, id: string, data: UpdateStaf
 
   return prisma.staffUser.update({
     where: { id },
-    data,
-    select: { id: true, name: true, email: true, role: true, canOverridePrice: true, isActive: true },
+    data: {
+      ...data,
+      ...(data.canOverridePrice !== undefined && { canOverridePrice: data.canOverridePrice }),
+      ...(data.canManageExpenses !== undefined && { canManageExpenses: data.canManageExpenses }),
+    },
+    select: { id: true, name: true, email: true, role: true, canOverridePrice: true, canManageExpenses: true, isActive: true },
   });
 }
 

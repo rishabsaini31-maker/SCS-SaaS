@@ -51,6 +51,6 @@ router.delete("/sessions/:sessionId", authenticateJWT, validateRequest({ params:
 router.get("/logs", authenticateJWT, exportRateLimiter, validateRequest({ query: emptyQuerySchema }), auditController.listLogs);
 router.get("/logs/export", authenticateJWT, exportRateLimiter, validateRequest({ query: emptyQuerySchema }), auditController.exportCsv);
 
-router.get("/me", authenticateJWT, requireTenant, controller.me);
+router.get("/me", authenticateJWT, controller.me);
 
 export default router;

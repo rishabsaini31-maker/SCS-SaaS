@@ -11,6 +11,7 @@ const navItems = [
   { path: "/mobile/inventory", label: "Inventory", icon: "inventory_2" },
   { path: "/mobile/parties", label: "Parties", icon: "groups" },
   { path: "/mobile/payments", label: "Payments", icon: "payments" },
+  { path: "/mobile/pota-baki", label: "Pota Baki", icon: "account_balance_wallet" },
 ];
 
 export function MobileLayout({ children }: { children: ReactNode }) {
@@ -79,8 +80,11 @@ function BottomNavigation() {
   });
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 safe-area-pb">
-      <div className={`grid gap-1 ${isSalesman ? 'grid-cols-3' : 'grid-cols-5'}`}>
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 safe-area-pb z-50">
+      <div 
+        className="grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
+      >
         {visibleNavItems.map((item) => (
           <button
             key={item.path}
