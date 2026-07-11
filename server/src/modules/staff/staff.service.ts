@@ -29,6 +29,7 @@ export async function createStaff(tenantId: string, data: CreateStaffInput, admi
       email: data.email,
       passwordHash,
       role: data.role,
+      canOverridePrice: data.canOverridePrice || false,
     },
     select: {
       id: true,
@@ -54,6 +55,7 @@ export async function getStaffList(tenantId: string) {
       name: true,
       email: true,
       role: true,
+      canOverridePrice: true,
       isActive: true,
       lastLoginAt: true,
       createdAt: true,
@@ -147,7 +149,7 @@ export async function updateStaff(tenantId: string, id: string, data: UpdateStaf
   return prisma.staffUser.update({
     where: { id },
     data,
-    select: { id: true, name: true, email: true, role: true, isActive: true },
+    select: { id: true, name: true, email: true, role: true, canOverridePrice: true, isActive: true },
   });
 }
 

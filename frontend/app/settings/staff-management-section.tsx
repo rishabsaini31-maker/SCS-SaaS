@@ -41,6 +41,7 @@ export default function StaffManagementSection() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"OWNER" | "SALESMAN">("SALESMAN");
+  const [canOverridePrice, setCanOverridePrice] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const openAddModal = () => {
@@ -51,6 +52,7 @@ export default function StaffManagementSection() {
     setPassword("");
     setConfirmPassword("");
     setRole("SALESMAN");
+    setCanOverridePrice(false);
     setShowPassword(false);
     setIsModalOpen(true);
   };
@@ -61,6 +63,7 @@ export default function StaffManagementSection() {
     setName(s.name);
     setEmail(s.email);
     setRole(s.role);
+    setCanOverridePrice(s.canOverridePrice || false);
     setIsModalOpen(true);
   };
 
@@ -82,10 +85,10 @@ export default function StaffManagementSection() {
           toast.error("Passwords do not match");
           return;
         }
-        await createStaff({ name, email, password, role });
+        await createStaff({ name, email, password, role, canOverridePrice });
         toast.success("Staff added successfully");
       } else if (modalMode === "EDIT" && selectedStaff) {
-        await updateStaff({ id: selectedStaff.id, data: { name, email, role } });
+        await updateStaff({ id: selectedStaff.id, data: { name, email, role, canOverridePrice } });
         toast.success("Staff updated successfully");
       } else if (modalMode === "RESET" && selectedStaff) {
         if (password !== confirmPassword) {
@@ -269,6 +272,17 @@ export default function StaffManagementSection() {
                     <option value="SALESMAN">SALESMAN</option>
                     <option value="OWNER">OWNER</option>
                   </select>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer mt-2">
+                    <input
+                      type="checkbox"
+                      checked={canOverridePrice}
+                      onChange={(e) => setCanOverridePrice(e.target.checked)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Allow modifying product prices in billing</span>
+                  </label>
                 </div>
               </>
             )}

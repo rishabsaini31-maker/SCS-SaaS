@@ -6,6 +6,7 @@ export interface StaffUser {
   name: string;
   email: string;
   role: "OWNER" | "SALESMAN";
+  canOverridePrice: boolean;
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
@@ -31,12 +32,14 @@ type CreateStaffInput = {
   email: string;
   password: string;
   role: "OWNER" | "SALESMAN";
+  canOverridePrice?: boolean;
 };
 
 type UpdateStaffInput = {
   name: string;
   email: string;
   role: "OWNER" | "SALESMAN";
+  canOverridePrice?: boolean;
 };
 
 type ResetPasswordInput = {
