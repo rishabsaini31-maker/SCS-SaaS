@@ -611,7 +611,16 @@ export default function MobileBillingPage() {
                 ))}
               </datalist>
               <div className="space-y-3">
-                {lineItems.map((item, idx) => (
+                {lineItems.map((item, idx) => {
+                  const selectedProduct = item.productId
+                    ? products.find((p) => p.id === item.productId)
+                    : null;
+                  const hasCustomPrice =
+                    selectedProduct &&
+                    item.unitPrice > 0 &&
+                    item.unitPrice !== selectedProduct.sellingPrice;
+
+                  return (
                   <div key={idx} className="border border-slate-200 rounded-lg p-3">
                     <select
                       value={item.productId}
@@ -632,46 +641,74 @@ export default function MobileBillingPage() {
                       <option value="">Select product</option>
                       {getProductOptionsForLineItem(item.productId).map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} (Stock: {p.stock})
+                          {p.name} (Stock: {p.stock}, {formatINR(p.sellingPrice)})
                         </option>
                       ))}
                     </select>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        value={item.quantity === 0 ? "" : item.quantity}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (raw === "") {
-                            updateLineItem(idx, "quantity", 0);
-                            return;
-                          }
-                          updateLineItem(
-                            idx,
-                            "quantity",
-                            Math.max(0, Number(raw) || 0),
-                          );
-                        }}
-                        className="px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                        placeholder="Quantity"
-                      />
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.unitPrice === 0 ? "" : item.unitPrice}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          if (raw === "") {
-                            updateLineItem(idx, "unitPrice", 0);
-                          } else {
-                            updateLineItem(idx, "unitPrice", parseFloat(raw));
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        disabled={!canOverridePrice}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                        placeholder="Price"
-                      />
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">Qty</label>
+                        <input
+                          type="number"
+                          value={item.quantity === 0 ? "" : item.quantity}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              updateLineItem(idx, "quantity", 0);
+                              return;
+                            }
+                            updateLineItem(
+                              idx,
+                              "quantity",
+                              Math.max(0, Number(raw) || 0),
+                            );
+                          }}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                          placeholder="Quantity"
+                        />
+                        {selectedProduct && (
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Stock: {selectedProduct.stock}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-500 mb-1">
+                          Price
+                          {canOverridePrice && (
+                            <span className="ml-1 text-blue-500">
+                              <span className="material-symbols-outlined" style={{ fontSize: '12px', verticalAlign: 'middle' }}>edit</span>
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.unitPrice === 0 ? "" : item.unitPrice}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              updateLineItem(idx, "unitPrice", 0);
+                            } else {
+                              updateLineItem(idx, "unitPrice", parseFloat(raw));
+                            }
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          disabled={!canOverridePrice}
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 ${
+                            canOverridePrice
+                              ? "border-blue-300 bg-blue-50/30"
+                              : "border-slate-300"
+                          }`}
+                          placeholder="Price"
+                          title="Unit Price"
+                        />
+                        {hasCustomPrice && (
+                          <p className="text-[11px] mt-1 text-amber-600">
+                            Original: {formatINR(selectedProduct.sellingPrice)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     {lineItems.length > 1 && (
                       <button
@@ -683,7 +720,8 @@ export default function MobileBillingPage() {
                       </button>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
