@@ -35,6 +35,7 @@ type CreateStaffInput = {
   role: "OWNER" | "SALESMAN";
   canOverridePrice?: boolean;
   canPerformCashOut?: boolean;
+  canManageExpenses?: boolean;
 };
 
 type UpdateStaffInput = {
@@ -43,6 +44,7 @@ type UpdateStaffInput = {
   role: "OWNER" | "SALESMAN";
   canOverridePrice?: boolean;
   canPerformCashOut?: boolean;
+  canManageExpenses?: boolean;
 };
 
 type ResetPasswordInput = {
