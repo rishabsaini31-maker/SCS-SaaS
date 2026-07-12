@@ -489,7 +489,7 @@ export const getMonthlyReport = async (
         totalOwnerWithdrawals = totalOwnerWithdrawals.add(tx.amount);
       } else if (tx.type === "ANGADIYA_PAYMENT") {
         totalAngadiyaPayments = totalAngadiyaPayments.add(tx.amount);
-      } else if (tx.type === "EXPENSE" || tx.cashOutId != null) {
+      } else if (tx.type === "EXPENSE" || tx.expenseId != null) {
         totalExpenses = totalExpenses.add(tx.amount);
       }
     }

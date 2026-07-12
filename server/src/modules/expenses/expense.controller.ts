@@ -21,8 +21,8 @@ export const createExpenseHandler = async (req: Request, res: Response) => {
 
   const parsed = createExpenseSchema.parse(req.body);
   const user = {
-    id: req.user?.id || req.user?.staffId,
-    name: req.user?.name,
+    id: req.user?.userId || req.user?.staffId,
+    name: (req.user as any)?.name,
     role: req.user?.role,
   };
 
