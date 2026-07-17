@@ -269,6 +269,19 @@ export default function InventoryPage() {
       availableCategories={categoryOptions}
       onEdit={startEditProduct}
       onActivate={openActivationModal}
+      showActivationModal={showActivationModal}
+      activatingProduct={activatingProduct ? { ...activatingProduct, purchasePrice: activatingProduct.purchasePrice } : undefined}
+      activationForm={activationForm}
+      onActivationFormChange={(field, value) =>
+        setActivationForm((current) => ({ ...current, [field]: value }))
+      }
+      onCancelActivation={() => {
+        setShowActivationModal(false);
+        setActivatingProductId(null);
+        setActivationForm({ sellingPrice: "" });
+      }}
+      onSubmitActivation={handleActivateProduct}
+      submitting={submitting}
       onAddProduct={handleAddProduct}
       onToggleForm={() => {
         setEditingProductId(null);
@@ -287,7 +300,6 @@ export default function InventoryPage() {
       formData={formData}
       onFieldChange={handleFieldChange}
       onCancelForm={() => setShowForm(false)}
-      submitting={submitting}
       editingProductId={editingProductId}
       selectedCategory={selectedCategory}
       onCategoryChange={setSelectedCategory}
