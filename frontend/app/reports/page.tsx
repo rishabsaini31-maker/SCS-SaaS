@@ -14,7 +14,11 @@ type Invoice = {
   gstAmount: number;
   status: string;
   customer: { name: string };
-  lineItems: { quantity: number; product: { name: string } }[];
+  lineItems: {
+    quantity: number;
+    unitPrice: number;
+    product: { name: string; purchasePrice?: number };
+  }[];
 };
 
 type Purchase = {
@@ -386,8 +390,10 @@ export default function ReportsPage() {
 
     const totalProfit = visibleInvoices.reduce((sum, invoice) => {
       const invoiceProfit = invoice.lineItems.reduce((itemSum: number, item: any) => {
-        const costPrice = item.product ? item.product.purchasePrice : 0;
-        return itemSum + ((item.unitPrice - costPrice) * item.quantity);
+        const costPrice = item.product ? (item.product.purchasePrice || 0) : 0;
+        const unitPrice = typeof item.unitPrice === "number" ? item.unitPrice : 0;
+        const quantity = typeof item.quantity === "number" ? item.quantity : 0;
+        return itemSum + (unitPrice - costPrice) * quantity;
       }, 0);
       return sum + invoiceProfit;
     }, 0);

@@ -268,7 +268,7 @@ export const getInvoices = async (
           discountAmount: true,
           totalPrice: true,
           product: {
-            select: { id: true, name: true, barcode: true },
+            select: { id: true, name: true, barcode: true, purchasePrice: true },
           },
         },
       },
