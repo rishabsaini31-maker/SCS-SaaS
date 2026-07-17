@@ -48,12 +48,22 @@ export async function authenticateJWT(
 
   const payload = verifyJwtToken<AuthTokenPayload>(token);
   if (!payload?.userId || !payload.tenantId) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   // In production enforce presence of sessionId to enable server-side revocation
   if (process.env.NODE_ENV === "production" && !payload.sessionId) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   if (payload.sessionId) {
@@ -63,7 +73,12 @@ export async function authenticateJWT(
       session.userId !== payload.userId ||
       session.tenantId !== payload.tenantId
     ) {
-      return res.status(401).json({ error: "Expired or revoked session" });
+      res.clearCookie("auth-token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+      return next();
     }
 
     if (shouldTouchSession(payload.sessionId)) {
@@ -79,7 +94,12 @@ export async function authenticateJWT(
   });
 
   if (!tenant) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   if (tenant.status === "SUSPENDED") {

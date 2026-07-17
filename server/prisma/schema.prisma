@@ -272,10 +272,12 @@ model Tenant {
   settings      TenantSetting?
   owner             User?
   backups           Backup[]
+  cloudBackups      CloudBackup[]
   cashBooks         CashBook[]
   cashTransactions  CashTransaction[]
   cashBookAuditLogs CashBookAuditLog[]
   staffUsers        StaffUser[]
+  restoreHistories  RestoreHistory[]
   priceOverrides    PriceOverrideLog[]
   expenses          Expense[]
   paymentAccounts   PaymentAccount[]
@@ -484,6 +486,28 @@ model AuditLog {
   @@index([createdAt])
 }
 
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  UPLOAD_FAILED
+  VERIFICATION_FAILED
+}
+
+enum BackupType {
+  DAILY
+  MONTHLY
+  YEARLY
+}
+
+enum BackupIntegrity {
+  UNVERIFIED
+  VERIFIED
+  CORRUPTED
+  MISSING
+}
+
 model Backup {
   id          String   @id @default(cuid())
   tenantId    String?
@@ -497,6 +521,50 @@ model Backup {
 
   @@unique([tenantId, type, year, month])
   @@index([tenantId])
+}
+
+enum BackupMode {
+  FULL
+  INCREMENTAL
+}
+
+model CloudBackup {
+  id           String       @id @default(cuid())
+  tenantId     String
+  fileName     String
+  year         Int
+  month        Int          // 1-12
+  backupDate   DateTime
+  storagePath  String
+  fileSize     BigInt       @default(0)
+  checksum     String       // SHA-256 of encrypted file
+  status       BackupStatus @default(PENDING)
+  type         BackupType   @default(DAILY)
+  mode         BackupMode   @default(FULL)
+  version      Int          @default(1)
+  isCompressed Boolean      @default(true)
+  isImmutable  Boolean      @default(false)
+  integrity    BackupIntegrity @default(UNVERIFIED)
+  retryCount   Int          @default(0)
+  lastVerifiedAt DateTime?
+  errorMessage String?
+  durationMs   Int?
+  parentBackupId String?
+  previousBackupId String?
+  lastBackupTimestamp DateTime?
+  changedRecordCount Int @default(0)
+  snapshotSummary Json?
+  restoredRecords Int @default(0)
+  failedRecords Int @default(0)
+  recoveryReport Json?
+  createdAt    DateTime     @default(now())
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restoreHistories RestoreHistory[]
+
+  @@unique([tenantId, fileName])
+  @@index([tenantId])
+  @@index([status])
+  @@index([backupDate])
 }
 
 enum CashBookStatus {
@@ -634,4 +702,37 @@ model Expense {
   cashTransaction CashTransaction?
 
   @@index([tenantId])
+}
+
+enum RestoreStatus {
+  PENDING
+  DOWNLOADING
+  DECRYPTING
+  VALIDATING
+  RESTORING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model RestoreHistory {
+  id               String        @id @default(cuid())
+  tenantId         String
+  cloudBackupId    String
+  scope            Json          // Array of scopes selected (e.g., ["Products", "Customers"])
+  conflictHandling String        // "SKIP", "OVERWRITE", "MERGE"
+  startedBy        String
+  startedAt        DateTime      @default(now())
+  completedAt      DateTime?
+  durationMs       Int?
+  status           RestoreStatus @default(PENDING)
+  errorMessage     String?
+  restoredRecords  Int           @default(0)
+  failedRecords    Int           @default(0)
+  recoveryReport   Json?
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cloudBackup      CloudBackup   @relation(fields: [cloudBackupId], references: [id])
+
+  @@index([tenantId])
+  @@index([cloudBackupId])
 }

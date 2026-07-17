@@ -117,3 +117,78 @@ export async function sendSuspiciousLoginEmail(
     `,
   });
 }
+
+// ─── Backup Notifications ───────────────────────────────────────────────────
+
+export async function sendCloudBackupSuccessEmail(
+  email: string,
+  details: { fileName: string; fileSize: string; time: string }
+): Promise<boolean> {
+  return sendEmail({
+    to: email,
+    subject: "SCS Flow — Cloud Backup Successful",
+    html: `
+      <h2>Cloud Backup Successful</h2>
+      <p>Your SCS Flow automated daily backup has completed successfully.</p>
+      <ul>
+        <li><strong>File Name:</strong> ${details.fileName}</li>
+        <li><strong>Size:</strong> ${details.fileSize}</li>
+        <li><strong>Time:</strong> ${details.time}</li>
+      </ul>
+      <p>Your data is securely encrypted and stored in Cloudflare R2.</p>
+    `,
+  });
+}
+
+export async function sendCloudBackupFailedEmail(
+  email: string,
+  details: { reason: string; time: string }
+): Promise<boolean> {
+  return sendEmail({
+    to: email,
+    subject: "SCS Flow — ⚠️ Cloud Backup Failed",
+    html: `
+      <h2>Cloud Backup Failed</h2>
+      <p>Your SCS Flow automated backup has failed.</p>
+      <ul>
+        <li><strong>Time:</strong> ${details.time}</li>
+        <li><strong>Reason:</strong> ${details.reason}</li>
+      </ul>
+      <p>Please check your Backup Dashboard in Settings for more details or contact support.</p>
+    `,
+  });
+}
+
+export async function sendManualBackupCompletedEmail(
+  email: string,
+  details: { fileName: string; fileSize: string; time: string; status: string }
+): Promise<boolean> {
+  return sendEmail({
+    to: email,
+    subject: `SCS Flow — Manual Backup ${details.status}`,
+    html: `
+      <h2>Manual Cloud Backup ${details.status}</h2>
+      <p>The manual backup you requested has finished.</p>
+      <ul>
+        <li><strong>Status:</strong> ${details.status}</li>
+        <li><strong>File Name:</strong> ${details.fileName}</li>
+        <li><strong>Size:</strong> ${details.fileSize}</li>
+        <li><strong>Time:</strong> ${details.time}</li>
+      </ul>
+    `,
+  });
+}
+
+export async function sendRestoreSafetyBackupCreatedEmail(
+  email: string
+): Promise<boolean> {
+  return sendEmail({
+    to: email,
+    subject: `SCS Flow — Restore Safety Backup Created`,
+    html: `
+      <h2>Restore Safety Backup Completed</h2>
+      <p>A fresh safety backup of your database was successfully taken right before your restore operation began.</p>
+      <p>This ensures you can always recover your data if the restore was a mistake.</p>
+    `,
+  });
+}

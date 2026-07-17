@@ -6,6 +6,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { toast } from "@/lib/toast";
 import StaffManagementSection from "./staff-management-section";
 import SecurityLogs from "@/components/SecurityLogs";
+import BackupRecoverySection from "./backup-recovery-section";
 
 export type SettingsSectionKey =
   | "business-profile"
@@ -14,7 +15,8 @@ export type SettingsSectionKey =
   | "inventory"
   | "notifications"
   | "integrations"
-  | "security";
+  | "security"
+  | "backup-recovery";
 
 
 const sectionLabels: Record<SettingsSectionKey, string> = {
@@ -25,6 +27,7 @@ const sectionLabels: Record<SettingsSectionKey, string> = {
   notifications: "Notifications",
   integrations: "Integrations",
   security: "Security Log",
+  "backup-recovery": "Backup & Disaster Recovery",
 };
 
 const sectionLinks: Array<{ key: SettingsSectionKey; href: string }> = [
@@ -35,6 +38,7 @@ const sectionLinks: Array<{ key: SettingsSectionKey; href: string }> = [
   { key: "notifications", href: "/settings/notifications" },
   { key: "integrations", href: "/settings/integrations" },
   { key: "security", href: "/settings/security" },
+  { key: "backup-recovery", href: "/settings/backup-recovery" },
 ];
 
 function SectionNav({ activeSection }: { activeSection: SettingsSectionKey }) {
@@ -280,9 +284,9 @@ export default function SettingsSectionView({
             )}
           </div>
         </section>
-      ) : null}
-
-      {section === "billing-gst" ? (
+      ) : section === "backup-recovery" ? (
+        <BackupRecoverySection />
+      ) : section === "billing-gst" ? (
         <section className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm flex flex-col">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h3 className="font-h1 text-h1">Billing &amp; GST</h3>
@@ -467,6 +471,10 @@ export default function SettingsSectionView({
 
       {section === "staff-management" ? (
         <StaffManagementSection />
+      ) : null}
+
+      {section === "backup-recovery" ? (
+        <BackupRecoverySection />
       ) : null}
 
       {section === "notifications" ? (

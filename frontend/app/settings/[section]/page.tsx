@@ -11,6 +11,7 @@ const validSections = new Set<SettingsSectionKey>([
   "notifications",
   "integrations",
   "security",
+  "backup-recovery",
 ]);
 
 export default async function SettingsSectionPage({

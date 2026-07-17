@@ -20,18 +20,33 @@ export async function authenticateSuperAdmin(
 
   const payload = verifyJwtToken<SuperAdminTokenPayload>(token);
   if (!payload?.adminId || !payload?.adminType) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   // In production require sessionId for server-side revocation support
   if (process.env.NODE_ENV === "production" && !payload.sessionId) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   if (payload.sessionId) {
     const session = await getActiveSession(payload.sessionId);
     if (!session || session.superAdminId !== payload.adminId) {
-      return res.status(401).json({ error: "Expired or revoked session" });
+      res.clearCookie("auth-token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+      return next();
     }
   }
 
@@ -50,7 +65,12 @@ export async function authenticateSuperAdmin(
   });
 
   if (!superAdmin) {
-    return res.status(401).json({ error: "Invalid JWT" });
+    res.clearCookie("auth-token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+    return next();
   }
 
   req.superAdmin = superAdmin;

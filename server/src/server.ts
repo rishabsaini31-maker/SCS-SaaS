@@ -52,15 +52,33 @@ if (!shouldRunStartupBootstrap && config.nodeEnv === "production") {
       // eslint-disable-next-line no-console
       console.log(`✓ Environment: ${config.nodeEnv}`);
 
-      // Start automated backup scheduler
+      // Start Cloud Backup scheduler (daily at 2:00 AM)
+      try {
+        const { createBackupSystem } = await import("./backup");
+        const prismaModule = await import("./common/db/prisma");
+        const backupSystem = createBackupSystem(prismaModule.default as any);
+        if (backupSystem) {
+          backupSystem.scheduler.start();
+          // eslint-disable-next-line no-console
+          console.log("✓ Cloud backup scheduler initialized (daily at 2:00 AM)");
+        } else {
+          // eslint-disable-next-line no-console
+          console.log("⚠ Cloud backup system disabled (R2 not configured)");
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("❌ Failed to start cloud backup scheduler:", err);
+      }
+
+      // Start legacy backup scheduler (hourly DB snapshots)
       try {
         const { startBackupScheduler } = await import("./modules/backup/backup.scheduler");
         startBackupScheduler();
         // eslint-disable-next-line no-console
-        console.log("✓ Automated backup scheduler initialized");
+        console.log("✓ Legacy backup scheduler initialized");
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error("❌ Failed to start backup scheduler:", err);
+        console.error("❌ Failed to start legacy backup scheduler:", err);
       }
     });
   } catch (error) {

@@ -16,6 +16,8 @@ import backupRouter from "../modules/backup/backup.routes";
 import potaBakiRouter from "../modules/pota-baki/pota-baki.routes";
 import staffRouter from "../modules/staff/staff.routes";
 import expenseRouter from "../modules/expenses/expense.routes";
+import cloudBackupRouter from "../backup/cloud-backup.routes";
+import cloudRestoreRouter from "../backup/restore.routes";
 
 const router = Router();
 
@@ -33,6 +35,8 @@ router.use("/dashboard", dashboardRouter);
 router.use("/reports", reportsRouter);
 router.use("/settings", settingsRouter);
 router.use("/backups", backupRouter);
+router.use("/cloud-backups", cloudBackupRouter);
+router.use("/cloud-restores", cloudRestoreRouter);
 router.use("/pota-baki", potaBakiRouter);
 router.use("/staff", staffRouter);
 router.use("/expenses", expenseRouter);
