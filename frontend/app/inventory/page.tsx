@@ -24,6 +24,7 @@ export default function InventoryPage() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -139,10 +140,14 @@ export default function InventoryPage() {
     ]),
   ).sort((a, b) => a.localeCompare(b));
 
+  const lowStockProducts = products.filter((product) => product.stock < 10);
+  const lowStockCount = lowStockProducts.length;
+
   const visibleProducts = products.filter((product) => {
     const matchesCategory = selectedCategory ? product.category === selectedCategory : true;
     const matchesSearch = searchQuery ? product.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-    return matchesCategory && matchesSearch;
+    const matchesLowStock = lowStockOnly ? product.stock < 10 : true;
+    return matchesCategory && matchesSearch && matchesLowStock;
   });
 
   const activatingProduct = products.find(
@@ -306,6 +311,9 @@ export default function InventoryPage() {
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
       onAddCategory={handleAddCategory}
+      lowStockOnly={lowStockOnly}
+      onToggleLowStock={() => setLowStockOnly((current) => !current)}
+      lowStockCount={lowStockCount}
     />
   );
 }

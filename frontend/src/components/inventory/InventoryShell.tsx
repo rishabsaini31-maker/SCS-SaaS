@@ -44,6 +44,9 @@ type InventoryShellProps = {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   onAddCategory: () => void;
+  lowStockOnly: boolean;
+  onToggleLowStock: () => void;
+  lowStockCount: number;
 };
 
 export function InventoryShell({
@@ -71,6 +74,9 @@ export function InventoryShell({
   searchQuery,
   onSearchChange,
   onAddCategory,
+  lowStockOnly,
+  onToggleLowStock,
+  lowStockCount,
 }: InventoryShellProps) {
   const config = useMemo(() => getBusinessConfig(tenantBusinessType), [tenantBusinessType]);
 
@@ -82,7 +88,18 @@ export function InventoryShell({
           <h1 className="text-3xl font-bold text-slate-900">Inventory</h1>
           <p className="mt-1 text-sm text-slate-500">Business configuration is loaded from the tenant profile.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onToggleLowStock}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+              lowStockOnly
+                ? "bg-amber-700 hover:bg-amber-800"
+                : "bg-amber-500 hover:bg-amber-600"
+            }`}
+          >
+            Low Stock Products{lowStockCount > 0 ? ` (${lowStockCount})` : ""}
+          </button>
           <button
             type="button"
             onClick={onAddCategory}
@@ -109,6 +126,46 @@ export function InventoryShell({
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
       />
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">Filter by Category</h2>
+          <button
+            type="button"
+            onClick={() => onCategoryChange("")}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              selectedCategory === ""
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All ({products.length})
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {availableCategories.length === 0 ? (
+            <p className="text-sm text-slate-500">No categories available.</p>
+          ) : (
+            availableCategories.map((category) => {
+              const count = products.filter((p) => p.category === category).length;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => onCategoryChange(category)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    selectedCategory === category
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {category} ({count})
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       {showForm ? (
         <DynamicProductForm
