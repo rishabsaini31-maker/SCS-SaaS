@@ -123,7 +123,7 @@ export const globalRateLimiter = createLimiter({
  */
 export const loginRateLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 30,
   tag: "login",
   scope: "ip",
   message: "Too many login attempts, please try again in 15 minutes.",

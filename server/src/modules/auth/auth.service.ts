@@ -72,8 +72,8 @@ function getFrontendUrl() {
 }
 
 async function getAccountByEmail(email: string) {
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
     select: {
       ...ownerSelect,
       passwordHash: true,
@@ -84,8 +84,8 @@ async function getAccountByEmail(email: string) {
     return { user, staffUser: null };
   }
 
-  const staffUser = await prisma.staffUser.findUnique({
-    where: { email },
+  const staffUser = await prisma.staffUser.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
     include: {
       tenant: {
         select: {
