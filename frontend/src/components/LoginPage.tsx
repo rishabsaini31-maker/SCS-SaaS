@@ -97,9 +97,14 @@ export default function LoginPage({ redirectTo }: LoginPageProps) {
       
       // Force a full browser reload to clear any Next.js router cache and ensure all auth providers update
       window.location.href = finalRedirect;
-    } catch {
-      setErrorMessage("Invalid email or password");
-      toast.error("Invalid email or password");
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { error?: string; message?: string }; status?: number } };
+      const serverMessage =
+        axiosError?.response?.data?.error ||
+        axiosError?.response?.data?.message ||
+        "Invalid email or password";
+      setErrorMessage(serverMessage);
+      toast.error(serverMessage);
     } finally {
       setIsSubmitting(false);
     }

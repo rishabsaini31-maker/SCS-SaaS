@@ -196,7 +196,7 @@ export async function loginOwner(data: LoginInput, context?: AuthContext) {
       role: staffUser ? staffUser.role : "OWNER",
       staffId: staffUser ? staffUser.id : undefined,
     },
-    "15m",
+    "7d",
   );
   const refreshTokenPlain = createSecureToken();
   const refreshTokenHash = hashToken(refreshTokenPlain);
@@ -393,7 +393,7 @@ export async function refreshOwnerToken(data: RefreshTokenInput, context?: AuthC
           role,
           ...(isStaff && { staffId: staffAccount!.id }),
         },
-        "15m",
+        "7d",
       ),
       refreshToken: newRefreshTokenPlain,
       user: {

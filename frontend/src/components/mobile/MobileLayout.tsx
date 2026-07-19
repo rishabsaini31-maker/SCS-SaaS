@@ -72,8 +72,10 @@ function BottomNavigation() {
   const isSalesman = session?.user?.role === "SALESMAN";
   const isActive = (path: string) => pathname === path;
 
+  const staffAllowedPaths = ["/mobile/dashboard", "/mobile/billing", "/mobile/inventory"];
+
   const visibleNavItems = navItems.filter((item) => {
-    if (isSalesman && (item.path === "/mobile/parties" || item.path === "/mobile/payments")) {
+    if (isSalesman && !staffAllowedPaths.includes(item.path)) {
       return false;
     }
     return true;

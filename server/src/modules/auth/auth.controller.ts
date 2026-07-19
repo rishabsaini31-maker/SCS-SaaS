@@ -41,7 +41,7 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
-    maxAge: 15 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
   res.cookie("refresh-token", refreshToken, {

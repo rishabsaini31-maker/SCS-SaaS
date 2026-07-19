@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { useSettings } from "@/hooks/useSettings";
 import { waitForAuthenticatedSession } from "@/lib/session";
+import BarcodeScannerModal from "@/components/mobile/BarcodeScannerModal";
 
 type Invoice = {
   id: string;
@@ -119,6 +120,7 @@ export default function MobileBillingPage() {
     };
     void loadSession();
   }, []);
+  const [showScanner, setShowScanner] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
@@ -561,8 +563,17 @@ export default function MobileBillingPage() {
                     }
                   }}
                   className="flex-1 px-3 py-3 border border-slate-300 rounded-lg text-base"
-                  placeholder="Scan barcode"
+                  placeholder="Scan or type barcode"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg font-medium flex items-center gap-1.5 hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                  title="Open camera scanner"
+                >
+                  <span className="material-symbols-outlined text-xl">photo_camera</span>
+                  <span className="text-sm">Scan</span>
+                </button>
               </div>
             </div>
 
@@ -884,6 +895,15 @@ export default function MobileBillingPage() {
           })
         )}
       </div>
+
+      <BarcodeScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={(barcode) => {
+          setShowScanner(false);
+          void handleBarcodeInput(barcode);
+        }}
+      />
 
       {showAddCustomerModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4">
