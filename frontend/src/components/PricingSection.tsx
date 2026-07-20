@@ -5,8 +5,8 @@ const plans = [
   {
     name: 'Basic',
     description: 'Essential features for small shops looking to get started.',
-    monthlyPrice: 899,
-    annualPrice: 8500,
+    firstYearPrice: 15000,
+    renewalPrice: 8500,
     features: [
       'Unlimited invoices',
       '1 user account',
@@ -18,8 +18,8 @@ const plans = [
   {
     name: 'Pro',
     description: 'Advanced features and priority support for growing teams.',
-    monthlyPrice: 1899,
-    annualPrice: 18000,
+    firstYearPrice: 25000,
+    renewalPrice: 15000,
     features: [
       'Unlimited invoices',
       '7 user accounts',
@@ -33,8 +33,6 @@ const plans = [
 ];
 
 export default function PricingSection() {
-  const [annual, setAnnual] = useState(true);
-
   return (
     <section id="pricing" className="py-24 bg-surface-container-lowest">
       <div className="max-w-7xl mx-auto px-container-padding">
@@ -43,26 +41,10 @@ export default function PricingSection() {
           <p className="text-on-surface-variant mt-4 max-w-2xl mx-auto text-lg">
             Choose the plan that fits your business stage. Upgrade or downgrade anytime.
           </p>
-          <div className="flex items-center justify-center gap-4 mt-8">
-            <span className={`text-sm font-medium ${!annual ? 'text-on-surface' : 'text-on-surface-variant'}`}>Monthly</span>
-            <button
-              onClick={() => setAnnual(!annual)}
-              className="w-14 h-7 rounded-full bg-surface-container-highest flex items-center p-1 transition-colors cursor-pointer"
-              aria-label="Toggle annual pricing"
-            >
-              <div className={`w-5 h-5 rounded-full bg-primary transition-transform ${annual ? 'translate-x-7' : ''}`} />
-            </button>
-            <span className={`text-sm font-medium ${annual ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-              Annually
-            </span>
-          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto items-stretch">
           {plans.map((plan) => {
-            const price = annual ? plan.annualPrice : plan.monthlyPrice;
-            const period = annual ? '/yr' : '/mo';
-
             return (
               <div
                 key={plan.name}
@@ -81,20 +63,18 @@ export default function PricingSection() {
                 <p className="text-on-surface-variant text-sm mb-6 h-12 flex items-start">
                   {plan.description}
                 </p>
-                
-                <div className="mb-6 h-20 flex flex-col justify-end">
+
+                <div className="mb-6 h-24 flex flex-col justify-end">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-on-surface">
-                      ₹{price.toLocaleString('en-IN')}
+                      ₹{plan.firstYearPrice.toLocaleString('en-IN')}
                     </span>
-                    <span className="text-on-surface-variant text-sm font-normal">{period}</span>
+                    <span className="text-on-surface-variant text-sm font-normal">/1st yr</span>
                   </div>
-                  <div className="mt-1 h-6">
-                    {annual && (
-                      <span className="text-xs text-on-surface-variant/70 italic">
-                        Billed annually
-                      </span>
-                    )}
+                  <div className="mt-1">
+                    <span className="text-xs text-on-surface-variant/70 italic">
+                      Then ₹{plan.renewalPrice.toLocaleString('en-IN')}/yr
+                    </span>
                   </div>
                 </div>
 
