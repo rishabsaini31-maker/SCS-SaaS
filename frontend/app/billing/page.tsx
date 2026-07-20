@@ -417,7 +417,6 @@ export default function BillingPage() {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerForm, setNewCustomerForm] = useState({
     name: "",
-    email: "",
     phone: "",
     address: "",
     gstin: "",
@@ -845,13 +844,13 @@ export default function BillingPage() {
         status: "active",
       });
       setShowAddCustomerModal(false);
-      setNewCustomerForm({ name: "", email: "", phone: "", address: "", gstin: "" });
+      setNewCustomerForm({ name: "", phone: "", address: "", gstin: "" });
       await queryClient.invalidateQueries({ queryKey: ["customers"] });
       setFormData(prev => ({ ...prev, customerId: res.data.id }));
       setCustomerSearch("");
     } catch (error) {
       console.error("Error adding customer:", error);
-      alert("Failed to add customer. Email might already exist.");
+      alert("Failed to add customer.");
     } finally {
       setSubmittingCustomer(false);
     }
@@ -1710,16 +1709,6 @@ export default function BillingPage() {
                     onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg"
                     placeholder="Enter name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newCustomerForm.email}
-                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                    placeholder="email@example.com"
                   />
                 </div>
                 <div>
