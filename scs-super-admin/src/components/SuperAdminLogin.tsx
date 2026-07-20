@@ -13,6 +13,8 @@ export default function SuperAdminLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [attemptsRemaining, setAttemptsRemaining] = useState(5);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   useEffect(() => {
     if (profile?.admin?.id) {
@@ -20,19 +22,44 @@ export default function SuperAdminLogin() {
     }
   }, [profile, router]);
 
+  const formatRetryAfter = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0 && secs > 0) return `${mins}m ${secs}s`;
+    if (mins > 0) return `${mins}m`;
+    return `${secs}s`;
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
+    setRetryAfter(null);
+
+    if (attemptsRemaining <= 0) {
+      setErrorMessage("Too many login attempts. Please wait before trying again.");
+      return;
+    }
+
+    setAttemptsRemaining((current) => current - 1);
 
     try {
       await login.mutateAsync({ email, password });
+      setAttemptsRemaining(5);
       window.location.href = "/";
     } catch (error: any) {
-      setErrorMessage(
-        error?.response?.status === 401 || error?.response?.status === 403
-          ? "Invalid super-admin credentials"
-          : error?.message || "Unable to sign in",
-      );
+      if (error?.response?.status === 429) {
+        const retryAfterSeconds = error.response.data?.retryAfter;
+        setRetryAfter(retryAfterSeconds || null);
+        setErrorMessage(
+          retryAfterSeconds
+            ? `Too many login attempts. Please try again in ${formatRetryAfter(retryAfterSeconds)}.`
+            : "Too many login attempts. Please try again in 15 minutes.",
+        );
+      } else if (error?.response?.status === 401 || error?.response?.status === 403) {
+        setErrorMessage("Invalid super-admin credentials");
+      } else {
+        setErrorMessage(error?.message || "Unable to sign in");
+      }
     }
   };
 
@@ -116,9 +143,24 @@ export default function SuperAdminLogin() {
 
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {errorMessage ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  <div className={`rounded-2xl px-4 py-3 text-sm ${
+                    retryAfter
+                      ? "border border-amber-200 bg-amber-50 text-amber-700"
+                      : "border border-rose-200 bg-rose-50 text-rose-700"
+                  }`}>
                     {errorMessage}
+                    {retryAfter && (
+                      <span className="mt-1 block text-xs">
+                        Try again in {formatRetryAfter(retryAfter)}
+                      </span>
+                    )}
                   </div>
+                ) : null}
+
+                {attemptsRemaining > 0 && !retryAfter ? (
+                  <p className="text-xs text-slate-500">
+                    {attemptsRemaining} attempt{attemptsRemaining !== 1 ? "s" : ""} remaining
+                  </p>
                 ) : null}
 
                 <div className="space-y-2">

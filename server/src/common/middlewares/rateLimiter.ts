@@ -82,6 +82,7 @@ function createLimiter(options: {
       res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({
         error: options.message,
+        limit: options.max,
         retryAfter: retryAfterSeconds,
       });
 
@@ -130,12 +131,12 @@ export const loginRateLimiter = createLimiter({
 });
 
 /**
- * STRICT: Super Admin login rate limiter: 3 requests per 15 minutes
+ * STRICT: Super Admin login rate limiter: 5 requests per 15 minutes
  * Extra strict for admin panel access
  */
 export const superAdminLoginRateLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 3,
+  max: 5,
   tag: "super-admin-login",
   scope: "ip",
   message: "Too many admin login attempts. Please try again in 15 minutes.",
