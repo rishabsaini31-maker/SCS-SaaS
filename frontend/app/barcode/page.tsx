@@ -34,6 +34,8 @@ type PrintLabel = {
   productName: string;
   price: number;
   labelSize: LabelSize;
+  labelWidthMm?: number;
+  labelHeightMm?: number;
   showName: boolean;
   showPrice: boolean;
 };
@@ -107,8 +109,13 @@ const openPrintWindow = (labels: PrintLabel[]) => {
   }
 
   const labelSize = labels[0]?.labelSize || "medium";
-  const gridClass =
-    labelSize === "small"
+  const customWidthMm = labels[0]?.labelWidthMm;
+  const customHeightMm = labels[0]?.labelHeightMm;
+  const useCustomSize = Boolean(customWidthMm && customHeightMm);
+
+  const gridClass = useCustomSize
+    ? "grid-custom"
+    : labelSize === "small"
       ? "grid-small"
       : labelSize === "medium"
         ? "grid-medium"
@@ -160,6 +167,11 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             grid-template-columns: 1fr;
             gap: 12px;
           }
+          .grid-custom {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(${customWidthMm || 50}mm, 1fr));
+            gap: 4px;
+          }
           .label {
             border: 1px solid #cbd5e1;
             border-radius: 10px;
@@ -169,6 +181,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             flex-direction: column;
             justify-content: space-between;
             break-inside: avoid;
+            ${useCustomSize ? `width: ${customWidthMm}mm; height: ${customHeightMm}mm; box-sizing: border-box;` : ""}
           }
           .label-name {
             font-size: 10px;
@@ -241,6 +254,8 @@ export default function BarcodePage() {
   );
   const [quantity, setQuantity] = useState(30);
   const [labelSize, setLabelSize] = useState<LabelSize>("medium");
+  const [customLabelWidthMm, setCustomLabelWidthMm] = useState("");
+  const [customLabelHeightMm, setCustomLabelHeightMm] = useState("");
   const [showName, setShowName] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
   const [barcodeData, setBarcodeData] = useState<BarcodeResponse | null>(null);
@@ -337,6 +352,8 @@ export default function BarcodePage() {
             productId: selectedProductId,
             quantity: Math.max(1, quantity),
             labelSize,
+            labelWidthMm: customLabelWidthMm ? Number(customLabelWidthMm) : undefined,
+            labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
             showName,
             showPrice,
           },
@@ -367,6 +384,8 @@ export default function BarcodePage() {
     selectedProductId,
     showName,
     showPrice,
+    customLabelWidthMm,
+    customLabelHeightMm,
   ]);
 
   const handleGenerateBarcode = async () => {
@@ -408,6 +427,8 @@ export default function BarcodePage() {
           productId: selectedProductId,
           quantity: Math.max(1, quantity),
           labelSize,
+          labelWidthMm: customLabelWidthMm ? Number(customLabelWidthMm) : undefined,
+          labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
           showName,
           showPrice,
         },
@@ -424,13 +445,20 @@ export default function BarcodePage() {
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 10;
       const gap = 4;
-      const cols = getBarcodesPerRow(labelSize);
-      const cellWidth = (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
-      const cellHeight =
-        labelSize === "small" ? 36 : labelSize === "medium" ? 48 : 62;
+      const useCustomSize = Boolean(labels[0]?.labelWidthMm && labels[0]?.labelHeightMm);
+      const cols = useCustomSize
+        ? Math.max(1, Math.floor((pageWidth - margin * 2 + gap) / (labels[0].labelWidthMm! + gap)))
+        : getBarcodesPerRow(labelSize);
+      const cellWidth = useCustomSize
+        ? labels[0].labelWidthMm!
+        : (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
+      const cellHeight = useCustomSize
+        ? labels[0].labelHeightMm!
+        : labelSize === "small" ? 36 : labelSize === "medium" ? 48 : 62;
       const barcodeWidth = cellWidth - 8;
-      const barcodeHeight =
-        labelSize === "small" ? 12 : labelSize === "medium" ? 16 : 20;
+      const barcodeHeight = useCustomSize
+        ? Math.max(8, cellHeight * 0.45)
+        : labelSize === "small" ? 12 : labelSize === "medium" ? 16 : 20;
       const barcodeImage = await svgToPngDataUrl(labels[0].image);
 
       doc.setFont("helvetica", "bold");
@@ -551,6 +579,8 @@ export default function BarcodePage() {
           productId: selectedProductId,
           quantity: Math.max(1, quantity),
           labelSize,
+          labelWidthMm: customLabelWidthMm ? Number(customLabelWidthMm) : undefined,
+          labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
           showName,
           showPrice,
         },
@@ -570,6 +600,8 @@ export default function BarcodePage() {
     setSelectedProductId("");
     setQuantity(30);
     setLabelSize("medium");
+    setCustomLabelWidthMm("");
+    setCustomLabelHeightMm("");
     setShowName(true);
     setShowPrice(true);
     setBarcodeData(null);
@@ -825,6 +857,34 @@ export default function BarcodePage() {
                   <p className="text-xs text-slate-500 mt-2">
                     {labelSizes[labelSize].description}
                   </p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
+                        Custom Width (mm)
+                      </label>
+                      <input
+                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 50"
+                        value={customLabelWidthMm}
+                        onChange={(e) => setCustomLabelWidthMm(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
+                        Custom Height (mm)
+                      </label>
+                      <input
+                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 30"
+                        value={customLabelHeightMm}
+                        onChange={(e) => setCustomLabelHeightMm(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-slate-100">

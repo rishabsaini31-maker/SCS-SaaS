@@ -133,7 +133,9 @@ export const getBarcodeForProduct = async (
 export const generatePrintData = async (opts: {
   productId: string;
   quantity: number;
-  labelSize: "small" | "medium" | "large";
+  labelSize?: "small" | "medium" | "large";
+  labelWidthMm?: number;
+  labelHeightMm?: number;
   showName?: boolean;
   showPrice?: boolean;
   tenantId?: string;
@@ -141,7 +143,9 @@ export const generatePrintData = async (opts: {
   const {
     productId,
     quantity,
-    labelSize,
+    labelSize = "medium",
+    labelWidthMm,
+    labelHeightMm,
     showName = true,
     showPrice = true,
     tenantId,
@@ -163,6 +167,8 @@ export const generatePrintData = async (opts: {
     productName: product.name,
     price: product.sellingPrice,
     labelSize,
+    labelWidthMm,
+    labelHeightMm,
     showName,
     showPrice,
   };
