@@ -39,7 +39,6 @@ export default function MobilePartiesPage() {
   } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
     phone: "",
     address: "",
     gstin: "",
@@ -94,8 +93,8 @@ export default function MobilePartiesPage() {
 
   const handleAddParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) {
-      alert("Please fill name and email");
+    if (!formData.name || !formData.phone) {
+      alert("Please fill name and phone number");
       return;
     }
 
@@ -104,7 +103,6 @@ export default function MobilePartiesPage() {
       const endpoint = activeTab === "customers" ? "/customers" : "/suppliers";
       const payload = {
         name: formData.name,
-        email: formData.email,
         phone: formData.phone || "",
         address: formData.address || "",
         gstin: formData.gstin || "",
@@ -118,12 +116,12 @@ export default function MobilePartiesPage() {
       }
       setShowForm(false);
       setEditingParty(null);
-      setFormData({ name: "", email: "", phone: "", address: "", gstin: "" });
+      setFormData({ name: "", phone: "", address: "", gstin: "" });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     } catch (error) {
       console.error("Error adding party:", error);
-      alert("Failed to add. Email might already exist.");
+      alert("Failed to add party.");
     } finally {
       setSubmitting(false);
     }
@@ -154,7 +152,6 @@ export default function MobilePartiesPage() {
             setEditingParty(null);
             setFormData({
               name: "",
-              email: "",
               phone: "",
               address: "",
               gstin: "",
@@ -237,15 +234,54 @@ export default function MobilePartiesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Email *</label>
+              <label className="block text-sm font-medium mb-1">Phone *</label>
               <input
-                type="email"
-                value={formData.email}
+                type="text"
+                value={formData.phone}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
-                placeholder="email@example.com"
+                placeholder="+91-XXXXXXXXXX"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">GSTIN</label>
+              <input
+                type="text"
+                value={formData.gstin}
+                onChange={(e) =>
+                  setFormData({ ...formData, gstin: e.target.value })
+                }
+                className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
+                placeholder="27AABCU9603R1Z0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone *</label>
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
+                placeholder="+91-XXXXXXXXXX"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">GSTIN</label>
+              <input
+                type="text"
+                value={formData.gstin}
+                onChange={(e) =>
+                  setFormData({ ...formData, gstin: e.target.value })
+                }
+                className="w-full px-3 py-3 border border-slate-300 rounded-lg text-base"
+                placeholder="27AABCU9603R1Z0"
               />
             </div>
 
@@ -313,18 +349,17 @@ export default function MobilePartiesPage() {
                       <p className="text-xs text-slate-500">{customer.phone}</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setEditingParty({ id: customer.id, type: "customers" });
-                      setFormData({
-                        name: customer.name,
-                        email: customer.email,
-                        phone: customer.phone,
-                        address: customer.address,
-                        gstin: customer.gstin,
-                      });
-                      setShowForm(true);
-                    }}
+                    <button
+                      onClick={() => {
+                        setEditingParty({ id: customer.id, type: "customers" });
+                        setFormData({
+                          name: customer.name,
+                          phone: customer.phone,
+                          address: customer.address,
+                          gstin: customer.gstin,
+                        });
+                        setShowForm(true);
+                      }}
                     className="text-blue-600 text-sm font-medium"
                   >
                     Edit
@@ -359,18 +394,17 @@ export default function MobilePartiesPage() {
                       <p className="text-xs text-slate-500">{supplier.phone}</p>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setEditingParty({ id: supplier.id, type: "suppliers" });
-                      setFormData({
-                        name: supplier.name,
-                        email: supplier.email,
-                        phone: supplier.phone,
-                        address: supplier.address,
-                        gstin: supplier.gstin,
-                      });
-                      setShowForm(true);
-                    }}
+                    <button
+                      onClick={() => {
+                        setEditingParty({ id: supplier.id, type: "suppliers" });
+                        setFormData({
+                          name: supplier.name,
+                          phone: supplier.phone,
+                          address: supplier.address,
+                          gstin: supplier.gstin,
+                        });
+                        setShowForm(true);
+                      }}
                     className="text-blue-600 text-sm font-medium"
                   >
                     Edit

@@ -46,7 +46,6 @@ export default function PartiesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
     phone: "",
     address: "",
     gstin: "",
@@ -103,7 +102,6 @@ export default function PartiesPage() {
       const endpoint = activeTab === "customers" ? "/customers" : "/suppliers";
       const payload = {
         name: formData.name,
-        email: formData.email,
         phone: formData.phone || "",
         address: formData.address || "",
         gstin: formData.gstin || "",
@@ -117,12 +115,12 @@ export default function PartiesPage() {
       }
       setShowForm(false);
       setEditingParty(null);
-      setFormData({ name: "", email: "", phone: "", address: "", gstin: "" });
+      setFormData({ name: "", phone: "", address: "", gstin: "" });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
     } catch (error) {
       console.error("Error adding party:", error);
-      alert("Failed to add. Email might already exist.");
+      alert("Failed to add party.");
     } finally {
       setSubmitting(false);
     }
@@ -145,7 +143,6 @@ export default function PartiesPage() {
             setEditingParty(null);
             setFormData({
               name: "",
-              email: "",
               phone: "",
               address: "",
               gstin: "",
@@ -165,58 +162,44 @@ export default function PartiesPage() {
             {activeTab === "customers" ? "Customer" : "Supplier"}
           </h2>
           <form onSubmit={handleAddParty} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="Enter name"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="Enter name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone *</label>
+                  <input
+                    type="text"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="+91-XXXXXXXXXX"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">GSTIN</label>
+                  <input
+                    type="text"
+                    value={formData.gstin}
+                    onChange={(e) =>
+                      setFormData({ ...formData, gstin: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    placeholder="27AABCU9603R1Z0"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="email@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Phone *</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="+91-XXXXXXXXXX"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">GSTIN</label>
-                <input
-                  type="text"
-                  value={formData.gstin}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gstin: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  placeholder="27AABCU9603R1Z0"
-                />
-              </div>
-            </div>
             <div>
               <label className="block text-sm font-medium mb-1">Address</label>
               <textarea
@@ -362,7 +345,6 @@ export default function PartiesPage() {
                         setActiveTab("customers");
                         setFormData({
                           name: customer.name,
-                          email: customer.email,
                           phone: customer.phone,
                           address: customer.address,
                           gstin: customer.gstin,
@@ -472,7 +454,6 @@ export default function PartiesPage() {
                         setActiveTab("suppliers");
                         setFormData({
                           name: supplier.name,
-                          email: supplier.email,
                           phone: supplier.phone,
                           address: supplier.address,
                           gstin: supplier.gstin,

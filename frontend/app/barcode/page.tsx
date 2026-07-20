@@ -192,17 +192,31 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             color: #1e293b;
             text-transform: uppercase;
             line-height: 1.2;
+            text-align: left;
           }
           .label-name {
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
             line-height: 1.2;
+            text-align: left;
           }
-          .label-custom {
+          .label-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 8px;
             font-size: 9px;
-            color: #475569;
+            font-weight: 700;
             line-height: 1.3;
+          }
+          .label-bottom-left {
+            text-align: left;
+            color: #1e293b;
+          }
+          .label-bottom-right {
+            text-align: right;
+            color: #1e293b;
           }
           .barcode {
             width: 100%;
@@ -232,10 +246,16 @@ const openPrintWindow = (labels: PrintLabel[]) => {
               (label) => `
               <div class="label">
                 ${label.shopName ? `<div class="label-shop">${label.shopName}</div>` : ""}
-                ${label.showName ? `<div class="label-name">${label.productName}</div>` : "<div></div>"}
-                ${label.customText1 ? `<div class="label-custom">${label.customText1}</div>` : ""}
+                ${label.showName ? `<div class="label-name">${label.productName}</div>` : ""}
                 <img class="barcode" src="${svgToDataUrl(label.image)}" alt="Barcode ${label.barcode}" />
-                ${label.customText2 ? `<div class="label-custom">${label.customText2}</div>` : ""}
+                <div class="label-bottom">
+                  <div class="label-bottom-left">
+                    ${label.customText1 || ""}
+                  </div>
+                  <div class="label-bottom-right">
+                    ${label.customText2 || ""}
+                  </div>
+                </div>
                 <div style="display:flex;justify-content:space-between;align-items:end;gap:8px;font-size:10px;font-weight:600;">
                   <span style="font-family: monospace; letter-spacing: 0.08em;">${label.barcode}</span>
                   ${label.showPrice ? `<span>₹${label.price.toFixed(2)}</span>` : "<span></span>"}
@@ -553,14 +573,6 @@ export default function BarcodePage() {
           doc.text(nameLines, x + 3, innerY);
           innerY += nameLines.length * 4 + 2;
         }
-        if (label.customText1) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(7);
-          doc.setTextColor(71, 85, 105);
-          const text1Lines = doc.splitTextToSize(label.customText1, cellWidth - 6);
-          doc.text(text1Lines, x + 3, innerY);
-          innerY += text1Lines.length * 3 + 1;
-        }
 
         doc.addImage(
           barcodeImage,
@@ -572,23 +584,30 @@ export default function BarcodePage() {
         );
         innerY += barcodeHeight + 4;
 
+        const bottomY = innerY;
+        if (label.customText1) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(15, 23, 42);
+          const text1Lines = doc.splitTextToSize(label.customText1, cellWidth - 6);
+          doc.text(text1Lines, x + 3, bottomY);
+        }
         if (label.customText2) {
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(7);
-          doc.setTextColor(71, 85, 105);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(15, 23, 42);
           const text2Lines = doc.splitTextToSize(label.customText2, cellWidth - 6);
-          doc.text(text2Lines, x + 3, innerY);
-          innerY += text2Lines.length * 3 + 1;
+          doc.text(text2Lines, x + 3, bottomY, { align: "right" });
         }
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(71, 85, 105);
-        doc.text(label.barcode, x + 3, innerY);
+        doc.text(label.barcode, x + 3, bottomY + 6);
         if (label.showPrice) {
           doc.setFont("helvetica", "bold");
           doc.setTextColor(15, 23, 42);
-          doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 3, innerY, {
+          doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 3, bottomY + 6, {
             align: "right",
           });
         }
@@ -1085,14 +1104,6 @@ export default function BarcodePage() {
                           <div className="h-3 mb-3" />
                         )}
 
-                        {label.customText1 ? (
-                          <div className="text-[9px] text-slate-500 mb-2 truncate">
-                            {label.customText1}
-                          </div>
-                        ) : (
-                          <div className="h-2 mb-2" />
-                        )}
-
                         <Image
                           src={svgToDataUrl(label.image)}
                           alt={`Barcode ${label.barcode}`}
@@ -1102,13 +1113,16 @@ export default function BarcodePage() {
                           className="w-full h-auto rounded-md bg-white"
                         />
 
-                        {label.customText2 ? (
-                          <div className="text-[9px] text-slate-500 mt-2 truncate">
-                            {label.customText2}
+                        <div className="flex justify-between items-start mt-3 gap-3">
+                          <div className="text-[9px] font-bold text-slate-900 truncate">
+                            {label.customText1 || ""}
                           </div>
-                        ) : null}
+                          <div className="text-[9px] font-bold text-slate-900 truncate text-right">
+                            {label.customText2 || ""}
+                          </div>
+                        </div>
 
-                        <div className="flex justify-between items-end mt-3 gap-3">
+                        <div className="flex justify-between items-end mt-1 gap-3">
                           <span className="text-[9px] font-mono tracking-widest text-slate-500 truncate">
                             {label.barcode}
                           </span>
