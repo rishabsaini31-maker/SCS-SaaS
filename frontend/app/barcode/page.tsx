@@ -38,6 +38,9 @@ type PrintLabel = {
   labelHeightMm?: number;
   showName: boolean;
   showPrice: boolean;
+  shopName?: string;
+  customText1?: string;
+  customText2?: string;
 };
 
 const labelSizes: Record<
@@ -183,11 +186,23 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             break-inside: avoid;
             ${useCustomSize ? `width: ${customWidthMm}mm; height: ${customHeightMm}mm; box-sizing: border-box;` : ""}
           }
+          .label-shop {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1e293b;
+            text-transform: uppercase;
+            line-height: 1.2;
+          }
           .label-name {
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
             line-height: 1.2;
+          }
+          .label-custom {
+            font-size: 9px;
+            color: #475569;
+            line-height: 1.3;
           }
           .barcode {
             width: 100%;
@@ -216,8 +231,11 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             .map(
               (label) => `
               <div class="label">
+                ${label.shopName ? `<div class="label-shop">${label.shopName}</div>` : ""}
                 ${label.showName ? `<div class="label-name">${label.productName}</div>` : "<div></div>"}
+                ${label.customText1 ? `<div class="label-custom">${label.customText1}</div>` : ""}
                 <img class="barcode" src="${svgToDataUrl(label.image)}" alt="Barcode ${label.barcode}" />
+                ${label.customText2 ? `<div class="label-custom">${label.customText2}</div>` : ""}
                 <div style="display:flex;justify-content:space-between;align-items:end;gap:8px;font-size:10px;font-weight:600;">
                   <span style="font-family: monospace; letter-spacing: 0.08em;">${label.barcode}</span>
                   ${label.showPrice ? `<span>₹${label.price.toFixed(2)}</span>` : "<span></span>"}
@@ -258,6 +276,9 @@ export default function BarcodePage() {
   const [customLabelHeightMm, setCustomLabelHeightMm] = useState("");
   const [showName, setShowName] = useState(true);
   const [showPrice, setShowPrice] = useState(true);
+  const [shopName, setShopName] = useState("");
+  const [customText1, setCustomText1] = useState("");
+  const [customText2, setCustomText2] = useState("");
   const [barcodeData, setBarcodeData] = useState<BarcodeResponse | null>(null);
   const [labelPreview, setLabelPreview] = useState<PrintLabel[]>([]);
   const [statusMessage, setStatusMessage] = useState(
@@ -356,6 +377,9 @@ export default function BarcodePage() {
             labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
             showName,
             showPrice,
+            shopName: shopName || undefined,
+            customText1: customText1 || undefined,
+            customText2: customText2 || undefined,
           },
         );
 
@@ -386,6 +410,9 @@ export default function BarcodePage() {
     showPrice,
     customLabelWidthMm,
     customLabelHeightMm,
+    shopName,
+    customText1,
+    customText2,
   ]);
 
   const handleGenerateBarcode = async () => {
@@ -431,6 +458,9 @@ export default function BarcodePage() {
           labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
           showName,
           showPrice,
+          shopName: shopName || undefined,
+          customText1: customText1 || undefined,
+          customText2: customText2 || undefined,
         },
       );
 
@@ -505,6 +535,14 @@ export default function BarcodePage() {
         doc.roundedRect(x, y, cellWidth, cellHeight, 2, 2, "FD");
 
         let innerY = y + 6;
+        if (label.shopName) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(15, 23, 42);
+          const shopLines = doc.splitTextToSize(label.shopName, cellWidth - 6);
+          doc.text(shopLines, x + 3, innerY);
+          innerY += shopLines.length * 3 + 1;
+        }
         if (label.showName) {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(labelSize === "large" ? 11 : 9);
@@ -514,6 +552,14 @@ export default function BarcodePage() {
           );
           doc.text(nameLines, x + 3, innerY);
           innerY += nameLines.length * 4 + 2;
+        }
+        if (label.customText1) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(71, 85, 105);
+          const text1Lines = doc.splitTextToSize(label.customText1, cellWidth - 6);
+          doc.text(text1Lines, x + 3, innerY);
+          innerY += text1Lines.length * 3 + 1;
         }
 
         doc.addImage(
@@ -525,6 +571,15 @@ export default function BarcodePage() {
           barcodeHeight,
         );
         innerY += barcodeHeight + 4;
+
+        if (label.customText2) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(71, 85, 105);
+          const text2Lines = doc.splitTextToSize(label.customText2, cellWidth - 6);
+          doc.text(text2Lines, x + 3, innerY);
+          innerY += text2Lines.length * 3 + 1;
+        }
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
@@ -583,6 +638,9 @@ export default function BarcodePage() {
           labelHeightMm: customLabelHeightMm ? Number(customLabelHeightMm) : undefined,
           showName,
           showPrice,
+          shopName: shopName || undefined,
+          customText1: customText1 || undefined,
+          customText2: customText2 || undefined,
         },
       );
 
@@ -604,6 +662,9 @@ export default function BarcodePage() {
     setCustomLabelHeightMm("");
     setShowName(true);
     setShowPrice(true);
+    setShopName("");
+    setCustomText1("");
+    setCustomText2("");
     setBarcodeData(null);
     setLabelPreview([]);
     setStatusMessage("Choose a product to generate barcode labels");
@@ -888,6 +949,45 @@ export default function BarcodePage() {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div>
+                    <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
+                      Shop Name
+                    </label>
+                    <input
+                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      type="text"
+                      placeholder="e.g. My Shop"
+                      value={shopName}
+                      onChange={(e) => setShopName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
+                      Custom Text 1
+                    </label>
+                    <input
+                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      type="text"
+                      placeholder="e.g. Free shipping above ₹500"
+                      value={customText1}
+                      onChange={(e) => setCustomText1(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
+                      Custom Text 2
+                    </label>
+                    <input
+                      className="w-full h-11 bg-slate-50 border border-slate-200 rounded-lg px-4 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      type="text"
+                      placeholder="e.g. Return policy: 7 days"
+                      value={customText2}
+                      onChange={(e) => setCustomText2(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-slate-100">
                   <label className="flex items-center justify-between gap-3">
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-slate-900">
@@ -959,45 +1059,66 @@ export default function BarcodePage() {
                     {labelPreview
                       .slice(0, Math.min(labelPreview.length, 6))
                       .map((label, index) => (
-                        <div
-                          key={`${label.barcode}-${index}`}
-                          className={`bg-white border border-slate-300 rounded-xl shadow-sm p-4 flex flex-col justify-between transition-colors hover:border-blue-500 ${
-                            labelSize === "large" ? "min-h-48" : "min-h-36"
-                          }`}
-                        >
-                          {label.showName ? (
-                            <div className="flex justify-between items-start gap-2 mb-3">
-                              <span className="text-[10px] font-bold text-slate-900 uppercase leading-tight">
-                                {label.productName}
-                              </span>
-                              <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
-                                #{String(index + 1).padStart(2, "0")}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="h-3 mb-3" />
-                          )}
-
-                          <Image
-                            src={svgToDataUrl(label.image)}
-                            alt={`Barcode ${label.barcode}`}
-                            width={900}
-                            height={300}
-                            unoptimized
-                            className="w-full h-auto rounded-md bg-white"
-                          />
-
-                          <div className="flex justify-between items-end mt-3 gap-3">
-                            <span className="text-[9px] font-mono tracking-widest text-slate-500 truncate">
-                              {label.barcode}
-                            </span>
-                            {label.showPrice ? (
-                              <span className="text-xs font-bold text-slate-900 whitespace-nowrap">
-                                {formatINR(label.price)}
-                              </span>
-                            ) : null}
+                      <div
+                        key={`${label.barcode}-${index}`}
+                        className={`bg-white border border-slate-300 rounded-xl shadow-sm p-4 flex flex-col justify-between transition-colors hover:border-blue-500 ${
+                          labelSize === "large" ? "min-h-48" : "min-h-36"
+                        }`}
+                      >
+                        {label.shopName ? (
+                          <div className="text-[10px] font-bold text-slate-900 uppercase leading-tight mb-2">
+                            {label.shopName}
                           </div>
+                        ) : (
+                          <div className="h-2 mb-2" />
+                        )}
+                        {label.showName ? (
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <span className="text-[10px] font-bold text-slate-900 uppercase leading-tight">
+                              {label.productName}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                              #{String(index + 1).padStart(2, "0")}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="h-3 mb-3" />
+                        )}
+
+                        {label.customText1 ? (
+                          <div className="text-[9px] text-slate-500 mb-2 truncate">
+                            {label.customText1}
+                          </div>
+                        ) : (
+                          <div className="h-2 mb-2" />
+                        )}
+
+                        <Image
+                          src={svgToDataUrl(label.image)}
+                          alt={`Barcode ${label.barcode}`}
+                          width={900}
+                          height={300}
+                          unoptimized
+                          className="w-full h-auto rounded-md bg-white"
+                        />
+
+                        {label.customText2 ? (
+                          <div className="text-[9px] text-slate-500 mt-2 truncate">
+                            {label.customText2}
+                          </div>
+                        ) : null}
+
+                        <div className="flex justify-between items-end mt-3 gap-3">
+                          <span className="text-[9px] font-mono tracking-widest text-slate-500 truncate">
+                            {label.barcode}
+                          </span>
+                          {label.showPrice ? (
+                            <span className="text-xs font-bold text-slate-900 whitespace-nowrap">
+                              {formatINR(label.price)}
+                            </span>
+                          ) : null}
                         </div>
+                      </div>
                       ))}
                   </div>
                   {labelPreview.length > 6 && (

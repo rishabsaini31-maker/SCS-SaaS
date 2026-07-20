@@ -16,6 +16,9 @@ export const printDataSchema = z.object({
   labelHeightMm: z.number().positive().optional(),
   showName: z.boolean().optional().default(true),
   showPrice: z.boolean().optional().default(true),
+  shopName: z.string().optional(),
+  customText1: z.string().optional(),
+  customText2: z.string().optional(),
 });
 
 export type PrintDataInput = z.infer<typeof printDataSchema>;

@@ -138,6 +138,9 @@ export const generatePrintData = async (opts: {
   labelHeightMm?: number;
   showName?: boolean;
   showPrice?: boolean;
+  shopName?: string;
+  customText1?: string;
+  customText2?: string;
   tenantId?: string;
 }) => {
   const {
@@ -148,6 +151,9 @@ export const generatePrintData = async (opts: {
     labelHeightMm,
     showName = true,
     showPrice = true,
+    shopName,
+    customText1,
+    customText2,
     tenantId,
   } = opts;
 
@@ -171,6 +177,9 @@ export const generatePrintData = async (opts: {
     labelHeightMm,
     showName,
     showPrice,
+    shopName,
+    customText1,
+    customText2,
   };
 
   const result = Array(Math.max(0, quantity)).fill(label);
