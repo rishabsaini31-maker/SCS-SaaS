@@ -11,7 +11,7 @@ export const getBarcodeParamsSchema = z.object({
 export const printDataSchema = z.object({
   productId: z.string().min(1, "productId is required"),
   quantity: z.number().int().positive(),
-  labelSize: z.enum(["small", "medium", "large"]).optional(),
+  labelSize: z.enum(["small", "medium", "large", "50x25"]).optional(),
   labelWidthMm: z.number().positive().optional(),
   labelHeightMm: z.number().positive().optional(),
   showName: z.boolean().optional().default(true),

@@ -133,7 +133,7 @@ export const getBarcodeForProduct = async (
 export const generatePrintData = async (opts: {
   productId: string;
   quantity: number;
-  labelSize?: "small" | "medium" | "large";
+  labelSize?: "small" | "medium" | "large" | "50x25";
   labelWidthMm?: number;
   labelHeightMm?: number;
   showName?: boolean;
