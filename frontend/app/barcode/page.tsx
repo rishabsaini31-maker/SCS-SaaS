@@ -26,7 +26,7 @@ type BarcodeResponse = {
   svg: string;
 };
 
-type LabelSize = "small" | "medium" | "large";
+type LabelSize = "small" | "medium" | "large" | "50x25";
 
 type PrintLabel = {
   barcode: string;
@@ -62,6 +62,11 @@ const labelSizes: Record<
     description: "Wide warehouse labels",
     widthClass: "max-w-32",
   },
+  "50x25": {
+    title: "50x25",
+    description: "50mm x 25mm fixed size",
+    widthClass: "max-w-32",
+  },
 };
 
 const svgToDataUrl = (svg: string) =>
@@ -95,12 +100,14 @@ const svgToPngDataUrl = async (svg: string, width = 900, height = 300) => {
 const getBarcodesPerRow = (size: LabelSize) => {
   if (size === "small") return 3;
   if (size === "medium") return 2;
+  if (size === "50x25") return 3;
   return 1;
 };
 
 const getGridClasses = (size: LabelSize) => {
   if (size === "small") return "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
   if (size === "medium") return "grid-cols-1 lg:grid-cols-2";
+  if (size === "50x25") return "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3";
   return "grid-cols-1";
 };
 
@@ -115,14 +122,17 @@ const openPrintWindow = (labels: PrintLabel[]) => {
   const customWidthMm = labels[0]?.labelWidthMm;
   const customHeightMm = labels[0]?.labelHeightMm;
   const useCustomSize = Boolean(customWidthMm && customHeightMm);
+  const isFixed50x25 = labelSize === "50x25";
 
   const gridClass = useCustomSize
     ? "grid-custom"
-    : labelSize === "small"
-      ? "grid-small"
-      : labelSize === "medium"
-        ? "grid-medium"
-        : "grid-large";
+    : isFixed50x25
+      ? "grid-50x25"
+      : labelSize === "small"
+        ? "grid-small"
+        : labelSize === "medium"
+          ? "grid-medium"
+          : "grid-large";
 
   const html = `
     <html>
@@ -170,6 +180,11 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             grid-template-columns: 1fr;
             gap: 12px;
           }
+          .grid-50x25 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+          }
           .grid-custom {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(${customWidthMm || 50}mm, 1fr));
@@ -177,38 +192,41 @@ const openPrintWindow = (labels: PrintLabel[]) => {
           }
           .label {
             border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            padding: 10px;
-            min-height: 84px;
+            border-radius: 6px;
+            padding: 4px;
+            min-height: 25mm;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             break-inside: avoid;
             ${useCustomSize ? `width: ${customWidthMm}mm; height: ${customHeightMm}mm; box-sizing: border-box;` : ""}
+            ${isFixed50x25 ? "width: 50mm; height: 25mm; box-sizing: border-box;" : ""}
           }
           .label-shop {
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 700;
             color: #1e293b;
             text-transform: uppercase;
-            line-height: 1.2;
+            line-height: 1.1;
             text-align: left;
+            margin-bottom: 1px;
           }
           .label-name {
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 700;
             text-transform: uppercase;
-            line-height: 1.2;
+            line-height: 1.1;
             text-align: left;
+            margin-bottom: 1px;
           }
           .label-bottom {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            gap: 8px;
-            font-size: 9px;
+            gap: 4px;
+            font-size: 7px;
             font-weight: 700;
-            line-height: 1.3;
+            line-height: 1.2;
           }
           .label-bottom-left {
             text-align: left;
@@ -221,7 +239,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
           .barcode {
             width: 100%;
             display: block;
-            margin: 8px 0;
+            margin: 2px 0;
           }
           .footer {
             margin-top: 14px;
@@ -256,7 +274,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
                     ${label.customText2 || ""}
                   </div>
                 </div>
-                <div style="display:flex;justify-content:space-between;align-items:end;gap:8px;font-size:10px;font-weight:600;">
+                <div style="display:flex;justify-content:space-between;align-items:end;gap:4px;font-size:7px;font-weight:600;">
                   <span style="font-family: monospace; letter-spacing: 0.08em;">${label.barcode}</span>
                   ${label.showPrice ? `<span>₹${label.price.toFixed(2)}</span>` : "<span></span>"}
                 </div>
@@ -291,7 +309,7 @@ export default function BarcodePage() {
     () => searchParams.get("productId") || "",
   );
   const [quantity, setQuantity] = useState(30);
-  const [labelSize, setLabelSize] = useState<LabelSize>("medium");
+  const [labelSize, setLabelSize] = useState<LabelSize>("50x25");
   const [customLabelWidthMm, setCustomLabelWidthMm] = useState("");
   const [customLabelHeightMm, setCustomLabelHeightMm] = useState("");
   const [showName, setShowName] = useState(true);
@@ -494,21 +512,30 @@ export default function BarcodePage() {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 10;
-      const gap = 4;
+      const gap = 6;
+      const isFixed50x25 = labelSize === "50x25";
       const useCustomSize = Boolean(labels[0]?.labelWidthMm && labels[0]?.labelHeightMm);
-      const cols = useCustomSize
-        ? Math.max(1, Math.floor((pageWidth - margin * 2 + gap) / (labels[0].labelWidthMm! + gap)))
-        : getBarcodesPerRow(labelSize);
-      const cellWidth = useCustomSize
-        ? labels[0].labelWidthMm!
-        : (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
-      const cellHeight = useCustomSize
-        ? labels[0].labelHeightMm!
-        : labelSize === "small" ? 36 : labelSize === "medium" ? 48 : 62;
+      const cols = isFixed50x25
+        ? 3
+        : useCustomSize
+          ? Math.max(1, Math.floor((pageWidth - margin * 2 + gap) / (labels[0].labelWidthMm! + gap)))
+          : getBarcodesPerRow(labelSize);
+      const cellWidth = isFixed50x25
+        ? 50
+        : useCustomSize
+          ? labels[0].labelWidthMm!
+          : (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
+      const cellHeight = isFixed50x25
+        ? 25
+        : useCustomSize
+          ? labels[0].labelHeightMm!
+          : labelSize === "small" ? 36 : labelSize === "medium" ? 48 : 62;
       const barcodeWidth = cellWidth - 8;
-      const barcodeHeight = useCustomSize
-        ? Math.max(8, cellHeight * 0.45)
-        : labelSize === "small" ? 12 : labelSize === "medium" ? 16 : 20;
+      const barcodeHeight = isFixed50x25
+        ? 10
+        : useCustomSize
+          ? Math.max(8, cellHeight * 0.45)
+          : labelSize === "small" ? 12 : labelSize === "medium" ? 16 : 20;
       const barcodeImage = await svgToPngDataUrl(labels[0].image);
 
       doc.setFont("helvetica", "bold");
@@ -554,62 +581,118 @@ export default function BarcodePage() {
         doc.setFillColor(255, 255, 255);
         doc.roundedRect(x, y, cellWidth, cellHeight, 2, 2, "FD");
 
-        let innerY = y + 6;
-        if (label.shopName) {
+        let innerY = y + 1.5;
+        if (isFixed50x25) {
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
+          doc.setFontSize(6);
           doc.setTextColor(15, 23, 42);
-          const shopLines = doc.splitTextToSize(label.shopName, cellWidth - 6);
-          doc.text(shopLines, x + 3, innerY);
-          innerY += shopLines.length * 3 + 1;
-        }
-        if (label.showName) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(labelSize === "large" ? 11 : 9);
-          const nameLines = doc.splitTextToSize(
-            label.productName,
-            cellWidth - 6,
+          if (label.shopName) {
+            const shopText = label.shopName.length > 35 ? label.shopName.slice(0, 32) + "..." : label.shopName;
+            doc.text(shopText, x + 2, innerY);
+            innerY += 2.2;
+          }
+          if (label.showName) {
+            const nameText = label.productName.length > 35 ? label.productName.slice(0, 32) + "..." : label.productName;
+            doc.text(nameText, x + 2, innerY);
+            innerY += 2.2;
+          }
+
+          const barcodeHeight50 = 8;
+          doc.addImage(
+            barcodeImage,
+            "PNG",
+            x + 2,
+            innerY,
+            cellWidth - 4,
+            barcodeHeight50,
           );
-          doc.text(nameLines, x + 3, innerY);
-          innerY += nameLines.length * 4 + 2;
-        }
+          innerY += barcodeHeight50 + 0.5;
 
-        doc.addImage(
-          barcodeImage,
-          "PNG",
-          x + 3,
-          innerY,
-          barcodeWidth,
-          barcodeHeight,
-        );
-        innerY += barcodeHeight + 4;
+          const bottomY = innerY;
+          if (label.customText1 || label.customText2) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(5);
+            doc.setTextColor(15, 23, 42);
+            const text1 = (label.customText1 || "").length > 25 ? (label.customText1 || "").slice(0, 22) + "..." : (label.customText1 || "");
+            const text2 = (label.customText2 || "").length > 25 ? (label.customText2 || "").slice(0, 22) + "..." : (label.customText2 || "");
+            doc.text(text1, x + 2, bottomY);
+            doc.text(text2, x + cellWidth - 2, bottomY, { align: "right" });
+          }
 
-        const bottomY = innerY;
-        if (label.customText1) {
-          doc.setFont("helvetica", "bold");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(5);
+          doc.setTextColor(71, 85, 105);
+          doc.text(label.barcode, x + 2, bottomY + 2.5);
+          if (label.showPrice) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(15, 23, 42);
+            doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 2, bottomY + 2.5, {
+              align: "right",
+            });
+          }
+        } else {
+          let innerY = y + 6;
+          const fontSize = labelSize === "large" ? 11 : 9;
+          const shopFontSize = 8;
+          const lineHeight = 4;
+          const textLineHeight = 3;
+
+          if (label.shopName) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(shopFontSize);
+            doc.setTextColor(15, 23, 42);
+            const shopLines = doc.splitTextToSize(label.shopName, cellWidth - 6);
+            doc.text(shopLines, x + 3, innerY);
+            innerY += shopLines.length * textLineHeight + 1;
+          }
+          if (label.showName) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(fontSize);
+            const nameLines = doc.splitTextToSize(
+              label.productName,
+              cellWidth - 6,
+            );
+            doc.text(nameLines, x + 3, innerY);
+            innerY += nameLines.length * lineHeight + 2;
+          }
+
+          doc.addImage(
+            barcodeImage,
+            "PNG",
+            x + 3,
+            innerY,
+            barcodeWidth,
+            barcodeHeight,
+          );
+          innerY += barcodeHeight + 4;
+
+          const bottomY = innerY;
+          if (label.customText1) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.setTextColor(15, 23, 42);
+            const text1Lines = doc.splitTextToSize(label.customText1, cellWidth - 6);
+            doc.text(text1Lines, x + 3, bottomY);
+          }
+          if (label.customText2) {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.setTextColor(15, 23, 42);
+            const text2Lines = doc.splitTextToSize(label.customText2, cellWidth - 6);
+            doc.text(text2Lines, x + 3, bottomY, { align: "right" });
+          }
+
+          doc.setFont("helvetica", "normal");
           doc.setFontSize(8);
-          doc.setTextColor(15, 23, 42);
-          const text1Lines = doc.splitTextToSize(label.customText1, cellWidth - 6);
-          doc.text(text1Lines, x + 3, bottomY);
-        }
-        if (label.customText2) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(15, 23, 42);
-          const text2Lines = doc.splitTextToSize(label.customText2, cellWidth - 6);
-          doc.text(text2Lines, x + 3, bottomY, { align: "right" });
-        }
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(71, 85, 105);
-        doc.text(label.barcode, x + 3, bottomY + 6);
-        if (label.showPrice) {
-          doc.setFont("helvetica", "bold");
-          doc.setTextColor(15, 23, 42);
-          doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 3, bottomY + 6, {
-            align: "right",
-          });
+          doc.setTextColor(71, 85, 105);
+          doc.text(label.barcode, x + 3, bottomY + 6);
+          if (label.showPrice) {
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(15, 23, 42);
+            doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 3, bottomY + 6, {
+              align: "right",
+            });
+          }
         }
         doc.setTextColor(15, 23, 42);
       });
@@ -676,7 +759,7 @@ export default function BarcodePage() {
     setSearchTerm("");
     setSelectedProductId("");
     setQuantity(30);
-    setLabelSize("medium");
+    setLabelSize("50x25");
     setCustomLabelWidthMm("");
     setCustomLabelHeightMm("");
     setShowName(true);
@@ -815,9 +898,14 @@ export default function BarcodePage() {
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 w-full max-w-115 mx-auto">
                   {barcodeData?.svg ? (
-                    <>
+                    <div className="space-y-2">
+                      {shopName && (
+                        <div className="text-left text-xs font-bold text-slate-900 uppercase">
+                          {shopName}
+                        </div>
+                      )}
                       {showName && (
-                        <div className="text-center font-semibold text-slate-900 text-sm mb-3">
+                        <div className="text-center font-semibold text-slate-900 text-sm">
                           {barcodeData.product.name}
                         </div>
                       )}
@@ -829,17 +917,25 @@ export default function BarcodePage() {
                         unoptimized
                         className="w-full h-auto"
                       />
-                      <div className="flex justify-between items-end mt-4 text-sm">
-                        <span className="font-mono tracking-[0.18em] text-slate-600">
+                      <div className="flex justify-between items-start mt-2 gap-3">
+                        <div className="text-[10px] font-bold text-slate-900 truncate">
+                          {customText1 || ""}
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-900 truncate text-right">
+                          {customText2 || ""}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-end mt-1 gap-3">
+                        <span className="font-mono tracking-[0.18em] text-slate-600 text-xs">
                           {barcodeData.barcode}
                         </span>
                         {showPrice && (
-                          <span className="font-bold text-slate-900">
+                          <span className="font-bold text-slate-900 text-sm">
                             {formatINR(barcodeData.product.sellingPrice)}
                           </span>
                         )}
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="min-h-40 flex flex-col items-center justify-center text-center text-slate-500">
                       <span className="material-symbols-outlined text-4xl mb-3 text-slate-300">
@@ -918,8 +1014,8 @@ export default function BarcodePage() {
                   <label className="block text-[11px] font-semibold tracking-wider uppercase text-slate-500 mb-2">
                     Label Size
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["small", "medium", "large"] as const).map((size) => (
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["small", "medium", "large", "50x25"] as const).map((size) => (
                       <button
                         key={size}
                         type="button"
@@ -1071,37 +1167,39 @@ export default function BarcodePage() {
               </div>
 
               {labelPreview.length > 0 ? (
-                <>
-                  <div
-                    className={`grid gap-4 bg-slate-50 p-6 rounded-xl border border-slate-200 ${getGridClasses(labelSize)}`}
-                  >
-                    {labelPreview
-                      .slice(0, Math.min(labelPreview.length, 6))
-                      .map((label, index) => (
+              <>
+                <div
+                  className={`grid gap-4 bg-slate-50 p-6 rounded-xl border border-slate-200 ${getGridClasses(labelSize)}`}
+                >
+                  {labelPreview
+                    .slice(0, Math.min(labelPreview.length, 6))
+                    .map((label, index) => {
+                      const isFixed50x25 = label.labelSize === "50x25";
+                      return (
                       <div
                         key={`${label.barcode}-${index}`}
-                        className={`bg-white border border-slate-300 rounded-xl shadow-sm p-4 flex flex-col justify-between transition-colors hover:border-blue-500 ${
-                          labelSize === "large" ? "min-h-48" : "min-h-36"
+                        className={`bg-white border border-slate-300 rounded-xl shadow-sm p-3 flex flex-col justify-between transition-colors hover:border-blue-500 ${
+                          isFixed50x25 ? "min-h-32" : labelSize === "large" ? "min-h-48" : "min-h-36"
                         }`}
                       >
                         {label.shopName ? (
-                          <div className="text-[10px] font-bold text-slate-900 uppercase leading-tight mb-2">
+                          <div className="text-[9px] font-bold text-slate-900 uppercase leading-tight mb-1">
                             {label.shopName}
                           </div>
                         ) : (
-                          <div className="h-2 mb-2" />
+                          <div className={`${isFixed50x25 ? "h-1 mb-1" : "h-2 mb-2"}`} />
                         )}
                         {label.showName ? (
-                          <div className="flex justify-between items-start gap-2 mb-2">
-                            <span className="text-[10px] font-bold text-slate-900 uppercase leading-tight">
+                          <div className="flex justify-between items-start gap-2 mb-1">
+                            <span className="text-[9px] font-bold text-slate-900 uppercase leading-tight truncate">
                               {label.productName}
                             </span>
-                            <span className="text-[10px] font-mono text-slate-500 whitespace-nowrap">
+                            <span className="text-[9px] font-mono text-slate-500 whitespace-nowrap">
                               #{String(index + 1).padStart(2, "0")}
                             </span>
                           </div>
                         ) : (
-                          <div className="h-3 mb-3" />
+                          <div className={`${isFixed50x25 ? "h-1 mb-1" : "h-3 mb-3"}`} />
                         )}
 
                         <Image
@@ -1113,28 +1211,29 @@ export default function BarcodePage() {
                           className="w-full h-auto rounded-md bg-white"
                         />
 
-                        <div className="flex justify-between items-start mt-3 gap-3">
-                          <div className="text-[9px] font-bold text-slate-900 truncate">
+                        <div className="flex justify-between items-start mt-2 gap-3">
+                          <div className="text-[8px] font-bold text-slate-900 truncate">
                             {label.customText1 || ""}
                           </div>
-                          <div className="text-[9px] font-bold text-slate-900 truncate text-right">
+                          <div className="text-[8px] font-bold text-slate-900 truncate text-right">
                             {label.customText2 || ""}
                           </div>
                         </div>
 
                         <div className="flex justify-between items-end mt-1 gap-3">
-                          <span className="text-[9px] font-mono tracking-widest text-slate-500 truncate">
+                          <span className="text-[8px] font-mono tracking-widest text-slate-500 truncate">
                             {label.barcode}
                           </span>
                           {label.showPrice ? (
-                            <span className="text-xs font-bold text-slate-900 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-slate-900 whitespace-nowrap">
                               {formatINR(label.price)}
                             </span>
                           ) : null}
                         </div>
                       </div>
-                      ))}
-                  </div>
+                      );
+                    })}
+                </div>
                   {labelPreview.length > 6 && (
                     <p className="text-xs text-slate-500 mt-3">
                       Showing 6 of {labelPreview.length} labels in preview.
