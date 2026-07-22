@@ -208,7 +208,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             color: #1e293b;
             text-transform: uppercase;
             line-height: 1.1;
-            text-align: center;
+            text-align: left;
             margin-bottom: 1px;
           }
           .label-name {
@@ -588,7 +588,7 @@ export default function BarcodePage() {
           doc.setTextColor(15, 23, 42);
           if (label.shopName) {
             const shopText = label.shopName.length > 28 ? label.shopName.slice(0, 26) + "..." : label.shopName;
-            doc.text(shopText, x + cellWidth / 2, innerY + 1.8, { align: "center" });
+            doc.text(shopText, x + 2, innerY + 1.8);
             innerY += 2.2;
           }
           if (label.showName) {
@@ -645,7 +645,7 @@ export default function BarcodePage() {
             doc.setFontSize(shopFontSize);
             doc.setTextColor(15, 23, 42);
             const shopLines = doc.splitTextToSize(label.shopName, cellWidth - 6);
-            doc.text(shopLines, x + cellWidth / 2, innerY, { align: "center" });
+            doc.text(shopLines, x + 3, innerY);
             innerY += shopLines.length * textLineHeight + 1;
           }
           if (label.showName) {
