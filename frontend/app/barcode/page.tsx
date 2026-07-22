@@ -208,7 +208,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             color: #1e293b;
             text-transform: uppercase;
             line-height: 1.1;
-            text-align: left;
+            text-align: center;
             margin-bottom: 1px;
           }
           .label-name {
@@ -216,7 +216,7 @@ const openPrintWindow = (labels: PrintLabel[]) => {
             font-weight: 700;
             text-transform: uppercase;
             line-height: 1.1;
-            text-align: left;
+            text-align: center;
             margin-bottom: 1px;
           }
           .label-bottom {
@@ -588,12 +588,12 @@ export default function BarcodePage() {
           doc.setTextColor(15, 23, 42);
           if (label.shopName) {
             const shopText = label.shopName.length > 28 ? label.shopName.slice(0, 26) + "..." : label.shopName;
-            doc.text(shopText, x + 2, innerY + 1.8);
+            doc.text(shopText, x + cellWidth / 2, innerY + 1.8, { align: "center" });
             innerY += 2.2;
           }
           if (label.showName) {
             const nameText = label.productName.length > 28 ? label.productName.slice(0, 26) + "..." : label.productName;
-            doc.text(nameText, x + 2, innerY + 1.8);
+            doc.text(nameText, x + cellWidth / 2, innerY + 1.8, { align: "center" });
             innerY += 2.2;
           }
 
@@ -645,7 +645,7 @@ export default function BarcodePage() {
             doc.setFontSize(shopFontSize);
             doc.setTextColor(15, 23, 42);
             const shopLines = doc.splitTextToSize(label.shopName, cellWidth - 6);
-            doc.text(shopLines, x + 3, innerY);
+            doc.text(shopLines, x + cellWidth / 2, innerY, { align: "center" });
             innerY += shopLines.length * textLineHeight + 1;
           }
           if (label.showName) {
@@ -655,7 +655,7 @@ export default function BarcodePage() {
               label.productName,
               cellWidth - 6,
             );
-            doc.text(nameLines, x + 3, innerY);
+            doc.text(nameLines, x + cellWidth / 2, innerY, { align: "center" });
             innerY += nameLines.length * lineHeight + 2;
           }
 
