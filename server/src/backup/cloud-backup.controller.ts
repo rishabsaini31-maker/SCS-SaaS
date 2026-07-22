@@ -23,8 +23,13 @@ export const getBackupHistory = async (req: Request, res: Response, next: NextFu
       (prisma as any).cloudBackup.count({ where: { tenantId } })
     ]);
 
+    const items = backups.map((b: any) => ({
+      ...b,
+      fileSize: b.fileSize !== undefined && b.fileSize !== null ? Number(b.fileSize) : 0,
+    }));
+
     res.json({
-      items: backups,
+      items,
       total,
       page,
       totalPages: Math.ceil(total / limit)

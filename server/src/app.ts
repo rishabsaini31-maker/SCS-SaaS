@@ -22,6 +22,11 @@ import scsAuthRouter from "./modules/scs-auth/scs-auth.routes";
 import scsAdminRouter from "./modules/scs-admin/scs-admin.routes";
 import { config } from "./common/config";
 
+// Global fix for BigInt JSON serialization in Express responses
+(BigInt.prototype as any).toJSON = function () {
+  return Number(this);
+};
+
 const app = express();
 
 // Public health endpoint (used by platforms like Render for health checks)
