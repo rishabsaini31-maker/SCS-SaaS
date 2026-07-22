@@ -587,46 +587,49 @@ export default function BarcodePage() {
           doc.setFontSize(6);
           doc.setTextColor(15, 23, 42);
           if (label.shopName) {
-            const shopText = label.shopName.length > 35 ? label.shopName.slice(0, 32) + "..." : label.shopName;
-            doc.text(shopText, x + 2, innerY);
+            const shopText = label.shopName.length > 28 ? label.shopName.slice(0, 26) + "..." : label.shopName;
+            doc.text(shopText, x + 2, innerY + 1.8);
             innerY += 2.2;
           }
           if (label.showName) {
-            const nameText = label.productName.length > 35 ? label.productName.slice(0, 32) + "..." : label.productName;
-            doc.text(nameText, x + 2, innerY);
+            const nameText = label.productName.length > 28 ? label.productName.slice(0, 26) + "..." : label.productName;
+            doc.text(nameText, x + 2, innerY + 1.8);
             innerY += 2.2;
           }
 
-          const barcodeHeight50 = 8;
+          const barcodeHeight50 = 7.5;
           doc.addImage(
             barcodeImage,
             "PNG",
             x + 2,
-            innerY,
+            innerY + 0.5,
             cellWidth - 4,
             barcodeHeight50,
           );
-          innerY += barcodeHeight50 + 0.5;
+          innerY += barcodeHeight50 + 1.5;
 
           const bottomY = innerY;
+          let hasCustom = false;
           if (label.customText1 || label.customText2) {
+            hasCustom = true;
             doc.setFont("helvetica", "bold");
             doc.setFontSize(5);
             doc.setTextColor(15, 23, 42);
-            const text1 = (label.customText1 || "").length > 25 ? (label.customText1 || "").slice(0, 22) + "..." : (label.customText1 || "");
-            const text2 = (label.customText2 || "").length > 25 ? (label.customText2 || "").slice(0, 22) + "..." : (label.customText2 || "");
-            doc.text(text1, x + 2, bottomY);
-            doc.text(text2, x + cellWidth - 2, bottomY, { align: "right" });
+            const text1 = (label.customText1 || "").length > 20 ? (label.customText1 || "").slice(0, 18) + "..." : (label.customText1 || "");
+            const text2 = (label.customText2 || "").length > 20 ? (label.customText2 || "").slice(0, 18) + "..." : (label.customText2 || "");
+            doc.text(text1, x + 2, bottomY + 1.2);
+            doc.text(text2, x + cellWidth - 2, bottomY + 1.2, { align: "right" });
           }
 
+          const footerY = hasCustom ? bottomY + 3.2 : bottomY + 1.5;
           doc.setFont("helvetica", "normal");
           doc.setFontSize(5);
           doc.setTextColor(71, 85, 105);
-          doc.text(label.barcode, x + 2, bottomY + 2.5);
+          doc.text(label.barcode, x + 2, footerY);
           if (label.showPrice) {
             doc.setFont("helvetica", "bold");
             doc.setTextColor(15, 23, 42);
-            doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 2, bottomY + 2.5, {
+            doc.text(`₹${label.price.toFixed(2)}`, x + cellWidth - 2, footerY, {
               align: "right",
             });
           }
