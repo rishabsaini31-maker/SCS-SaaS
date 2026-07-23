@@ -169,11 +169,31 @@ export function openThermalPrintWindow(
     <!DOCTYPE html>
     <html>
       <head>
-        <title>SCS Flow - Barcode Label Print</title>
+        <title></title>
         <style>
           @page {
             size: ${widthMm}mm ${heightMm}mm;
-            margin: 0mm;
+            margin: 0 !important;
+          }
+          @media print {
+            @page {
+              size: ${widthMm}mm ${heightMm}mm;
+              margin: 0 !important;
+            }
+            html, body {
+              width: ${widthMm}mm !important;
+              height: ${heightMm}mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              background: #ffffff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            header, footer, nav, aside, .header, .footer, .meta, .no-print {
+              display: none !important;
+              visibility: hidden !important;
+            }
           }
           * {
             box-sizing: border-box;
