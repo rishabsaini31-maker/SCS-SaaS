@@ -60,9 +60,9 @@ function generateSvg(barcodeValue: string) {
     JsBarcode(svg, barcodeValue, {
       format: "CODE128",
       displayValue: false,
-      width: 2,
-      height: 40,
-      margin: 5,
+      width: 2.5,
+      height: 70,
+      margin: 0,
     });
   } catch (err) {
     throw new CustomError("Failed to generate barcode image", 500);
