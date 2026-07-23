@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
+import { openThermalPrintWindow } from "@/lib/labelEngine";
 
 type Product = {
   id: string;
@@ -749,7 +750,11 @@ export default function BarcodePage() {
         },
       );
 
-      openPrintWindow(response.data.labels);
+      if (labelSize === "50x25") {
+        openThermalPrintWindow(response.data.labels);
+      } else {
+        openPrintWindow(response.data.labels);
+      }
     } catch (error) {
       console.error("Error printing labels:", error);
       alert("Failed to prepare labels for printing");
@@ -793,15 +798,26 @@ export default function BarcodePage() {
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 md:items-end">
-            <Link
-              href="/barcode/saved"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100"
-            >
-              <span className="material-symbols-outlined text-base">
-                search
-              </span>
-              Check Saved Barcode
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/settings/printing"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100"
+              >
+                <span className="material-symbols-outlined text-base">
+                  design_services
+                </span>
+                Label Designer (50x25)
+              </Link>
+              <Link
+                href="/barcode/saved"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-100"
+              >
+                <span className="material-symbols-outlined text-base">
+                  search
+                </span>
+                Check Saved Barcode
+              </Link>
+            </div>
             <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm">
               {statusMessage}
             </div>

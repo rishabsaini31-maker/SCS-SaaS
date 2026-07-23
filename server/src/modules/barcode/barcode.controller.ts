@@ -4,6 +4,8 @@ import {
   generateBarcodeSchema,
   getBarcodeParamsSchema,
   printDataSchema,
+  updatePrintingConfigSchema,
+  printTsplSchema,
 } from "./barcode.schema";
 import { CustomError } from "../../common/errors/CustomError";
 
@@ -51,6 +53,50 @@ export const printData = async (
     res.json({ labels: result });
   } catch (err) {
     if (err instanceof CustomError) return next(err);
+    next(err);
+  }
+};
+
+export const getPrintingConfig = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await service.getPrintingConfig(req.tenantId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updatePrintingConfig = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const parsed = updatePrintingConfigSchema.parse(req.body);
+    const result = await service.updatePrintingConfig(req.tenantId, parsed);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const printTspl = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const parsed = printTsplSchema.parse(req.body);
+    const result = await service.generateTsplData({
+      ...parsed,
+      tenantId: req.tenantId,
+    });
+    res.json(result);
+  } catch (err) {
     next(err);
   }
 };

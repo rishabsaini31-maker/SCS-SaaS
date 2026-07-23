@@ -7,6 +7,14 @@ import {
   assertTenantOwnership,
   tenantWhere,
 } from "../../common/tenant/tenant.utils";
+import {
+  calculateLabelLayout,
+  DEFAULT_50X25_TEMPLATE,
+  DEFAULT_PRINTER_SETTINGS,
+  generateTsplScript,
+  LabelTemplateSpec,
+  PrinterSettingsSpec,
+} from "./label-engine";
 
 const BARCODE_PREFIX = "PRD-";
 const BARCODE_PAD = 6;
@@ -19,7 +27,6 @@ async function computeNextBarcode(
   tenantId?: string,
   offset: number = 0,
 ): Promise<string> {
-  // Get all existing barcodes that match prefix
   const rows = await prisma.product.findMany({
     where: tenantWhere(tenantId, {
       barcode: { startsWith: BARCODE_PREFIX },
@@ -36,8 +43,6 @@ async function computeNextBarcode(
     if (!Number.isNaN(n) && n > max) max = n;
   }
 
-  // SECURITY: Add offset to handle collision retries
-  // Each retry uses a different barcode value, preventing infinite retry loops
   return formatBarcode(max + 1 + offset);
 }
 
@@ -72,7 +77,6 @@ export const generateBarcodeForProduct = async (
   productId: string,
   tenantId?: string,
 ) => {
-  // fetch product
   const product = await prisma.product.findFirst({
     where: tenantWhere(tenantId, { id: productId }),
   });
@@ -84,10 +88,8 @@ export const generateBarcodeForProduct = async (
     return { barcode: product.barcode, svg };
   }
 
-  // Retry loop in case of unique constraint collisions
   const maxAttempts = 3;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // SECURITY: Pass offset to get different barcode values on retry
     const next = await computeNextBarcode(tenantId, attempt);
     try {
       const result = await prisma.product.updateMany({
@@ -103,9 +105,7 @@ export const generateBarcodeForProduct = async (
       const svg = generateSvg(updated.barcode);
       return { barcode: updated.barcode, svg };
     } catch (err: any) {
-      // unique constraint error code for Prisma is P2002
       if (err && err.code === "P2002") {
-        // collision, retry with different offset
         continue;
       }
       throw err;
@@ -130,6 +130,76 @@ export const getBarcodeForProduct = async (
   return { product, barcode: product.barcode, svg };
 };
 
+export const getPrintingConfig = async (tenantId?: string) => {
+  if (!tenantId) throw new CustomError("Tenant context required", 403);
+
+  const tenantSetting = await prisma.tenantSetting.findUnique({
+    where: { tenantId },
+  });
+
+  const printerSettings: PrinterSettingsSpec = tenantSetting?.printerSettings
+    ? { ...DEFAULT_PRINTER_SETTINGS, ...(tenantSetting.printerSettings as any) }
+    : DEFAULT_PRINTER_SETTINGS;
+
+  const activeTemplate: LabelTemplateSpec = tenantSetting?.labelTemplates
+    ? { ...DEFAULT_50X25_TEMPLATE, ...((tenantSetting.labelTemplates as any)?.activeTemplate || {}) }
+    : DEFAULT_50X25_TEMPLATE;
+
+  const customTemplates: LabelTemplateSpec[] =
+    (tenantSetting?.labelTemplates as any)?.customTemplates || [DEFAULT_50X25_TEMPLATE];
+
+  return {
+    printerSettings,
+    activeTemplate,
+    customTemplates,
+  };
+};
+
+export const updatePrintingConfig = async (
+  tenantId: string | undefined,
+  input: {
+    printerSettings?: Partial<PrinterSettingsSpec>;
+    activeTemplate?: Partial<LabelTemplateSpec>;
+    customTemplates?: LabelTemplateSpec[];
+  },
+) => {
+  if (!tenantId) throw new CustomError("Tenant context required", 403);
+
+  const currentConfig = await getPrintingConfig(tenantId);
+
+  const newPrinterSettings = {
+    ...currentConfig.printerSettings,
+    ...input.printerSettings,
+  };
+
+  const newActiveTemplate = input.activeTemplate
+    ? { ...currentConfig.activeTemplate, ...input.activeTemplate }
+    : currentConfig.activeTemplate;
+
+  const newCustomTemplates = input.customTemplates || currentConfig.customTemplates;
+
+  await prisma.tenantSetting.upsert({
+    where: { tenantId },
+    update: {
+      printerSettings: newPrinterSettings as any,
+      labelTemplates: {
+        activeTemplate: newActiveTemplate,
+        customTemplates: newCustomTemplates,
+      } as any,
+    },
+    create: {
+      tenantId,
+      printerSettings: newPrinterSettings as any,
+      labelTemplates: {
+        activeTemplate: newActiveTemplate,
+        customTemplates: newCustomTemplates,
+      } as any,
+    },
+  });
+
+  return getPrintingConfig(tenantId);
+};
+
 export const generatePrintData = async (opts: {
   productId: string;
   quantity: number;
@@ -146,7 +216,7 @@ export const generatePrintData = async (opts: {
   const {
     productId,
     quantity,
-    labelSize = "medium",
+    labelSize = "50x25",
     labelWidthMm,
     labelHeightMm,
     showName = true,
@@ -165,6 +235,25 @@ export const generatePrintData = async (opts: {
   if (!product.barcode)
     throw new CustomError("Barcode not generated for product", 404);
 
+  const tenantConfig = tenantId ? await getPrintingConfig(tenantId) : null;
+  const activeTemplate = tenantConfig?.activeTemplate || DEFAULT_50X25_TEMPLATE;
+
+  // Calculate millimetric 1:1 layout specification
+  const layout = calculateLabelLayout({
+    shopName: shopName ?? undefined,
+    productName: product.name,
+    barcode: product.barcode,
+    price: showPrice ? product.sellingPrice : undefined,
+    customText1: customText1 ?? undefined,
+    customText2: customText2 ?? undefined,
+    template: {
+      ...activeTemplate,
+      ...(labelWidthMm ? { widthMm: labelWidthMm } : {}),
+      ...(labelHeightMm ? { heightMm: labelHeightMm } : {}),
+    },
+    printerSettings: tenantConfig?.printerSettings,
+  });
+
   const svg = generateSvg(product.barcode);
 
   const label = {
@@ -173,15 +262,57 @@ export const generatePrintData = async (opts: {
     productName: product.name,
     price: product.sellingPrice,
     labelSize,
-    labelWidthMm,
-    labelHeightMm,
+    labelWidthMm: labelWidthMm || layout.template.widthMm,
+    labelHeightMm: labelHeightMm || layout.template.heightMm,
     showName,
     showPrice,
     shopName,
     customText1,
     customText2,
+    layout,
   };
 
   const result = Array(Math.max(0, quantity)).fill(label);
   return result;
+};
+
+export const generateTsplData = async (opts: {
+  productId: string;
+  copies?: number;
+  shopName?: string;
+  customText1?: string;
+  customText2?: string;
+  tenantId?: string;
+}) => {
+  const { productId, copies = 1, shopName, customText1, customText2, tenantId } = opts;
+
+  const product = await prisma.product.findFirst({
+    where: tenantWhere(tenantId, { id: productId }),
+  });
+  if (!product) throw new CustomError("Product not found", 404);
+  assertTenantOwnership(tenantId, (product as any).tenantId, "Product");
+  if (!product.barcode)
+    throw new CustomError("Barcode not generated for product", 404);
+
+  const tenantConfig = tenantId ? await getPrintingConfig(tenantId) : null;
+
+  const layout = calculateLabelLayout({
+    shopName,
+    productName: product.name,
+    barcode: product.barcode,
+    price: product.sellingPrice,
+    customText1,
+    customText2,
+    template: tenantConfig?.activeTemplate,
+    printerSettings: tenantConfig?.printerSettings,
+  });
+
+  const tsplScript = generateTsplScript(layout, copies);
+  return {
+    productId,
+    barcode: product.barcode,
+    copies,
+    tsplScript,
+    layout,
+  };
 };

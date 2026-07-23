@@ -25,6 +25,7 @@ export function Sidebar() {
     { name: "Reports", href: "/reports", icon: "assessment" },
     { name: "Daily Summary", href: "/reports/daily-summary", icon: "analytics" },
     { name: "Barcode", href: "/barcode", icon: "barcode_scanner" },
+    { name: "Label Designer", href: "/settings/printing", icon: "design_services" },
     { name: "Backup", href: "/backup", icon: "backup" },
     { name: "Settings", href: "/settings", icon: "settings" },
   ];
