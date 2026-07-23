@@ -36,11 +36,13 @@ export class BackupDataCollector {
     const startTime = Date.now();
 
     const whereClause: any = { tenantId };
+    const whereClauseAppendOnly: any = { tenantId };
     if (since) {
       whereClause.OR = [
         { createdAt: { gt: since } },
         { updatedAt: { gt: since } }
       ];
+      whereClauseAppendOnly.createdAt = { gt: since };
     }
 
     // Fetch tenant info
@@ -93,22 +95,22 @@ export class BackupDataCollector {
         where: whereClause,
         include: { lineItems: true },
       }),
-      (this.prisma as any).invoiceLineItem.findMany({ where: whereClause }),
+      (this.prisma as any).invoiceLineItem.findMany({ where: whereClauseAppendOnly }),
       (this.prisma as any).purchase.findMany({
         where: whereClause,
         include: { lineItems: true },
       }),
-      (this.prisma as any).purchaseLineItem.findMany({ where: whereClause }),
+      (this.prisma as any).purchaseLineItem.findMany({ where: whereClauseAppendOnly }),
       (this.prisma as any).payment.findMany({ where: whereClause }),
-      (this.prisma as any).ledgerEntry.findMany({ where: whereClause }),
+      (this.prisma as any).ledgerEntry.findMany({ where: whereClauseAppendOnly }),
       (this.prisma as any).tenantSetting.findFirst({
         where: whereClause,
       }),
       (this.prisma as any).cashBook.findMany({ where: whereClause }),
-      (this.prisma as any).cashTransaction.findMany({ where: whereClause }),
+      (this.prisma as any).cashTransaction.findMany({ where: whereClauseAppendOnly }),
       (this.prisma as any).expense.findMany({ where: whereClause }),
       (this.prisma as any).paymentAccount.findMany({ where: whereClause }),
-      (this.prisma as any).priceOverrideLog.findMany({ where: whereClause }),
+      (this.prisma as any).priceOverrideLog.findMany({ where: whereClauseAppendOnly }),
       (this.prisma as any).staffUser.findMany({
         where: whereClause,
         select: {
