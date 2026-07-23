@@ -51,6 +51,7 @@ export interface ExtractedBillData {
   isDuplicate?: boolean;
   duplicatePurchaseId?: string;
   existingPurchaseNumber?: string;
+  debug?: any;
 }
 
 /**
@@ -187,6 +188,7 @@ export async function parseInvoiceFile(
   roundOff?: number;
   grandTotal?: number;
   lineItems: ExtractedProductItem[];
+  debug?: any;
 }> {
   const hash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
   console.log(`\n======================================================`);
@@ -398,7 +400,7 @@ function parseRawTextToStructuredInvoice(rawText: string, scanId: string) {
           productName: prodName,
           quantity: qty,
           unitPrice,
-          confidenceScore: 90,
+          confidence: 90,
           needsReview: false,
         });
         continue;
@@ -416,7 +418,7 @@ function parseRawTextToStructuredInvoice(rawText: string, scanId: string) {
           productName: prodName,
           quantity: qty,
           unitPrice,
-          confidenceScore: 90,
+          confidence: 90,
           needsReview: false,
         });
         continue;
@@ -440,7 +442,7 @@ function parseRawTextToStructuredInvoice(rawText: string, scanId: string) {
           productName: prodName,
           quantity: qty,
           unitPrice: price,
-          confidenceScore: 80,
+          confidence: 80,
           needsReview: false,
         });
       }
@@ -452,9 +454,9 @@ function parseRawTextToStructuredInvoice(rawText: string, scanId: string) {
       const numbers = line.match(/\d+(?:\.\d+)?/g);
       items.push({
         productName: cleanedLine,
-        quantity: numbers ? parseInt(numbers[0]) || 1 : 1,
-        unitPrice: numbers && numbers.length > 1 ? parseFloat(numbers[1]) || 0 : 0,
-        confidenceScore: 70,
+        quantity: numbers && numbers[0] ? parseInt(numbers[0]) || 1 : 1,
+        unitPrice: numbers && numbers.length > 1 && numbers[1] ? parseFloat(numbers[1]) || 0 : 0,
+        confidence: 70,
         needsReview: false,
       });
     }
@@ -466,7 +468,7 @@ function parseRawTextToStructuredInvoice(rawText: string, scanId: string) {
       productName: "UNKNOWN PRODUCT (Check Image/Bill)",
       quantity: 1,
       unitPrice: 0,
-      confidenceScore: 25,
+      confidence: 25,
       needsReview: true,
     });
   }
@@ -571,7 +573,7 @@ export async function processAndMatchInvoice(
       matchedLineItems.push({
         ...item,
         matchType: "new_product",
-        confidence: item.confidenceScore && item.confidenceScore < 50 ? "low" : "high",
+        confidence: item.confidence && (item.confidence as number) < 50 ? "low" : "high",
         category: item.category || "",
       });
     }

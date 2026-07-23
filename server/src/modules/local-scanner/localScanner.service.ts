@@ -126,6 +126,7 @@ export async function processAndMatchInvoice(
   let matchedCount = 0;
   for (let i = 0; i < parsedData.lineItems.length; i++) {
     const item = parsedData.lineItems[i];
+    if (!item) continue;
     if (!item.productName || item.productName === "UNKNOWN PRODUCT") continue;
 
     try {

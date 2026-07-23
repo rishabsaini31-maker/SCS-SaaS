@@ -217,7 +217,7 @@ Ensure every line item conforms to this schema exactly, do not omit fields, set 
         // Basic deduplication if Doc AI hallucinates identical rows
         const uniqueItems = new Map();
         for (const item of parsed.lineItems) {
-           const key = \`\${item.productName}-\${item.quantity}-\${item.purchaseRate}\`;
+           const key = `${item.productName}-${item.quantity}-${item.purchaseRate}`;
            if (!uniqueItems.has(key)) uniqueItems.set(key, item);
         }
         parsed.lineItems = Array.from(uniqueItems.values());
@@ -238,7 +238,7 @@ Ensure every line item conforms to this schema exactly, do not omit fields, set 
     }
   } catch (err: any) {
     stageLogs.push(`Gemini Pipeline Error: ${err.message}`);
-    console.error(`[${scanId}] Pipeline Error:\n`, stageLogs.join("\n"));
+    console.log(`[${scanId}] Pipeline Error:\n`, stageLogs.join("\n"));
     throw new CustomError("Failed to normalize structured data from Document AI.", 500);
   }
 
