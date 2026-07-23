@@ -113,17 +113,22 @@ const getGridClasses = (size: LabelSize) => {
 };
 
 const openPrintWindow = (labels: PrintLabel[]) => {
+  const labelSize = labels[0]?.labelSize || "medium";
+  if (labelSize === "50x25") {
+    openThermalPrintWindow(labels as any);
+    return;
+  }
+
   const printWindow = window.open("", "_blank", "width=1200,height=900");
   if (!printWindow) {
     alert("Popup blocked. Please allow popups to print labels.");
     return;
   }
 
-  const labelSize = labels[0]?.labelSize || "medium";
   const customWidthMm = labels[0]?.labelWidthMm;
   const customHeightMm = labels[0]?.labelHeightMm;
   const useCustomSize = Boolean(customWidthMm && customHeightMm);
-  const isFixed50x25 = labelSize === "50x25";
+  const isFixed50x25 = (labelSize as string) === "50x25";
 
   const gridClass = useCustomSize
     ? "grid-custom"
