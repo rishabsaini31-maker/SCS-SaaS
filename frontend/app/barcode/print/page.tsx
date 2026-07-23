@@ -64,8 +64,34 @@ export default function BarcodePrintPage() {
 
   useEffect(() => {
     if (!loading && labels.length > 0) {
-      // Trigger print after rendering
       const timer = setTimeout(() => {
+        const pxPerMm = 96 / 25.4;
+        const container = document.querySelector(".label-container") as HTMLElement | null;
+        const barcodeImg = document.querySelector(".barcode-img") as HTMLElement | null;
+        const containerStyle = container ? window.getComputedStyle(container) : null;
+        
+        console.group("=== SCS FLOW BARCODE DIAGNOSTIC REPORT ===");
+        console.log("Expected physical page size: 50mm x 25mm");
+        console.log("window.innerWidth:", window.innerWidth, "px (" + (window.innerWidth / pxPerMm).toFixed(2) + "mm)");
+        console.log("window.innerHeight:", window.innerHeight, "px (" + (window.innerHeight / pxPerMm).toFixed(2) + "mm)");
+        console.log("document.body.offsetWidth:", document.body.offsetWidth, "px (" + (document.body.offsetWidth / pxPerMm).toFixed(2) + "mm)");
+        console.log("document.body.offsetHeight:", document.body.offsetHeight, "px (" + (document.body.offsetHeight / pxPerMm).toFixed(2) + "mm)");
+        
+        if (container && containerStyle) {
+          const cWidth = container.offsetWidth;
+          const cHeight = container.offsetHeight;
+          console.log("Label container width (CSS):", containerStyle.width, "| computed:", cWidth + "px (" + (cWidth / pxPerMm).toFixed(2) + "mm)");
+          console.log("Label container height (CSS):", containerStyle.height, "| computed:", cHeight + "px (" + (cHeight / pxPerMm).toFixed(2) + "mm)");
+        }
+        
+        if (barcodeImg) {
+          const bWidth = barcodeImg.offsetWidth;
+          const bHeight = barcodeImg.offsetHeight;
+          console.log("Barcode SVG width:", bWidth + "px (" + (bWidth / pxPerMm).toFixed(2) + "mm)");
+          console.log("Barcode SVG height:", bHeight + "px (" + (bHeight / pxPerMm).toFixed(2) + "mm)");
+        }
+        console.groupEnd();
+
         window.print();
       }, 300);
       return () => clearTimeout(timer);
