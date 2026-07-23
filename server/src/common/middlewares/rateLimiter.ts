@@ -24,7 +24,8 @@ type RateLimitTag =
   | "export"
   | "report"
   | "search"
-  | "admin-search";
+  | "admin-search"
+  | "barcode";
 
 function getClientIp(req: Request) {
   return (
@@ -192,6 +193,14 @@ export const searchRateLimiter = createLimiter({
   tag: "search",
   scope: "tenant",
   message: "Too many search requests. Please try again later.",
+});
+
+export const barcodeRateLimiter = createLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  tag: "barcode",
+  scope: "tenant",
+  message: "Too many barcode requests. Please try again later.",
 });
 
 export const adminSearchRateLimiter = createLimiter({
