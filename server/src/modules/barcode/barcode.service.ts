@@ -60,10 +60,13 @@ function generateSvg(barcodeValue: string) {
     JsBarcode(svg, barcodeValue, {
       format: "CODE128",
       displayValue: false,
-      width: 2.5,
-      height: 70,
+      width: 3,
+      height: 80,
       margin: 0,
     });
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("preserveAspectRatio", "none");
   } catch (err) {
     throw new CustomError("Failed to generate barcode image", 500);
   } finally {
@@ -137,16 +140,16 @@ export const getPrintingConfig = async (tenantId?: string) => {
     where: { tenantId },
   });
 
-  const printerSettings: PrinterSettingsSpec = tenantSetting?.printerSettings
-    ? { ...DEFAULT_PRINTER_SETTINGS, ...(tenantSetting.printerSettings as any) }
+  const printerSettings: PrinterSettingsSpec = (tenantSetting as any)?.printerSettings
+    ? { ...DEFAULT_PRINTER_SETTINGS, ...((tenantSetting as any).printerSettings as any) }
     : DEFAULT_PRINTER_SETTINGS;
 
-  const activeTemplate: LabelTemplateSpec = tenantSetting?.labelTemplates
-    ? { ...DEFAULT_50X25_TEMPLATE, ...((tenantSetting.labelTemplates as any)?.activeTemplate || {}) }
+  const activeTemplate: LabelTemplateSpec = (tenantSetting as any)?.labelTemplates
+    ? { ...DEFAULT_50X25_TEMPLATE, ...(((tenantSetting as any).labelTemplates as any)?.activeTemplate || {}) }
     : DEFAULT_50X25_TEMPLATE;
 
   const customTemplates: LabelTemplateSpec[] =
-    (tenantSetting?.labelTemplates as any)?.customTemplates || [DEFAULT_50X25_TEMPLATE];
+    ((tenantSetting as any)?.labelTemplates as any)?.customTemplates || [DEFAULT_50X25_TEMPLATE];
 
   return {
     printerSettings,
@@ -178,7 +181,7 @@ export const updatePrintingConfig = async (
 
   const newCustomTemplates = input.customTemplates || currentConfig.customTemplates;
 
-  await prisma.tenantSetting.upsert({
+  await (prisma.tenantSetting as any).upsert({
     where: { tenantId },
     update: {
       printerSettings: newPrinterSettings as any,

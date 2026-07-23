@@ -260,10 +260,12 @@ export function openThermalPrintWindow(
             justify-content: center;
             align-items: center;
           }
+          .barcode-wrapper svg,
           .barcode-img {
-            width: 100%;
-            height: 100%;
-            object-fit: fill;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: fill !important;
+            display: block !important;
           }
           .barcode-number {
             position: absolute;
