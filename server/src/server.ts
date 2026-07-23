@@ -25,6 +25,8 @@ console.log(
   `✓ Prisma runtime mode: ${config.databaseUrl.includes("pooler.supabase.com") ? "Supabase pooler" : "direct"}`,
 );
 
+
+
 if (!shouldRunStartupBootstrap && config.nodeEnv === "production") {
   // eslint-disable-next-line no-console
   console.log("✓ Production startup bootstrap disabled");

@@ -25,6 +25,7 @@ export default function InventoryPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [nonActiveOnly, setNonActiveOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -142,12 +143,16 @@ export default function InventoryPage() {
 
   const lowStockProducts = products.filter((product) => product.stock < 10);
   const lowStockCount = lowStockProducts.length;
+  
+  const nonActiveProducts = products.filter((product) => product.status === "pending");
+  const nonActiveCount = nonActiveProducts.length;
 
   const visibleProducts = products.filter((product) => {
     const matchesCategory = selectedCategory ? product.category === selectedCategory : true;
     const matchesSearch = searchQuery ? product.name.toLowerCase().includes(searchQuery.toLowerCase()) : true;
     const matchesLowStock = lowStockOnly ? product.stock < 10 : true;
-    return matchesCategory && matchesSearch && matchesLowStock;
+    const matchesNonActive = nonActiveOnly ? product.status === "pending" : true;
+    return matchesCategory && matchesSearch && matchesLowStock && matchesNonActive;
   });
 
   const activatingProduct = products.find(
@@ -314,6 +319,9 @@ export default function InventoryPage() {
       lowStockOnly={lowStockOnly}
       onToggleLowStock={() => setLowStockOnly((current) => !current)}
       lowStockCount={lowStockCount}
+      nonActiveOnly={nonActiveOnly}
+      onToggleNonActive={() => setNonActiveOnly((current) => !current)}
+      nonActiveCount={nonActiveCount}
     />
   );
 }

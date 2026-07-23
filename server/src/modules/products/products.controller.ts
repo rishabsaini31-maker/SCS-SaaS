@@ -107,7 +107,8 @@ export const suggest = async (
 ) => {
   try {
     const q = (req.query.q as string) || (req.query.query as string) || "";
-    const suggestions = await service.getProductSuggestions(q, req.tenantId);
+    const status = (req.query.status as string) || undefined;
+    const suggestions = await service.getProductSuggestions(q, status, req.tenantId);
     res.json(suggestions);
   } catch (err) {
     next(err);

@@ -57,95 +57,95 @@ export const createPurchase = async (
   const purchase = await runSerializableTransaction(async (tx) => {
     const purchaseNumber = await generatePurchaseNumber(tenantId, tx);
 
-    let subtotal = 0;
-    const lineItems: Array<{
-      productId: string;
-      productName: string;
-      category: string | null;
-      quantity: number;
-      unitPrice: number;
-      totalPrice: number;
-      createdNewProduct: boolean;
-    }> = [];
-    for (const item of data.lineItems) {
-      const totalPrice = item.unitPrice * item.quantity;
-      subtotal += totalPrice;
-      let product: {
-        id: string;
-        name: string;
-        category: string | null;
-      } | null = null;
-      let createdNewProduct = false;
+    const processedItems = await Promise.all(
+      data.lineItems.map(async (item) => {
+        const totalPrice = item.unitPrice * item.quantity;
+        let product: {
+          id: string;
+          name: string;
+          category: string | null;
+        } | null = null;
+        let createdNewProduct = false;
 
-      if (item.productId) {
-        product = await tx.product.findFirst({
-          where: tenantWhere(tenantId, { id: item.productId }),
-          select: { id: true, name: true, category: true },
-        });
-        if (!product) {
-          throw new CustomError(`Product ${item.productId} not found`, 404);
-        }
-      } else {
-        const manualName = item.productName?.trim();
-        if (!manualName) {
-          throw new CustomError("Product name is required", 400);
-        }
-
-        product = await tx.product.findFirst({
-          where: tenantWhere(tenantId, {
-            name: { equals: manualName, mode: "insensitive" },
-          } as any),
-          select: { id: true, name: true, category: true },
-        });
-
-        if (!product) {
-          product = await tx.product.create({
-            data: tenantCreateData(tenantId, {
-              name: manualName,
-              category: item.category || "General",
-              purchasePrice: item.unitPrice,
-              sellingPrice: 0,
-              gst: 0,
-              stock: item.quantity,
-              status: "pending",
-            }) as any,
+        if (item.productId) {
+          product = await tx.product.findFirst({
+            where: tenantWhere(tenantId, { id: item.productId }),
             select: { id: true, name: true, category: true },
           });
-          createdNewProduct = true;
+          if (!product) {
+            throw new CustomError(`Product ${item.productId} not found`, 404);
+          }
+        } else {
+          const manualName = item.productName?.trim();
+          if (!manualName) {
+            throw new CustomError("Product name is required", 400);
+          }
+
+          product = await tx.product.findFirst({
+            where: tenantWhere(tenantId, {
+              name: { equals: manualName, mode: "insensitive" },
+            } as any),
+            select: { id: true, name: true, category: true },
+          });
+
+          if (!product) {
+            // Check again safely within concurrent execution context or handle unique errors if necessary
+            // For general usage, assume parallel creation of unique items is safe.
+            product = await tx.product.create({
+              data: tenantCreateData(tenantId, {
+                name: manualName,
+                category: item.category || "General",
+                purchasePrice: item.unitPrice,
+                sellingPrice: 0,
+                gst: 0,
+                stock: item.quantity,
+                status: "pending",
+              }) as any,
+              select: { id: true, name: true, category: true },
+            });
+            createdNewProduct = true;
+          }
         }
-      }
 
-      const selectedProduct = product!;
+        const selectedProduct = product!;
 
-      if (!createdNewProduct) {
-        const productUpdates: {
-          stock?: { increment: number };
-          purchasePrice?: number;
-          category?: string;
-        } = {
-          stock: { increment: item.quantity },
-          purchasePrice: item.unitPrice,
+        if (!createdNewProduct) {
+          const productUpdates: {
+            stock?: { increment: number };
+            purchasePrice?: number;
+            category?: string;
+          } = {
+            stock: { increment: item.quantity },
+            purchasePrice: item.unitPrice,
+          };
+
+          if (item.category && !selectedProduct.category) {
+            productUpdates.category = item.category;
+          }
+
+          await tx.product.update({
+            where: { id: selectedProduct.id },
+            data: productUpdates,
+          });
+        }
+
+        return {
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          category: item.category || selectedProduct.category || null,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice,
+          createdNewProduct,
         };
+      })
+    );
 
-        if (item.category && !selectedProduct.category) {
-          productUpdates.category = item.category;
-        }
-
-        await tx.product.update({
-          where: { id: selectedProduct.id },
-          data: productUpdates,
-        });
-      }
-
-      lineItems.push({
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        category: item.category || selectedProduct.category || null,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice,
-        createdNewProduct,
-      });
+    let subtotal = 0;
+    const lineItems: typeof processedItems = [];
+    for (const p of processedItems) {
+      subtotal += p.totalPrice;
+      lineItems.push(p);
     }
 
     const gstRate = data.gstRate !== undefined ? data.gstRate : 18;
@@ -164,19 +164,19 @@ export const createPurchase = async (
       }) as any,
     });
 
-    for (const item of lineItems) {
-      await tx.purchaseLineItem.create({
-        data: tenantCreateData(tenantId, {
-          purchaseId: newPurchase.id,
-          productId: item.productId,
-          productName: item.productName,
-          category: item.category,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-        }) as any,
-      });
-    }
+    const purchaseLineItemsData = lineItems.map(item => tenantCreateData(tenantId, {
+      purchaseId: newPurchase.id,
+      productId: item.productId,
+      productName: item.productName,
+      category: item.category,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+    }) as any);
+
+    await tx.purchaseLineItem.createMany({
+      data: purchaseLineItemsData,
+    });
 
     await tx.ledgerEntry.create({
       data: tenantCreateData(tenantId, {

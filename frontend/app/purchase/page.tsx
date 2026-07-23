@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { formatINR } from "@/lib/currency";
 import { useSettings } from "@/hooks/useSettings";
+import ScanBillModal, { ExtractedBillData } from "@/components/purchase/ScanBillModal";
 
 const getPurchaseStatusMeta = (status: string) => {
   const normalized = status.trim().toLowerCase();
@@ -111,6 +112,7 @@ export default function PurchasePage() {
     },
   });
   const [submitting, setSubmitting] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: 0, unitPrice: 0 },
   ]);
@@ -127,6 +129,55 @@ export default function PurchasePage() {
     paymentStatus: "Paid",
     paidAmount: "",
   });
+
+  const handleApplyExtractedBill = (data: ExtractedBillData) => {
+    // Reset previous purchase form state completely before applying newly scanned bill
+    setFormData((prev) => ({
+      ...prev,
+      supplierId: "",
+      notes: "",
+    }));
+    setSupplierSearch("");
+    setLineItems([]);
+
+    // Attempt auto supplier match
+    if (data.supplierName) {
+      const matchSup = suppliers.find(
+        (s) =>
+          s.name.toLowerCase().includes(data.supplierName!.toLowerCase()) ||
+          data.supplierName!.toLowerCase().includes(s.name.toLowerCase())
+      );
+      if (matchSup) {
+        setFormData((prev) => ({ ...prev, supplierId: matchSup.id }));
+      } else {
+        setSupplierSearch(data.supplierName);
+      }
+    }
+
+    // Set notes / invoice metadata
+    if (data.invoiceNumber || data.invoiceDate) {
+      setFormData((prev) => ({
+        ...prev,
+        notes: `Inv: ${data.invoiceNumber || "N/A"} | Date: ${data.invoiceDate || "N/A"}`,
+      }));
+    }
+
+    const newItems: LineItem[] = data.lineItems.map((item: any) => {
+      // User requested to ALWAYS use the existing product's purchase price if it exists
+      let price = item.pastPrice ?? item.purchaseRate ?? item.unitPrice ?? 0;
+      
+      return {
+        productId: item.matchedProductId || "",
+        productName: item.productName,
+        category: item.category || "General",
+        quantity: item.quantity || 1,
+        unitPrice: price,
+      };
+    });
+
+    setLineItems(newItems.length > 0 ? newItems : [{ productId: "", quantity: 0, unitPrice: 0 }]);
+    setShowForm(true);
+  };
 
   useEffect(() => {
     if (settings) {
@@ -360,12 +411,22 @@ export default function PurchasePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Purchases</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          + Create PO
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowScanModal(true)}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition shadow-sm font-medium flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-lg">document_scanner</span>
+            Scan Purchase Bill
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            + Create PO
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -1028,6 +1089,13 @@ export default function PurchasePage() {
           </div>
         </div>
       </div>
+
+      <ScanBillModal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        categories={categoryOptions}
+        onApplyExtractedData={handleApplyExtractedBill}
+      />
     </div>
   );
 }

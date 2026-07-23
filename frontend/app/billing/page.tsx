@@ -452,9 +452,9 @@ export default function BillingPage() {
     isLoading: productsLoading,
     isError: productsError,
   } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", { status: "active" }],
     queryFn: async () => {
-      const res = await api.get<Product[]>("/products");
+      const res = await api.get<Product[]>("/products", { params: { status: "active" } });
       return res.data;
     },
   });
@@ -673,7 +673,7 @@ export default function BillingPage() {
       const foundProduct = foundInCache
         ? foundInCache
         : (
-            await api.get<Product[]>("/products", { params: { barcode: code } })
+            await api.get<Product[]>("/products", { params: { barcode: code, status: "active" } })
           ).data.find((p) => p.barcode === code);
 
       if (foundProduct) {

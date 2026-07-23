@@ -31,6 +31,8 @@ export async function runSerializableTransaction<T>(
     try {
       return await (prisma as any).$transaction(work, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 30000,
+        maxWait: 10000,
       });
     } catch (error) {
       if (attempt >= maxAttempts || !isRetryableTransactionError(error)) {

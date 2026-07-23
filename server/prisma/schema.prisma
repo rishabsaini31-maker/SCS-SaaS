@@ -281,6 +281,8 @@ model Tenant {
   priceOverrides    PriceOverrideLog[]
   expenses          Expense[]
   paymentAccounts   PaymentAccount[]
+  purchaseInvoiceScans PurchaseInvoiceScan[]
+  supplierProductMappings SupplierProductMapping[]
 }
 
 model User {
@@ -737,4 +739,36 @@ model RestoreHistory {
 
   @@index([tenantId])
   @@index([cloudBackupId])
+}
+
+model PurchaseInvoiceScan {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  supplierName    String?
+  supplierGstin   String?
+  invoiceNumber   String?
+  invoiceDate     String?
+  scannedData     Json
+  status          String   @default("SCANNED")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, supplierGstin, invoiceNumber])
+}
+
+model SupplierProductMapping {
+  id               String   @id @default(cuid())
+  tenantId         String?
+  supplierId       String?
+  supplierItemName String
+  productId        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, supplierItemName])
+  @@index([tenantId])
+  @@index([tenantId, supplierItemName])
 }

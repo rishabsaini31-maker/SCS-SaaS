@@ -47,6 +47,9 @@ type InventoryShellProps = {
   lowStockOnly: boolean;
   onToggleLowStock: () => void;
   lowStockCount: number;
+  nonActiveOnly: boolean;
+  onToggleNonActive: () => void;
+  nonActiveCount: number;
 };
 
 export function InventoryShell({
@@ -77,6 +80,9 @@ export function InventoryShell({
   lowStockOnly,
   onToggleLowStock,
   lowStockCount,
+  nonActiveOnly,
+  onToggleNonActive,
+  nonActiveCount,
 }: InventoryShellProps) {
   const config = useMemo(() => getBusinessConfig(tenantBusinessType), [tenantBusinessType]);
 
@@ -99,6 +105,17 @@ export function InventoryShell({
             }`}
           >
             Low Stock Products{lowStockCount > 0 ? ` (${lowStockCount})` : ""}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleNonActive}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+              nonActiveOnly
+                ? "bg-purple-700 hover:bg-purple-800"
+                : "bg-purple-500 hover:bg-purple-600"
+            }`}
+          >
+            Non-Active Products{nonActiveCount > 0 ? ` (${nonActiveCount})` : ""}
           </button>
           <button
             type="button"

@@ -108,15 +108,19 @@ export const getLowStockProducts = async (
 
 export const getProductSuggestions = async (
   query: string,
+  status?: string,
   tenantId?: string,
 ) => {
   const q = query.trim();
   if (!q) return [];
 
   const products = await prisma.product.findMany({
-    where: tenantWhere(tenantId, {
-      name: { contains: q, mode: "insensitive" },
-    } as any),
+    where: {
+      ...tenantWhere(tenantId, {
+        name: { contains: q, mode: "insensitive" },
+      } as any),
+      ...(status && { status })
+    },
     take: 6,
     orderBy: { updatedAt: "desc" },
   });

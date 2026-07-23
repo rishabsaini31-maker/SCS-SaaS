@@ -16,6 +16,7 @@ import backupRouter from "../modules/backup/backup.routes";
 import potaBakiRouter from "../modules/pota-baki/pota-baki.routes";
 import staffRouter from "../modules/staff/staff.routes";
 import expenseRouter from "../modules/expenses/expense.routes";
+import billScannerRouter from "../modules/bill-scanner/billScanner.routes";
 import cloudBackupRouter from "../backup/cloud-backup.routes";
 import cloudRestoreRouter from "../backup/restore.routes";
 
@@ -26,6 +27,7 @@ router.use("/products", productsRouter);
 router.use("/customers", customersRouter);
 router.use("/suppliers", suppliersRouter);
 router.use("/invoices", invoicesRouter);
+router.use("/purchases/bill-scanner", billScannerRouter);
 router.use("/purchases", purchasesRouter);
 router.use("/payments", paymentsRouter);
 router.use("/categories", categoriesRouter);
