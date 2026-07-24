@@ -807,7 +807,7 @@ export default function PurchasePage() {
 
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8">
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
             <table className="w-full min-w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
@@ -834,6 +834,9 @@ export default function PurchasePage() {
                   </th>
                   <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase">
                     Date
+                  </th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase text-right">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -876,6 +879,29 @@ export default function PurchasePage() {
                         {new Date(purchase.purchaseDate).toLocaleDateString(
                           "en-IN",
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPurchase(purchase)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">visibility</span>
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Basic download action, can be replaced with actual PDF generation logic
+                              alert(`Downloading bill for ${purchase.purchaseNumber}`);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">download</span>
+                            Download
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

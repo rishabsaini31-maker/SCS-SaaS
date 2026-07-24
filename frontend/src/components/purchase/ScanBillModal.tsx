@@ -84,6 +84,10 @@ export default function ScanBillModal({
         setErrorMsg("File size exceeds maximum allowed size of 20MB");
         return;
       }
+      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+        setErrorMsg("Upload only PDF");
+        return;
+      }
       // Check 6: Reset previous scan state immediately on new upload
       setExtractedData(null);
       setErrorMsg("");
@@ -116,7 +120,7 @@ export default function ScanBillModal({
 
   const handleUploadAndScan = async () => {
     if (!selectedFile) {
-      setErrorMsg("Please select a bill file (PDF, JPG, PNG, WEBP, HEIC)");
+      setErrorMsg("Please select a PDF bill file");
       return;
     }
 
@@ -199,8 +203,8 @@ export default function ScanBillModal({
                   <p className="font-semibold text-slate-700">
                     Click to upload or drag & drop purchase bill
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Supports PDF, JPG, JPEG, PNG, HEIC, WEBP (Max 20MB)
+                  <p className="text-xs text-red-500 font-medium mt-1">
+                    Upload only PDF (Max 20MB)
                   </p>
                 </div>
                 {selectedFile && (
@@ -215,7 +219,7 @@ export default function ScanBillModal({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.heic,.webp"
+                accept=".pdf"
                 onChange={handleFileSelect}
                 className="hidden"
               />
